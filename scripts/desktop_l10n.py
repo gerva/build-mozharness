@@ -4,10 +4,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 # ***** END LICENSE BLOCK *****
-"""mobile_l10n.py
+"""desktop_l10n.py
 
-This currently supports nightly and release single locale repacks for
-Android.  This also creates nightly updates.
+Linux-32 Desktop Firefox.  This also creates nightly updates. This script is
+almost the exact same as 'mobile_l10n.py' but allows for desktop l10n support
+with the correct config. It is not merged with 'mobile_l10n' because it is a
+WIP
 """
 
 from copy import deepcopy
@@ -29,16 +31,15 @@ from mozharness.base.log import OutputParser
 from mozharness.base.transfer import TransferMixin
 from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.release import ReleaseMixin
-from mozharness.mozilla.signing import MobileSigningMixin
+from mozharness.mozilla.signing import SigningMixin
 from mozharness.base.vcs.vcsbase import MercurialScript
 from mozharness.mozilla.l10n.locales import LocalesMixin
 from mozharness.mozilla.mock import MockMixin
 
 
-# MobileSingleLocale {{{1
-class MobileSingleLocale(MockMixin, LocalesMixin, ReleaseMixin,
-                         MobileSigningMixin, TransferMixin,
-                         BuildbotMixin, MercurialScript):
+# DesktopSingleLocale {{{1
+class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
+        TransferMixin, MercurialScript, SigningMixin):
     config_options = [[
         ['--locale', ],
         {"action": "extend",
@@ -202,12 +203,14 @@ class MobileSingleLocale(MockMixin, LocalesMixin, ReleaseMixin,
         """
         if self.revision:
             return self.revision
-        r = re.compile(r"gecko_revision ([0-9a-f]{12}\+?)")
+        #change here in regex to support gecko_[something] or fx_[something]
+        # r = re.compile(r"gecko_revision ([0-9a-f]{12}\+?)")
+        r = re.compile(r"^(gecko|fx)_revision ([0-9a-f]{12}\+?)$")
         output = self._query_make_ident_output()
         for line in output.splitlines():
             m = r.match(line)
             if m:
-                self.revision = m.groups()[0]
+                self.revision = m.groups()[1]
         return self.revision
 
     def _query_make_variable(self, variable, make_args=None):
@@ -249,6 +252,7 @@ class MobileSingleLocale(MockMixin, LocalesMixin, ReleaseMixin,
         if c.get('release_config_file'):
             rc = self.query_release_config()
             self.version = rc['version']
+            self.info("Made it query_version, c['release_config_file true {}".format(self.version))
         else:
             self.version = self._query_make_variable("MOZ_APP_VERSION")
         return self.version
@@ -395,7 +399,7 @@ class MobileSingleLocale(MockMixin, LocalesMixin, ReleaseMixin,
             signed_path = os.path.join(base_package_dir,
                                        base_package_name % {'locale': locale})
             # We need to wrap what this function does with mock, since
-            # MobileSigningMixin doesn't know about mock
+            # desktopSigningMixin doesn't know about mock
             self.enable_mock()
             status = self.verify_android_signature(
                 signed_path,
@@ -512,5 +516,5 @@ class MobileSingleLocale(MockMixin, LocalesMixin, ReleaseMixin,
 
 # main {{{1
 if __name__ == '__main__':
-    single_locale = MobileSingleLocale()
+    single_locale = desktopSingleLocale()
     single_locale.run()
