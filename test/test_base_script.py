@@ -2,9 +2,14 @@ import gc
 import mock
 import os
 import re
-import sys
-import time
 import unittest
+PYWIN32 = False
+if os.name == 'nt':
+    try:
+        import win32file
+        PYWIN32 = True
+    except:
+        pass
 
 import mozharness.base.errors as errors
 import mozharness.base.log as log
@@ -169,8 +174,7 @@ class TestHelperFunctions(unittest.TestCase):
     def test_get_output_from_command(self):
         self._create_temp_file()
         self.s = script.BaseScript(initial_config_file='test/test.json')
-        contents = self.s.get_output_from_command("cat %s" % self.temp_file)
-        del(self.s)
+        contents = self.s.get_output_from_command(["bash", "-c", "cat %s" % self.temp_file])
         self.assertEqual(test_string, contents,
                          msg="get_output_from_command('cat file') differs from fh.write")
 
@@ -221,21 +225,38 @@ class TestHelperFunctions(unittest.TestCase):
         status = self.s.rmtree('test_dir')
         self.assertFalse(status, msg="nonexistent rmtree error")
 
-    def test_existing_rmdir_recursive(self):
-        self._create_temp_file()
+    @unittest.skipUnless(PYWIN32, "PyWin32 specific")
+    def test_long_dir_rmtree(self):
         self.s = script.BaseScript(initial_config_file='test/test.json')
-        self.s.mkdir_p('test_dir/foo/bar/baz')
-        self.s._rmdir_recursive('test_dir')
-        self.assertFalse(os.path.exists('test_dir'),
-                         msg="_rmdir_recursive unsuccessful")
+        # create a very long path that the command-prompt cannot delete
+        # by using unicode format (max path length 32000)
+        path = u'\\\\?\\%s\\test_dir' % os.getcwd()
+        win32file.CreateDirectoryExW(u'.', path)
 
+        for x in range(0, 20):
+            print("path=%s" % path)
+            path = path + u'\\%sxxxxxxxxxxxxxxxxxxxx' % x
+            win32file.CreateDirectoryExW(u'.', path)
+        self.s.rmtree('test_dir')
+        self.assertFalse(os.path.exists('test_dir'),
+                         msg="rmtree unsuccessful")
+
+    @unittest.skipUnless(PYWIN32, "PyWin32 specific")
+    def test_chmod_rmtree(self):
+        self._create_temp_file()
+        win32file.SetFileAttributesW(self.temp_file, win32file.FILE_ATTRIBUTE_READONLY)
+        self.s = script.BaseScript(initial_config_file='test/test.json')
+        self.s.rmtree('test_dir')
+        self.assertFalse(os.path.exists('test_dir'),
+                         msg="rmtree unsuccessful")
+
+    @unittest.skipIf(os.name == "nt", "Not for Windows")
     def test_chmod(self):
         self._create_temp_file()
         self.s = script.BaseScript(initial_config_file='test/test.json')
-        if not self.s._is_windows():
-            self.s.chmod(self.temp_file, 0100700)
-            self.assertEqual(os.stat(self.temp_file)[0], 33216,
-                             msg="chmod unsuccessful")
+        self.s.chmod(self.temp_file, 0100700)
+        self.assertEqual(os.stat(self.temp_file)[0], 33216,
+                         msg="chmod unsuccessful")
 
     def test_env_normal(self):
         self.s = script.BaseScript(initial_config_file='test/test.json')
@@ -468,37 +489,6 @@ class TestRetry(unittest.TestCase):
         print ret
         self.assertEqual(ret[0], args)
         self.assertEqual(ret[1], kwargs)
-
-
-# TestTimeout {{{1
-class TestTimeout(unittest.TestCase):
-    def setUp(self):
-        cleanup()
-        self.s = script.BaseScript(initial_config_file='test/test.json')
-
-    def tearDown(self):
-        # Close the logfile handles, or windows can't remove the logs
-        if hasattr(self, 's') and isinstance(self.s, object):
-            del(self.s)
-        cleanup()
-
-    def testNoTimeout(self):
-        status = self.s.run_command([sys.executable, '-c', 'import time; time.sleep(2)'], idle_timeout=5)
-        self.assertEqual(status, 0)
-
-    def testTimeout(self):
-        t = time.time()
-        status = self.s.run_command([sys.executable, '-c', 'import time; time.sleep(20)'], idle_timeout=2)
-        self.assertNotEqual(status, 0, "Timed-out (and killed) status is 0!")
-        self.assertTrue(time.time() - t < 5, "Idle timeout of 2 seconds took longer than 5 seconds to return!")
-
-    def testCommandLag(self):
-        t = time.time()
-        self.s.run_command(['echo'])
-        self.s.run_command(['echo'])
-        self.s.run_command(['echo'])
-        self.assertTrue(time.time() - t < 1, "Running three echos takes over a full second!")
-
 
 # main {{{1
 if __name__ == '__main__':

@@ -33,8 +33,8 @@ config = {
     },
     "update": {
         "upload_remote_host": "update.boot2gecko.org",
-        "upload_remote_basepath": "/data/update-channels/nightly",
-        "base_url": "http://update.boot2gecko.org/nightly/",
+        "upload_remote_basepath": "/data/update-channels/{target}/{version}/{publish_channel}",
+        "base_url": "http://update.boot2gecko.org/{target}/{version}/{update_channel}/",
         "ssh_key": os.path.expanduser("~/.ssh/b2gbld_dsa"),
         "ssh_user": "ec2-user",
         "autopublish": False,
@@ -76,6 +76,7 @@ config = {
         'git://github.com/mozilla/': 'https://git.mozilla.org/b2g',
         'https://git.mozilla.org/releases': 'https://git.mozilla.org/releases',
         'http://android.git.linaro.org/git-ro/': 'https://git.mozilla.org/external/linaro',
+        'git://github.com/apitrace/': 'https://git.mozilla.org/external/apitrace',
     },
     "update_channel": "beta",
 }
