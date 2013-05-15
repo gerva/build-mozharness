@@ -516,5 +516,5 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
 # main {{{1
 if __name__ == '__main__':
-    single_locale = desktopSingleLocale()
+    single_locale = DesktopSingleLocale()
     single_locale.run()
