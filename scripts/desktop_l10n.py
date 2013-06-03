@@ -36,12 +36,14 @@ from mozharness.mozilla.signing import MobileSigningMixin
 from mozharness.mozilla.signing import SigningMixin
 from mozharness.base.vcs.vcsbase import MercurialScript
 from mozharness.mozilla.l10n.locales import LocalesMixin
+from mozharness.mozilla.buildbot import BuildbotMixin
+from mozharness.mozilla.purge import PurgeMixin
 
 
 
 # DesktopSingleLocale {{{1
 class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
-        TransferMixin, MercurialScript, SigningMixin):
+        PurgeMixin, BuildbotMixin, TransferMixin, MercurialScript, SigningMixin):
     config_options = [[
      ['--locale', ],
      {"action": "extend",
@@ -288,7 +290,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         objdir = os.path.join(dirs['abs_work_dir'], c['mozilla_dir'],
                               c['objdir'])
-        super(self).clobber(always_clobber_dirs=[objdir])
+        super(DesktopSingleLocale, self).clobber(always_clobber_dirs=[objdir])
         # self.rmtree(objdir)
 
     def pull(self):
