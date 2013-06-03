@@ -38,6 +38,7 @@ from mozharness.base.vcs.vcsbase import MercurialScript
 from mozharness.mozilla.l10n.locales import LocalesMixin
 from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
+from mozharness.mozilla.mock import MockMixin
 
 
 
