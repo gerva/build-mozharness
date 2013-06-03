@@ -67,4 +67,15 @@ config = {
     "aus_ssh_key": AUS_SSH_KEY,
     "aus_upload_base_dir": AUS_UPLOAD_BASE_DIR,
     "aus_base_dir": AUS_BASE_DIR,
+
+    # Mock
+    "mock_target": "mozilla-centos6-i386",
+    "mock_packages": [
+        "autoconf213", "mozilla-python27-mercurial", "ccache",
+        "zip", "zlib-devel", "glibc-static", "openssh-clients",
+        "mpfr", "wget",
+    ],
+    "mock_files": [
+        ("/home/cltbld/.ssh", "/home/mock_mozilla/.ssh"),
+    ],
 }
