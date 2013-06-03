@@ -173,11 +173,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return self.make_ident_output
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
-        output = self.get_output_from_command(["make", "ident"],
-                                              cwd=dirs['abs_locales_dir'],
-                                              env=env,
-                                              silent=True,
-                                              halt_on_failure=True)
+        output = self.get_output_from_command_m(["make", "ident"],
+                                                cwd=dirs['abs_locales_dir'],
+                                                env=env,
+                                                silent=True,
+                                                halt_on_failure=True)
         parser = OutputParser(config=self.config, log_obj=self.log_obj,
                               error_list=MakefileErrorList)
         parser.add_lines(output)
@@ -219,7 +219,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if make_args is None:
             make_args = []
         # TODO error checking
-        output = self.get_output_from_command(
+        output = self.get_output_from_command_m(
             [make, "echo-variable-%s" % variable] + make_args,
             cwd=dirs['abs_locales_dir'], silent=True,
             env=env
@@ -345,29 +345,29 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cat = self.query_exe("cat")
         hg = self.query_exe("hg")
         make = self.query_exe("make")
-        self.run_command([cat, mozconfig_path])
+        self.run_command_m([cat, mozconfig_path])
         env = self.query_repack_env()
-        self.run_command([make, "-f", "client.mk", "configure"],
+        self.run_command_m([make, "-f", "client.mk", "configure"],
                          cwd=dirs['abs_mozilla_dir'],
                          env=env,
                          error_list=MakefileErrorList,
                          halt_on_failure=True)
         for make_dir in c.get('make_dirs', []):
-            self.run_command([make],
-                             cwd=os.path.join(dirs['abs_objdir'], make_dir),
-                             env=env,
-                             error_list=MakefileErrorList,
-                             halt_on_failure=True)
-        self.run_command([make, "wget-en-US"],
-                         cwd=dirs['abs_locales_dir'],
-                         env=env,
-                         error_list=MakefileErrorList,
-                         halt_on_failure=True)
-        self.run_command([make, "unpack"],
-                         cwd=dirs['abs_locales_dir'],
-                         env=env,
-                         error_list=MakefileErrorList,
-                         halt_on_failure=True)
+            self.run_command_m([make],
+                               cwd=os.path.join(dirs['abs_objdir'], make_dir),
+                               env=env,
+                               error_list=MakefileErrorList,
+                               halt_on_failure=True)
+        self.run_command_m([make, "wget-en-US"],
+                           cwd=dirs['abs_locales_dir'],
+                           env=env,
+                           error_list=MakefileErrorList,
+                           halt_on_failure=True)
+        self.run_command_m([make, "unpack"],
+                           cwd=dirs['abs_locales_dir'],
+                           env=env,
+                           error_list=MakefileErrorList,
+                           halt_on_failure=True)
         revision = self.query_revision()
         if not revision:
             self.fatal("Can't determine revision!")
@@ -399,11 +399,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if result:
                 self.add_failure(locale, message="%s failed in compare-locales!" % locale)
                 continue
-            if self.run_command([make, "installers-%s" % locale],
-                                cwd=dirs['abs_locales_dir'],
-                                env=repack_env,
-                                error_list=MakefileErrorList,
-                                halt_on_failure=False):
+            if self.run_command_m([make, "installers-%s" % locale],
+                                  cwd=dirs['abs_locales_dir'],
+                                  env=repack_env,
+                                  error_list=MakefileErrorList,
+                                  halt_on_failure=False):
                 self.add_failure(locale, message="%s failed in make installers-%s!" % (locale, locale))
                 continue
             # this condition is to exclude mobile signing from desktop l10n
@@ -443,7 +443,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             total_count += 1
             if c.get('base_post_upload_cmd'):
                 upload_env['POST_UPLOAD_CMD'] = c['base_post_upload_cmd'] % {'version': version, 'locale': locale}
-            output = self.get_output_from_command(
+            output = self.get_output_from_command_m(
                 # Ugly hack to avoid |make upload| stderr from showing up
                 # as get_output_from_command errors
                 "%s upload AB_CD=%s 2>&1" % (make, locale),
@@ -503,7 +503,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.add_failure(locale, message="Errors creating snippet for %s!  Removing snippet directory." % locale)
                 self.rmtree(aus_abs_dir)
                 continue
-            self.run_command(["touch", os.path.join(aus_abs_dir, "partial.txt")])
+            self.run_command_m(["touch", os.path.join(aus_abs_dir, "partial.txt")])
             success_count += 1
         self.summarize_success_count(success_count, total_count,
                                      message="Created %d of %d snippets successfully.")
