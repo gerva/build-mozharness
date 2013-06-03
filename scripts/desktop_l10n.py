@@ -42,7 +42,7 @@ from mozharness.mozilla.purge import PurgeMixin
 
 
 # DesktopSingleLocale {{{1
-class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
+class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin, MockMixin,
         PurgeMixin, BuildbotMixin, TransferMixin, MercurialScript, SigningMixin):
     config_options = [[
      ['--locale', ],
