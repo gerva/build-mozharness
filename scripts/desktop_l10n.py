@@ -6,6 +6,7 @@
 # ***** END LICENSE BLOCK *****
 """desktop_l10n.py
 
+This currently supports nightly and release single locale repacks for
 Linux-32 Desktop Firefox.  This also creates nightly updates. This script is
 almost the exact same as 'mobile_l10n.py' but allows for desktop l10n support
 with the correct config. It is not merged with 'mobile_l10n' because it is a
@@ -20,6 +21,7 @@ import sys
 
 try:
     import simplejson as json
+    assert json
 except ImportError:
     import json
 
@@ -29,75 +31,73 @@ sys.path.insert(1, os.path.dirname(sys.path[0]))
 from mozharness.base.errors import BaseErrorList, MakefileErrorList
 from mozharness.base.log import OutputParser
 from mozharness.base.transfer import TransferMixin
-from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.release import ReleaseMixin
+from mozharness.mozilla.signing import MobileSigningMixin
 from mozharness.mozilla.signing import SigningMixin
 from mozharness.base.vcs.vcsbase import MercurialScript
 from mozharness.mozilla.l10n.locales import LocalesMixin
-from mozharness.mozilla.mock import MockMixin
+
 
 
 # DesktopSingleLocale {{{1
 class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         TransferMixin, MercurialScript, SigningMixin):
     config_options = [[
-        ['--locale', ],
-        {"action": "extend",
-         "dest": "locales",
-         "type": "string",
-         "help": "Specify the locale(s) to sign and update"
-         }
+     ['--locale', ],
+     {"action": "extend",
+      "dest": "locales",
+      "type": "string",
+      "help": "Specify the locale(s) to sign and update"
+     }
     ], [
-        ['--locales-file', ],
-        {"action": "store",
-         "dest": "locales_file",
-         "type": "string",
-         "help": "Specify a file to determine which locales to sign and update"
-         }
+     ['--locales-file', ],
+     {"action": "store",
+      "dest": "locales_file",
+      "type": "string",
+      "help": "Specify a file to determine which locales to sign and update"
+     }
     ], [
-        ['--tag-override', ],
-        {"action": "store",
-         "dest": "tag_override",
-         "type": "string",
-         "help": "Override the tags set for all repos"
-         }
+     ['--tag-override', ],
+     {"action": "store",
+      "dest": "tag_override",
+      "type": "string",
+      "help": "Override the tags set for all repos"
+     }
     ], [
-        ['--user-repo-override', ],
-        {"action": "store",
-         "dest": "user_repo_override",
-         "type": "string",
-         "help": "Override the user repo path for all repos"
-         }
+     ['--user-repo-override', ],
+     {"action": "store",
+      "dest": "user_repo_override",
+      "type": "string",
+      "help": "Override the user repo path for all repos"
+     }
     ], [
-        ['--release-config-file', ],
-        {"action": "store",
-         "dest": "release_config_file",
-         "type": "string",
-         "help": "Specify the release config file to use"
-         }
+     ['--release-config-file', ],
+     {"action": "store",
+      "dest": "release_config_file",
+      "type": "string",
+      "help": "Specify the release config file to use"
+     }
     ], [
-        ['--key-alias', ],
-        {"action": "store",
-         "dest": "key_alias",
-         "type": "choice",
-         "default": "nightly",
-         "choices": ["nightly", "release"],
-         "help": "Specify the signing key alias"
-         }
+     ['--keystore', ],
+     {"action": "store",
+      "dest": "keystore",
+      "type": "string",
+      "help": "Specify the location of the signing keystore"
+     }
     ], [
-        ['--this-chunk', ],
-        {"action": "store",
-         "dest": "this_locale_chunk",
-         "type": "int",
-         "help": "Specify which chunk of locales to run"
-         }
+     ['--this-chunk', ],
+     {"action": "store",
+      "dest": "this_locale_chunk",
+      "type": "int",
+      "help": "Specify which chunk of locales to run"
+     }
     ], [
-        ['--total-chunks', ],
-        {"action": "store",
-         "dest": "total_locale_chunks",
-         "type": "int",
-         "help": "Specify the total number of chunks of locales"
-         }
+     ['--total-chunks', ],
+     {"action": "store",
+      "dest": "total_locale_chunks",
+      "type": "int",
+      "help": "Specify the total number of chunks of locales"
+     }
     ]]
 
     def __init__(self, require_config_file=True):
@@ -126,7 +126,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.upload_env = None
         self.version = None
         self.upload_urls = {}
-        self.locales_property = {}
 
     # Helper methods {{{2
     def query_repack_env(self):
@@ -172,11 +171,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return self.make_ident_output
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
-        output = self.get_output_from_command_m(["make", "ident"],
-                                                cwd=dirs['abs_locales_dir'],
-                                                env=env,
-                                                silent=True,
-                                                halt_on_failure=True)
+        output = self.get_output_from_command(["make", "ident"],
+                                              cwd=dirs['abs_locales_dir'],
+                                              env=env,
+                                              silent=True,
+                                              halt_on_failure=True)
         parser = OutputParser(config=self.config, log_obj=self.log_obj,
                               error_list=MakefileErrorList)
         parser.add_lines(output)
@@ -203,8 +202,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """
         if self.revision:
             return self.revision
-        #change here in regex to support gecko_[something] or fx_[something]
-        # r = re.compile(r"gecko_revision ([0-9a-f]{12}\+?)")
         r = re.compile(r"^(gecko|fx)_revision ([0-9a-f]{12}\+?)$")
         output = self._query_make_ident_output()
         for line in output.splitlines():
@@ -220,7 +217,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if make_args is None:
             make_args = []
         # TODO error checking
-        output = self.get_output_from_command_m(
+        output = self.get_output_from_command(
             [make, "echo-variable-%s" % variable] + make_args,
             cwd=dirs['abs_locales_dir'], silent=True,
             env=env
@@ -285,6 +282,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("locales", json.dumps(self.locales_property), write_to_file=True)
 
     # Actions {{{2
+    def clobber(self):
+        self.read_buildbot_config()
+        dirs = self.query_abs_dirs()
+        c = self.config
+        objdir = os.path.join(dirs['abs_work_dir'], c['mozilla_dir'],
+                              c['objdir'])
+        super(self).clobber(always_clobber_dirs=[objdir])
+        # self.rmtree(objdir)
+
     def pull(self):
         c = self.config
         dirs = self.query_abs_dirs()
@@ -303,14 +309,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.pull_locale_source()
 
     # list_locales() is defined in LocalesMixin.
-
-    def preflight_setup(self):
-        if 'clobber' not in self.actions:
-            c = self.config
-            dirs = self.query_abs_dirs()
-            objdir = os.path.join(dirs['abs_work_dir'], c['mozilla_dir'],
-                                  c['objdir'])
-            self.rmtree(objdir)
 
     def _setup_configure(self, buildid=None):
         c = self.config
@@ -345,19 +343,29 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cat = self.query_exe("cat")
         hg = self.query_exe("hg")
         make = self.query_exe("make")
-        self.run_command_m([cat, mozconfig_path])
+        self.run_command([cat, mozconfig_path])
         env = self.query_repack_env()
-        self._setup_configure()
-        self.run_command_m([make, "wget-en-US"],
-                           cwd=dirs['abs_locales_dir'],
-                           env=env,
-                           error_list=MakefileErrorList,
-                           halt_on_failure=True)
-        self.run_command_m([make, "unpack"],
-                           cwd=dirs['abs_locales_dir'],
-                           env=env,
-                           error_list=MakefileErrorList,
-                           halt_on_failure=True)
+        self.run_command([make, "-f", "client.mk", "configure"],
+                         cwd=dirs['abs_mozilla_dir'],
+                         env=env,
+                         error_list=MakefileErrorList,
+                         halt_on_failure=True)
+        for make_dir in c.get('make_dirs', []):
+            self.run_command([make],
+                             cwd=os.path.join(dirs['abs_objdir'], make_dir),
+                             env=env,
+                             error_list=MakefileErrorList,
+                             halt_on_failure=True)
+        self.run_command([make, "wget-en-US"],
+                         cwd=dirs['abs_locales_dir'],
+                         env=env,
+                         error_list=MakefileErrorList,
+                         halt_on_failure=True)
+        self.run_command([make, "unpack"],
+                         cwd=dirs['abs_locales_dir'],
+                         env=env,
+                         error_list=MakefileErrorList,
+                         halt_on_failure=True)
         revision = self.query_revision()
         if not revision:
             self.fatal("Can't determine revision!")
@@ -389,30 +397,27 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if result:
                 self.add_failure(locale, message="%s failed in compare-locales!" % locale)
                 continue
-            if self.run_command_m([make, "installers-%s" % locale],
-                                  cwd=dirs['abs_locales_dir'],
-                                  env=repack_env,
-                                  error_list=MakefileErrorList,
-                                  halt_on_failure=False):
+            if self.run_command([make, "installers-%s" % locale],
+                                cwd=dirs['abs_locales_dir'],
+                                env=repack_env,
+                                error_list=MakefileErrorList,
+                                halt_on_failure=False):
                 self.add_failure(locale, message="%s failed in make installers-%s!" % (locale, locale))
                 continue
-            signed_path = os.path.join(base_package_dir,
-                                       base_package_name % {'locale': locale})
-            # We need to wrap what this function does with mock, since
-            # desktopSigningMixin doesn't know about mock
-            self.enable_mock()
-            status = self.verify_android_signature(
-                signed_path,
-                script=c['signature_verification_script'],
-                env=repack_env,
-                key_alias=c['key_alias'],
-            )
-            self.disable_mock()
-            if status:
-                self.add_failure(locale, message="Errors verifying %s binary!" % locale)
-                # No need to rm because upload is per-locale
-                continue
-            success_count += 1
+            # this condition is to exclude mobile signing from desktop l10n
+            if c['signature_verification_script']:
+                signed_path = os.path.join(base_package_dir,
+                                        base_package_name % {'locale': locale})
+                status = self.verify_android_signature(
+                    signed_path,
+                    script=c['signature_verification_script'],
+                    env=repack_env
+                )
+                if status:
+                    self.add_failure(locale, message="Errors verifying %s binary!" % locale)
+                    # No need to rm because upload is per-locale
+                    continue
+                success_count += 1
         self.summarize_success_count(success_count, total_count,
                                      message="Repacked %d of %d binaries successfully.")
 
@@ -435,8 +440,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 continue
             total_count += 1
             if c.get('base_post_upload_cmd'):
-                upload_env['POST_UPLOAD_CMD'] = c['base_post_upload_cmd'] % {'version': version, 'locale': locale, 'buildnum': str(buildnum)}
-            output = self.get_output_from_command_m(
+                upload_env['POST_UPLOAD_CMD'] = c['base_post_upload_cmd'] % {'version': version, 'locale': locale}
+            output = self.get_output_from_command(
                 # Ugly hack to avoid |make upload| stderr from showing up
                 # as get_output_from_command errors
                 "%s upload AB_CD=%s 2>&1" % (make, locale),
@@ -496,7 +501,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.add_failure(locale, message="Errors creating snippet for %s!  Removing snippet directory." % locale)
                 self.rmtree(aus_abs_dir)
                 continue
-            self.run_command_m(["touch", os.path.join(aus_abs_dir, "partial.txt")])
+            self.run_command(["touch", os.path.join(aus_abs_dir, "partial.txt")])
             success_count += 1
         self.summarize_success_count(success_count, total_count,
                                      message="Created %d of %d snippets successfully.")
@@ -512,6 +517,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                        c['aus_user'], c['aus_server'],
                                        c['aus_upload_base_dir']):
             self.return_code += 1
+
 
 
 # main {{{1
