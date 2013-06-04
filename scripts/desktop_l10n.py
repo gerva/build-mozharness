@@ -129,6 +129,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin, MockMi
         self.upload_env = None
         self.version = None
         self.upload_urls = {}
+        self.locales_property = {}
 
     # Helper methods {{{2
     def query_repack_env(self):
