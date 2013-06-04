@@ -348,17 +348,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin, MockMi
         make = self.query_exe("make")
         self.run_command_m([cat, mozconfig_path])
         env = self.query_repack_env()
-        self.run_command_m([make, "-f", "client.mk", "configure"],
-                         cwd=dirs['abs_mozilla_dir'],
-                         env=env,
-                         error_list=MakefileErrorList,
-                         halt_on_failure=True)
-        for make_dir in c.get('make_dirs', []):
-            self.run_command_m([make],
-                               cwd=os.path.join(dirs['abs_objdir'], make_dir),
-                               env=env,
-                               error_list=MakefileErrorList,
-                               halt_on_failure=True)
+        self._setup_configure()
         self.run_command_m([make, "wget-en-US"],
                            cwd=dirs['abs_locales_dir'],
                            env=env,
