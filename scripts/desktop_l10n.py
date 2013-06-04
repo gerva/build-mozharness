@@ -398,19 +398,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin, MockMi
                 self.add_failure(locale, message="%s failed in make installers-%s!" % (locale, locale))
                 continue
             # this condition is to exclude mobile signing from desktop l10n
-            if c['signature_verification_script']:
-                signed_path = os.path.join(base_package_dir,
-                                        base_package_name % {'locale': locale})
-                status = self.verify_android_signature(
-                    signed_path,
-                    script=c['signature_verification_script'],
-                    env=repack_env
-                )
-                if status:
-                    self.add_failure(locale, message="Errors verifying %s binary!" % locale)
-                    # No need to rm because upload is per-locale
-                    continue
-                success_count += 1
+#            if c['signature_verification_script']:
+#                signed_path = os.path.join(base_package_dir,
+#                                        base_package_name % {'locale': locale})
+#                status = self.verify_android_signature(
+#                    signed_path,
+#                    script=c['signature_verification_script'],
+#                    env=repack_env
+#                )
+#                if status:
+#                    self.add_failure(locale, message="Errors verifying %s binary!" % locale)
+#                    # No need to rm because upload is per-locale
+#                    continue
+#                success_count += 1
         self.summarize_success_count(success_count, total_count,
                                      message="Repacked %d of %d binaries successfully.")
 
