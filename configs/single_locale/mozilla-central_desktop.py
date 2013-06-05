@@ -24,6 +24,7 @@ config = {
     "app_name": "browser",
     "brand_name": "Minefield",
     "base_name": "Linux x86-64 %(branch)s",
+    "snippet_base_url": "http://example.com",
     #"mozconfig": "linux64/%(branch)s/nightly",
     #"src_mozconfig": "browser/config/mozconfigs/linux64/nightly",
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/linux64/xulrunner",
@@ -81,7 +82,8 @@ config = {
     'mock_packages': \
             ['autoconf213', 'python', 'zip', 'mozilla-python27-mercurial', 'git', 'ccache',
              'glibc-static', 'libstdc++-static', 'perl-Test-Simple', 'perl-Config-General',
-             'gtk2-devel', 'libnotify-devel', 'yasm',
+             'gtk2-devel',
+             'libnotify-devel', 'yasm',
              'alsa-lib-devel', 'libcurl-devel',
              'wireless-tools-devel', 'libX11-devel',
              'libXt-devel', 'mesa-libGL-devel',
@@ -89,7 +91,8 @@ config = {
              'mpfr', # required for system compiler
              'xorg-x11-font*', # fonts required for PGO
              'imake', # required for makedepend!?!
-             'gcc45_0moz3', 'gcc454_0moz1', 'gcc472_0moz1', 'yasm', 'ccache', # <-- from releng repo
+             'gcc45_0moz3', 'gcc454_0moz1', 'gcc472_0moz1', 'yasm',
+             'ccache', # <-- from releng repo
              'valgrind',
              'pulseaudio-libs-devel',
              'gstreamer-devel', 'gstreamer-plugins-base-devel',
