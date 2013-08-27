@@ -13,9 +13,12 @@ import sys
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
-from mozharness.base.errors import BaseErrorList
+from mozharness.base.errors import BaseErrorList, TarErrorList
 from mozharness.base.log import ERROR
-from mozharness.base.script import BaseScript
+from mozharness.base.script import (
+    BaseScript,
+    PreScriptAction,
+)
 from mozharness.base.vcs.vcsbase import VCSMixin
 from mozharness.mozilla.testing.errors import LogcatErrorList
 from mozharness.mozilla.testing.testbase import TestingMixin, testing_config_options
@@ -42,13 +45,19 @@ class MarionetteUnittestOutputParser(DesktopUnittestOutputParser):
 
 
 class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, BaseScript):
-    test_suites = ('reftest', 'mochitest', 'xpcshell', 'crashtest')
+    test_suites = ('jsreftest', 'reftest', 'mochitest', 'xpcshell', 'crashtest')
     config_options = [
         [["--type"],
         {"action": "store",
          "dest": "test_type",
          "default": "browser",
          "help": "The type of tests to run",
+        }],
+        [["--no-update"],
+        {"action": "store_false",
+         "dest": "update_files",
+         "default": True,
+         "help": "Don't update emulator and gecko before running tests"
         }],
         [["--busybox-url"],
         {"action": "store",
@@ -111,15 +120,6 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
         {'regex': re.compile(r'''(Timeout|NoSuchAttribute|Javascript|NoSuchElement|XPathLookup|NoSuchWindow|StaleElement|ScriptTimeout|ElementNotVisible|NoSuchFrame|InvalidElementState|NoAlertPresent|InvalidCookieDomain|UnableToSetCookie|InvalidSelector|MoveTargetOutOfBounds)Exception'''), 'level': ERROR},
     ]
 
-    virtualenv_requirements = [
-        os.path.join('tests', 'b2g', 'b2g-unittest-requirements.txt')
-    ]
-
-    virtualenv_modules = [
-        'mozinstall',
-        {'marionette': os.path.join('tests', 'marionette')}
-    ]
-
     def __init__(self, require_config_file=False):
         super(B2GEmulatorTest, self).__init__(
             config_options=self.config_options,
@@ -136,8 +136,6 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
                              'run-tests'],
             require_config_file=require_config_file,
             config={
-                'virtualenv_modules': self.virtualenv_modules,
-                'virtualenv_requirements': self.virtualenv_requirements,
                 'require_test_zip': True,
                 'emulator': 'arm',
                 # This is a special IP that has meaning to the emulator
@@ -177,6 +175,8 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
             dirs['abs_test_install_dir'], 'reftest')
         dirs['abs_crashtest_dir'] = os.path.join(
             dirs['abs_test_install_dir'], 'reftest')
+        dirs['abs_jsreftest_dir'] = os.path.join(
+            dirs['abs_test_install_dir'], 'reftest')
         dirs['abs_xpcshell_dir'] = os.path.join(
             dirs['abs_test_install_dir'], 'xpcshell')
         for key in dirs.keys():
@@ -188,7 +188,17 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
     def download_and_extract(self):
         super(B2GEmulatorTest, self).download_and_extract()
         dirs = self.query_abs_dirs()
-        self.install_emulator()
+
+        if self.config.get('update_files'):
+            self.install_emulator()
+        else:
+            self.mkdir_p(dirs['abs_emulator_dir'])
+            tar = self.query_exe('tar', return_type='list')
+            self.run_command(tar + ['zxf', self.installer_path],
+                             cwd=dirs['abs_emulator_dir'],
+                             error_list=TarErrorList,
+                             halt_on_failure=True)
+
         if self.config.get('download_minidump_stackwalk'):
             self.install_minidump_stackwalk()
 
@@ -196,16 +206,47 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
         self._download_unzip(self.config['xre_url'],
                              dirs['abs_xre_dir'])
 
-        if self.config['busybox_url']:
+        if self.config.get('busybox_url'):
             self.download_file(self.config['busybox_url'],
                                file_name='busybox',
                                parent_dir=dirs['abs_work_dir'])
             self.busybox_path = os.path.join(dirs['abs_work_dir'], 'busybox')
 
+    @PreScriptAction('create-virtualenv')
+    def _pre_create_virtualenv(self, action):
+        if self.tree_config.get('use_puppetagain_packages'):
+            requirements = [os.path.join('tests', 'b2g',
+                'b2g-unittest-requirements.txt')]
+
+            self.register_virtualenv_module('mozinstall',
+                requirements=requirements)
+            self.register_virtualenv_module('marionette',
+                url=os.path.join('tests', 'marionette'), requirements=requirements)
+
+            return
+
+        mozbase_dir = os.path.join('tests', 'mozbase')
+        # XXX Bug 879765: Dependent modules need to be listed before parent
+        # modules, otherwise they will get installed from the pypi server.
+        self.register_virtualenv_module('manifestparser',
+            url=os.path.join(mozbase_dir, 'manifestdestiny'))
+
+        for m in ('mozfile', 'mozlog', 'mozinfo', 'moznetwork', 'mozhttpd',
+        'mozcrash', 'mozinstall', 'mozdevice', 'mozprofile', 'mozprocess',
+        'mozrunner'):
+            self.register_virtualenv_module(m, url=os.path.join(mozbase_dir,
+                m))
+
+        self.register_virtualenv_module('marionette', url=os.path.join('tests',
+            'marionette'))
+
     def _query_abs_base_cmd(self, suite):
         dirs = self.query_abs_dirs()
         cmd = [self.query_python_path('python')]
         cmd.append(self.config['run_file_names'][suite])
+
+        if self.config.get('update_files'):
+            cmd.append('--gecko-path=%s' %  os.path.dirname(self.binary_path))
 
         str_format_values = {
             'adbpath': self.adb_path,
@@ -216,7 +257,6 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
             'remote_webserver': self.config['remote_webserver'],
             'xre_path': os.path.join(dirs['abs_xre_dir'], 'bin'),
             'test_manifest': self.test_manifest,
-            'gecko_path': os.path.dirname(self.binary_path),
             'symbols_path': self.symbols_path,
             'busybox': self.busybox_path,
             'total_chunks': self.config.get('total_chunks'),
@@ -263,9 +303,19 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
             elif suite == 'crashtest':
                 self.test_manifest = os.path.join('tests', 'testing',
                                                   'crashtest', 'crashtests.list')
+            elif suite == 'jsreftest':
+                self.test_manifest = os.path.join('jsreftest', 'tests',
+                                                  'jstests.list')
 
         if not os.path.isfile(self.adb_path):
             self.fatal("The adb binary '%s' is not a valid file!" % self.adb_path)
+
+    def install(self):
+        if self.config.get('update_files'):
+            # For non-update runs, the emulator was already extracted during
+            # the download-and-extract phase, and we don't have a separate
+            # b2g package to extract.
+            super(B2GEmulatorTest, self).install()
 
     def run_tests(self):
         """
@@ -313,6 +363,7 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
                                                     log_obj=self.log_obj,
                                                     error_list=error_list)
             return_code = self.run_command(cmd, cwd=cwd, env=env,
+                                           output_timeout=1000,
                                            output_parser=parser,
                                            success_codes=success_codes)
             if not parser.install_gecko_failed:
@@ -331,4 +382,4 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, Base
 
 if __name__ == '__main__':
     emulatorTest = B2GEmulatorTest()
-    emulatorTest.run()
+    emulatorTest.run_and_exit()

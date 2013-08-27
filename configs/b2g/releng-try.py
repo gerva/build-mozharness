@@ -23,14 +23,17 @@ config = {
     "hgtool_share_base": "/builds/hg-shared",
     "hgtool_base_mirror_urls": ["http://hg-internal.dmz.scl3.mozilla.com"],
     "hgtool_base_bundle_urls": ["http://ftp.mozilla.org/pub/mozilla.org/firefox/bundles"],
+    "sendchange_masters": ["buildbot-master81.build.mozilla.org:9301"],
     "exes": {
         "tooltool.py": "/tools/tooltool.py",
+        "buildbot": "/tools/buildbot/bin/buildbot",
     },
     "env": {
         "CCACHE_DIR": "/builds/ccache",
         "CCACHE_COMPRESS": "1",
         "CCACHE_UMASK": "002",
         "GAIA_OPTIMIZE": "1",
+        "WGET_OPTS": "-c -q",
     },
     "purge_minsize": 15,
     #"clobberer_url": "http://clobberer-stage.pvt.build.mozilla.org/index.php",

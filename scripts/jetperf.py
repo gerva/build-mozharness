@@ -11,11 +11,10 @@ import os
 import shutil
 import sys
 sys.path.insert(1, os.path.dirname(sys.path[0]))
-from mozharness.base.vcs.vcsbase import MercurialScript
 from mozharness.mozilla.buildbot import TBPL_SUCCESS, TBPL_WARNING
 from mozharness.mozilla.testing.talos import Talos
 
-class JetPerf(Talos, MercurialScript):
+class JetPerf(Talos):
     """
     - Download the latest Add-on SDK
     - Download the test add-on sources
@@ -237,7 +236,7 @@ class JetPerf(Talos, MercurialScript):
 def main(args=sys.argv[1:]):
     """CLI entry point"""
     jetperf = JetPerf()
-    jetperf.run()
+    jetperf.run_and_exit()
 
 if __name__ == '__main__':
     main()

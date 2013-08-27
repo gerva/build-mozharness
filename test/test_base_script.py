@@ -2,6 +2,7 @@ import gc
 import mock
 import os
 import re
+import types
 import unittest
 PYWIN32 = False
 if os.name == 'nt':
@@ -41,6 +42,12 @@ def get_debug_script_obj():
                                   'log_level': DEBUG},
                           initial_config_file='test/test.json')
     return s
+
+
+def _post_fatal(self, **kwargs):
+    fh = open('tmpfile_stdout', 'w')
+    print >>fh, test_string
+    fh.close()
 
 
 # TestScript {{{1
@@ -364,10 +371,16 @@ class TestScriptLogging(unittest.TestCase):
         if log_level != FATAL:
             self.s.log('testing', level=log_level)
         else:
+            self.s._post_fatal = types.MethodType(_post_fatal, self.s)
             try:
                 self.s.fatal('testing')
             except SystemExit:
-                pass
+                contents = None
+                if os.path.exists('tmpfile_stdout'):
+                    fh = open('tmpfile_stdout')
+                    contents = fh.read()
+                    fh.close()
+                self.assertEqual(contents.rstrip(), test_string, "_post_fatal failed!")
         del(self.s)
         msg = ""
         for level in log_level_file_list:
@@ -488,6 +501,201 @@ class TestRetry(unittest.TestCase):
         print ret
         self.assertEqual(ret[0], args)
         self.assertEqual(ret[1], kwargs)
+
+
+class BaseScriptWithDecorators(script.BaseScript):
+    def __init__(self, *args, **kwargs):
+        super(BaseScriptWithDecorators, self).__init__(*args, **kwargs)
+
+        self.pre_run_1_args = []
+        self.raise_during_pre_run_1 = False
+        self.pre_action_1_args = []
+        self.raise_during_pre_action_1 = False
+        self.pre_action_2_args = []
+        self.pre_action_3_args = []
+        self.post_action_1_args = []
+        self.raise_during_post_action_1 = False
+        self.post_action_2_args = []
+        self.post_action_3_args = []
+        self.post_run_1_args = []
+        self.raise_during_post_run_1 = False
+        self.post_run_2_args = []
+        self.raise_during_build = False
+
+    @script.PreScriptRun
+    def pre_run_1(self, *args, **kwargs):
+        self.pre_run_1_args.append((args, kwargs))
+
+        if self.raise_during_pre_run_1:
+            raise Exception(self.raise_during_pre_run_1)
+
+    @script.PreScriptAction
+    def pre_action_1(self, *args, **kwargs):
+        self.pre_action_1_args.append((args, kwargs))
+
+        if self.raise_during_pre_action_1:
+            raise Exception(self.raise_during_pre_action_1)
+
+    @script.PreScriptAction
+    def pre_action_2(self, *args, **kwargs):
+        self.pre_action_2_args.append((args, kwargs))
+
+    @script.PreScriptAction('clobber')
+    def pre_action_3(self, *args, **kwargs):
+        self.pre_action_3_args.append((args, kwargs))
+
+    @script.PostScriptAction
+    def post_action_1(self, *args, **kwargs):
+        self.post_action_1_args.append((args, kwargs))
+
+        if self.raise_during_post_action_1:
+            raise Exception(self.raise_during_post_action_1)
+
+    @script.PostScriptAction
+    def post_action_2(self, *args, **kwargs):
+        self.post_action_2_args.append((args, kwargs))
+
+    @script.PostScriptAction('build')
+    def post_action_3(self, *args, **kwargs):
+        self.post_action_3_args.append((args, kwargs))
+
+    @script.PostScriptRun
+    def post_run_1(self, *args, **kwargs):
+        self.post_run_1_args.append((args, kwargs))
+
+        if self.raise_during_post_run_1:
+            raise Exception(self.raise_during_post_run_1)
+
+    @script.PostScriptRun
+    def post_run_2(self, *args, **kwargs):
+        self.post_run_2_args.append((args, kwargs))
+
+    def build(self):
+        if self.raise_during_build:
+            raise Exception(self.raise_during_build)
+
+
+class TestScriptDecorators(unittest.TestCase):
+    def setUp(self):
+        cleanup()
+        self.s = None
+
+    def tearDown(self):
+        if hasattr(self, 's') and isinstance(self.s, object):
+            del self.s
+
+        cleanup()
+
+    def test_decorators_registered(self):
+        self.s = BaseScriptWithDecorators(initial_config_file='test/test.json')
+
+        self.assertEqual(len(self.s._listeners['pre_run']), 1)
+        self.assertEqual(len(self.s._listeners['pre_action']), 3)
+        self.assertEqual(len(self.s._listeners['post_action']), 3)
+        self.assertEqual(len(self.s._listeners['post_run']), 2)
+
+    def test_pre_post_fired(self):
+        self.s = BaseScriptWithDecorators(initial_config_file='test/test.json')
+        self.s.run()
+
+        self.assertEqual(len(self.s.pre_run_1_args), 1)
+        self.assertEqual(len(self.s.pre_action_1_args), 2)
+        self.assertEqual(len(self.s.pre_action_2_args), 2)
+        self.assertEqual(len(self.s.pre_action_3_args), 1)
+        self.assertEqual(len(self.s.post_action_1_args), 2)
+        self.assertEqual(len(self.s.post_action_2_args), 2)
+        self.assertEqual(len(self.s.post_action_3_args), 1)
+        self.assertEqual(len(self.s.post_run_1_args), 1)
+
+        self.assertEqual(self.s.pre_run_1_args[0], ((), {}))
+
+        self.assertEqual(self.s.pre_action_1_args[0], (('clobber',), {}))
+        self.assertEqual(self.s.pre_action_1_args[1], (('build',), {}))
+
+        # pre_action_3 should only get called for the action it is registered
+        # with.
+        self.assertEqual(self.s.pre_action_3_args[0], (('clobber',), {}))
+
+        self.assertEqual(self.s.post_action_1_args[0][0], ('clobber',))
+        self.assertEqual(self.s.post_action_1_args[0][1], dict(success=True))
+        self.assertEqual(self.s.post_action_1_args[1][0], ('build',))
+        self.assertEqual(self.s.post_action_1_args[1][1], dict(success=True))
+
+        # post_action_3 should only get called for the action is is registered
+        # with.
+        self.assertEqual(self.s.post_action_3_args[0], (('build',),
+            dict(success=True)))
+
+        self.assertEqual(self.s.post_run_1_args[0], ((), {}))
+
+    def test_post_always_fired(self):
+        self.s = BaseScriptWithDecorators(initial_config_file='test/test.json')
+        self.s.raise_during_build = 'Testing post always fired.'
+
+        with self.assertRaises(SystemExit):
+            self.s.run()
+
+        self.assertEqual(len(self.s.pre_run_1_args), 1)
+        self.assertEqual(len(self.s.pre_action_1_args), 2)
+        self.assertEqual(len(self.s.post_action_1_args), 2)
+        self.assertEqual(len(self.s.post_action_2_args), 2)
+        self.assertEqual(len(self.s.post_run_1_args), 1)
+        self.assertEqual(len(self.s.post_run_2_args), 1)
+
+        self.assertEqual(self.s.post_action_1_args[0][1], dict(success=True))
+        self.assertEqual(self.s.post_action_1_args[1][1], dict(success=False))
+        self.assertEqual(self.s.post_action_2_args[1][1], dict(success=False))
+
+    def test_pre_run_exception(self):
+        self.s = BaseScriptWithDecorators(initial_config_file='test/test.json')
+        self.s.raise_during_pre_run_1 = 'Error during pre run 1'
+
+        with self.assertRaises(SystemExit):
+            self.s.run()
+
+        self.assertEqual(len(self.s.pre_run_1_args), 1)
+        self.assertEqual(len(self.s.pre_action_1_args), 0)
+        self.assertEqual(len(self.s.post_run_1_args), 1)
+        self.assertEqual(len(self.s.post_run_2_args), 1)
+
+    def test_pre_action_exception(self):
+        self.s = BaseScriptWithDecorators(initial_config_file='test/test.json')
+        self.s.raise_during_pre_action_1 = 'Error during pre 1'
+
+        with self.assertRaises(SystemExit):
+            self.s.run()
+
+        self.assertEqual(len(self.s.pre_run_1_args), 1)
+        self.assertEqual(len(self.s.pre_action_1_args), 1)
+        self.assertEqual(len(self.s.pre_action_2_args), 0)
+        self.assertEqual(len(self.s.post_action_1_args), 1)
+        self.assertEqual(len(self.s.post_action_2_args), 1)
+        self.assertEqual(len(self.s.post_run_1_args), 1)
+        self.assertEqual(len(self.s.post_run_2_args), 1)
+
+    def test_post_action_exception(self):
+        self.s = BaseScriptWithDecorators(initial_config_file='test/test.json')
+        self.s.raise_during_post_action_1 = 'Error during post 1'
+
+        with self.assertRaises(SystemExit):
+            self.s.run()
+
+        self.assertEqual(len(self.s.pre_run_1_args), 1)
+        self.assertEqual(len(self.s.post_action_1_args), 1)
+        self.assertEqual(len(self.s.post_action_2_args), 1)
+        self.assertEqual(len(self.s.post_run_1_args), 1)
+        self.assertEqual(len(self.s.post_run_2_args), 1)
+
+    def test_post_run_exception(self):
+        self.s = BaseScriptWithDecorators(initial_config_file='test/test.json')
+        self.s.raise_during_post_run_1 = 'Error during post run 1'
+
+        with self.assertRaises(SystemExit):
+            self.s.run()
+
+        self.assertEqual(len(self.s.post_run_1_args), 1)
+        self.assertEqual(len(self.s.post_run_2_args), 1)
+
 
 # main {{{1
 if __name__ == '__main__':

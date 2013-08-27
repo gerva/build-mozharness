@@ -11,14 +11,17 @@ mozharness.
 """
 
 import codecs
+import inspect
 import os
 import platform
 import pprint
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
+import traceback
 import urllib2
 import urlparse
 if os.name == 'nt':
@@ -79,6 +82,7 @@ class ScriptMixin(object):
         if self._is_windows():
             # Call _rmtree_windows() directly, since even checking
             # os.path.exists(path) will hang if path is longer than MAX_PATH.
+            self.info("Using _rmtree_windows ...")
             return self.retry(
                 self._rmtree_windows,
                 error_level=error_level,
@@ -128,7 +132,6 @@ class ScriptMixin(object):
         """ Windows-specific rmtree that handles path lengths longer than MAX_PATH.
             Ported from clobberer.py.
         """
-        self.info("Using _rmtree_windows ...")
         assert self._is_windows()
         path = os.path.realpath(path)
         full_path = '\\\\?\\' + path
@@ -170,7 +173,7 @@ class ScriptMixin(object):
         """ Helper script for download_file()
             """
         try:
-            f = urllib2.urlopen(url)
+            f = urllib2.urlopen(url, timeout=30)
             local_file = open(file_name, 'wb')
             while True:
                 block = f.read(1024 ** 2)
@@ -194,6 +197,12 @@ class ScriptMixin(object):
                 }]
                 self.run_command([nslookup, remote_host],
                                  error_list=error_list)
+            raise
+        except socket.timeout, e:
+            self.warning("Timed out accessing %s: %s" % (url, str(e)))
+            raise
+        except socket.error, e:
+            self.warning("Socket error when accessing %s: %s" % (url, str(e)))
             raise
 
     # http://www.techniqal.com/blog/2008/07/31/python-file-read-write-with-urllib2/
@@ -219,7 +228,8 @@ class ScriptMixin(object):
             self._download_file,
             args=(url, file_name),
             failure_status=None,
-            retry_exceptions=(urllib2.HTTPError, urllib2.URLError),
+            retry_exceptions=(urllib2.HTTPError, urllib2.URLError,
+                              socket.timeout, socket.error),
             error_message="Can't download from %s to %s!" % (url, file_name),
             error_level=error_level,
         )
@@ -235,6 +245,10 @@ class ScriptMixin(object):
         # http://docs.python.org/tutorial/errors.html
         except IOError, e:
             self.log("IO error: %s" % str(e),
+                     level=error_level, exit_code=exit_code)
+            return -1
+        except shutil.Error, e:
+            self.log("shutil error: %s" % str(e),
                      level=error_level, exit_code=exit_code)
             return -1
         return 0
@@ -446,7 +460,7 @@ class ScriptMixin(object):
                 if cleanup:
                     cleanup()
                 if n == attempts:
-                    self.log(error_message, level=error_level)
+                    self.log(error_message % {'action': action, 'attempts': n}, level=error_level)
                     return failure_status
                 if sleeptime > 0:
                     self.info("retry: Failed, sleeping %d seconds before retrying" %
@@ -514,12 +528,12 @@ class ScriptMixin(object):
             # allow for 'make': '%(abs_work_dir)s/...' etc.
             dirs = self.query_abs_dirs()
             repl_dict['abs_work_dir'] = dirs['abs_work_dir']
-        if isinstance(exe, list):
+        if isinstance(exe, list) or isinstance(exe, tuple):
             exe = [x % repl_dict for x in exe]
         elif isinstance(exe, str):
             exe = exe % repl_dict
         else:
-            self.log("query_exe: %s is not a string or list: %s!" % (exe_name, str(exe)), level=error_level)
+            self.log("query_exe: %s is not a list, tuple or string: %s!" % (exe_name, str(exe)), level=error_level)
             return exe
         if return_type == "list":
             if isinstance(exe, str):
@@ -531,17 +545,19 @@ class ScriptMixin(object):
             self.log("Unknown return_type type %s requested in query_exe!" % return_type, level=error_level)
         return exe
 
-    def run_command(self, command, cwd=None, error_list=None, parse_at_end=False,
+    def run_command(self, command, cwd=None, error_list=None,
                     halt_on_failure=False, success_codes=None,
-                    env=None, return_type='status', throw_exception=False,
-                    output_parser=None):
+                    env=None, partial_env=None, return_type='status',
+                    throw_exception=False, output_parser=None,
+                    output_timeout=None):
         """Run a command, with logging and error parsing.
 
-        TODO: parse_at_end, context_lines
-        TODO: retry_interval?
+        output_timeout is the number of seconds without output before the process
+        is killed; it requires that mozprocess is installed in the script's
+        virtualenv.
+
+        TODO: context_lines
         TODO: error_level_override?
-        TODO: Add a copy-pastable version of |command| if it's a list.
-        TODO: print env if set
 
         output_parser lets you provide an instance of your own OutputParser
         subclass, or pass None to use OutputParser.
@@ -553,6 +569,26 @@ class ScriptMixin(object):
         ]
         (context_lines isn't written yet)
         """
+        if output_timeout:
+            site_packages_path = self.query_python_site_packages_path()
+            sys_path = ''.join(sys.path)
+            if 'mozprocess' not in sys_path:
+                if site_packages_path not in sys_path:
+                    # check for mozprocess
+                    mozprocess_path = os.path.join(site_packages_path, 'mozprocess')
+                    if not os.access(mozprocess_path, os.F_OK):
+                        self.fatal('mozprocess required for output_timeout, but not present at %s' % mozprocess_path)
+                    # Assume if mozprocess is installed, all it's pre-req's
+                    # are present also, and add the top-level site-packages
+                    # dir to sys.path.
+                    sys.path.append(site_packages_path)
+
+            try:
+                from mozprocess import ProcessHandler
+            except ImportError:
+                self.exception("There was an error importing mozprocess!",
+                               level=FATAL)
+
         if success_codes is None:
             success_codes = [0]
         if cwd is not None:
@@ -571,9 +607,52 @@ class ScriptMixin(object):
         shell = True
         if isinstance(command, list):
             shell = False
+        if env is None:
+            if partial_env:
+                self.info("Using partial env: %s" % pprint.pformat(partial_env))
+                env = self.query_env(partial_env=partial_env)
+        else:
+            self.info("Using env: %s" % pprint.pformat(env))
+
+        if output_parser is None:
+            parser = OutputParser(config=self.config, log_obj=self.log_obj,
+                                  error_list=error_list)
+        else:
+            parser = output_parser
+
         try:
-            p = subprocess.Popen(command, shell=shell, stdout=subprocess.PIPE,
-                                 cwd=cwd, stderr=subprocess.STDOUT, env=env)
+            if output_timeout:
+                def processOutput(line):
+                    parser.add_lines(line)
+                def onTimeout():
+                    self.info("mozprocess timed out")
+
+                p = ProcessHandler(command,
+                                   env=env,
+                                   cwd=cwd,
+                                   storeOutput=False,
+                                   onTimeout=(onTimeout,),
+                                   processOutputLine=[processOutput])
+                self.info("Calling %s with output_timeout %d" % (command, output_timeout))
+                p.run(outputTimeout=output_timeout)
+                p.wait()
+                if p.timedOut:
+                    self.error('timed out after %s seconds of no output' % output_timeout)
+                returncode = p.proc.returncode
+            else:
+                p = subprocess.Popen(command, shell=shell, stdout=subprocess.PIPE,
+                                     cwd=cwd, stderr=subprocess.STDOUT, env=env)
+                loop = True
+                while loop:
+                    if p.poll() is not None:
+                        """Avoid losing the final lines of the log?"""
+                        loop = False
+                    while True:
+                        line = p.stdout.readline()
+                        if not line:
+                            break
+                        parser.add_lines(line)
+                returncode = p.returncode
         except OSError, e:
             level = ERROR
             if halt_on_failure:
@@ -581,34 +660,20 @@ class ScriptMixin(object):
             self.log('caught OS error %s: %s while running %s' % (e.errno,
                      e.strerror, command), level=level)
             return -1
-        if output_parser is None:
-            parser = OutputParser(config=self.config, log_obj=self.log_obj,
-                                  error_list=error_list)
-        else:
-            parser = output_parser
-        loop = True
-        while loop:
-            if p.poll() is not None:
-                """Avoid losing the final lines of the log?"""
-                loop = False
-            while True:
-                line = p.stdout.readline()
-                if not line:
-                    break
-                parser.add_lines(line)
+
         return_level = INFO
-        if p.returncode not in success_codes:
+        if returncode not in success_codes:
             return_level = ERROR
             if throw_exception:
-                raise subprocess.CalledProcessError(p.returncode, command)
-        self.log("Return code: %d" % p.returncode, level=return_level)
+                raise subprocess.CalledProcessError(returncode, command)
+        self.log("Return code: %d" % returncode, level=return_level)
         if halt_on_failure:
-            if parser.num_errors or p.returncode not in success_codes:
+            if parser.num_errors or returncode not in success_codes:
                 self.fatal("Halting on failure while running %s" % command,
-                           exit_code=p.returncode)
+                           exit_code=returncode)
         if return_type == 'num_errors':
             return parser.num_errors
-        return p.returncode
+        return returncode
 
     def get_output_from_command(self, command, cwd=None,
                                 halt_on_failure=False, env=None,
@@ -722,10 +787,122 @@ class ScriptMixin(object):
             return output
 
 
+def PreScriptRun(func):
+    """Decorator for methods that will be called before script execution.
+
+    Each method on a BaseScript having this decorator will be called at the
+    beginning of BaseScript.run().
+
+    The return value is ignored. Exceptions will abort execution.
+    """
+    func._pre_run_listener = True
+    return func
+
+
+def PostScriptRun(func):
+    """Decorator for methods that will be called after script execution.
+
+    This is similar to PreScriptRun except it is called at the end of
+    execution. The method will always be fired, even if execution fails.
+    """
+    func._post_run_listener = True
+    return func
+
+
+def PreScriptAction(action=None):
+    """Decorator for methods that will be called at the beginning of each action.
+
+    Each method on a BaseScript having this decorator will be called during
+    BaseScript.run() before an individual action is executed. The method will
+    receive the action's name as an argument.
+
+    If no values are passed to the decorator, it will be applied to every
+    action. If a string is passed, the decorated function will only be called
+    for the action of that name.
+
+    The return value of the method is ignored. Exceptions will abort execution.
+    """
+    def _wrapped(func):
+        func._pre_action_listener = action
+        return func
+
+    def _wrapped_none(func):
+        func._pre_action_listener = None
+        return func
+
+    if type(action) == type(_wrapped):
+        return _wrapped_none(action)
+
+    return _wrapped
+
+
+def PostScriptAction(action=None):
+    """Decorator for methods that will be called at the end of each action.
+
+    This behaves similarly to PreScriptAction. It varies in that it is called
+    after execution of the action.
+
+    The decorated method will receive the action name as a positional argument.
+    It will then receive the following named arguments:
+
+        success - Bool indicating whether the action finished successfully.
+
+    The decorated method will always be called, even if the action threw an
+    exception.
+
+    The return value is ignored.
+    """
+    def _wrapped(func):
+        func._post_action_listener = action
+        return func
+
+    def _wrapped_none(func):
+        func._post_action_listener = None
+        return func
+
+    if type(action) == type(_wrapped):
+        return _wrapped_none(action)
+
+    return _wrapped
+
+
 # BaseScript {{{1
 class BaseScript(ScriptMixin, LogMixin, object):
     def __init__(self, config_options=None, default_log_level="info", **kwargs):
         super(BaseScript, self).__init__()
+
+        # Collect decorated methods. We simply iterate over the attributes of
+        # the current class instance and look for signatures deposited by
+        # the decorators.
+        self._listeners = dict(
+            pre_run=[],
+            pre_action=[],
+            post_action=[],
+            post_run=[],
+        )
+        for k in dir(self):
+            item = getattr(self, k)
+
+            # We only decorate methods, so ignore other types.
+            if not inspect.ismethod(item):
+                continue
+
+            if hasattr(item, '_pre_run_listener'):
+                self._listeners['pre_run'].append(k)
+
+            if hasattr(item, '_pre_action_listener'):
+                self._listeners['pre_action'].append((
+                    k,
+                    item._pre_action_listener))
+
+            if hasattr(item, '_post_action_listener'):
+                self._listeners['post_action'].append((
+                    k,
+                    item._post_action_listener))
+
+            if hasattr(item, '_post_run_listener'):
+                self._listeners['post_run'].append(k)
+
         self.return_code = 0
         self.log_obj = None
         self.abs_dirs = None
@@ -791,6 +968,68 @@ class BaseScript(ScriptMixin, LogMixin, object):
                                     long_desc='%s log' % log_name,
                                     max_backups=self.config.get("log_max_rotate", 0))
 
+    def run_action(self, action):
+        if action not in self.actions:
+            self.action_message("Skipping %s step." % action)
+            return
+
+        method_name = action.replace("-", "_")
+        self.action_message("Running %s step." % action)
+
+        # An exception during a pre action listener should abort execution.
+        for fn, target in self._listeners['pre_action']:
+            if target is not None and target != action:
+                continue
+
+            try:
+                self.info("Running pre-action listener: %s" % fn)
+                method = getattr(self, fn)
+                method(action)
+            except Exception:
+                self.error("Exception during pre-action for %s: %s" % (
+                    action, traceback.format_exc()))
+
+                for fn, target in self._listeners['post_action']:
+                    if target is not None and target != action:
+                        continue
+
+                    try:
+                        self.info("Running post-action listener: %s" % fn)
+                        method = getattr(self, fn)
+                        method(action, success=False)
+                    except Exception:
+                        self.error("An additional exception occurred during "
+                                   "post-action for %s: %s" % (action,
+                                   traceback.format_exc()))
+
+                self.fatal("Aborting due to exception in pre-action listener.")
+
+        # We always run post action listeners, even if the main routine failed.
+        success = False
+        try:
+            self.info("Running main action method: %s" % method_name)
+            self._possibly_run_method("preflight_%s" % method_name)
+            self._possibly_run_method(method_name, error_if_missing=True)
+            self._possibly_run_method("postflight_%s" % method_name)
+            success = True
+        finally:
+            post_success = True
+            for fn, target in self._listeners['post_action']:
+                if target is not None and target != action:
+                    continue
+
+                try:
+                    self.info("Running post-action listener: %s" % fn)
+                    method = getattr(self, fn)
+                    method(action, success=success and self.return_code == 0)
+                except Exception:
+                    post_success = False
+                    self.error("Exception during post-action for %s: %s" % (
+                        action, traceback.format_exc()))
+
+            if not post_success:
+                self.fatal("Aborting due to failure in post-action listener.")
+
     def run(self):
         """Default run method.
         This is the "do everything" method, based on actions and all_actions.
@@ -806,18 +1045,53 @@ class BaseScript(ScriptMixin, LogMixin, object):
         Postflight is quick testing for success after an action.
 
         """
+        for fn in self._listeners['pre_run']:
+            try:
+                self.info("Running pre-run listener: %s" % fn)
+                method = getattr(self, fn)
+                method()
+            except Exception:
+                self.error("Exception during pre-run listener: %s" %
+                           traceback.format_exc())
+
+                for fn in self._listeners['post_run']:
+                    try:
+                        method = getattr(self, fn)
+                        method()
+                    except Exception:
+                        self.error("An additional exception occurred during a "
+                                   "post-run listener: %s" % traceback.format_exc())
+
+                self.fatal("Aborting due to failure in pre-run listener.")
+
         self.dump_config()
-        for action in self.all_actions:
-            if action not in self.actions:
-                self.action_message("Skipping %s step." % action)
-            else:
-                method_name = action.replace("-", "_")
-                self.action_message("Running %s step." % action)
-                self._possibly_run_method("preflight_%s" % method_name)
-                self._possibly_run_method(method_name, error_if_missing=True)
-                self._possibly_run_method("postflight_%s" % method_name)
+        try:
+            for action in self.all_actions:
+                self.run_action(action)
+        except Exception:
+            self.fatal("Uncaught exception: %s" % traceback.format_exc())
+        finally:
+            post_success = True
+            for fn in self._listeners['post_run']:
+                try:
+                    self.info("Running post-run listener: %s" % fn)
+                    method = getattr(self, fn)
+                    method()
+                except Exception:
+                    post_success = False
+                    self.error("Exception during post-run listener: %s" %
+                               traceback.format_exc())
+
+            if not post_success:
+                self.fatal("Aborting due to failure in post-run listener.")
+
         self.copy_logs_to_upload_dir()
-        sys.exit(self.return_code)
+
+        return self.return_code
+
+    def run_and_exit(self):
+        """Runs the script and exits the current interpreter."""
+        sys.exit(self.run())
 
     def clobber(self):
         """

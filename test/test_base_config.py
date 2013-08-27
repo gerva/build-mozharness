@@ -11,6 +11,7 @@ else:
     JSON_TYPE = 'simplejson'
 
 import mozharness.base.config as config
+from copy import deepcopy
 
 MH_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -80,12 +81,33 @@ class TestParseConfigFile(unittest.TestCase):
         c.parse_args(['--cfg', 'test/test_override.py,test/test_override2.py'])
         self.assertEqual(c._config['keep_string'], "don't change me")
 
+    def test_optional_config_files_override_value(self):
+        c = config.BaseConfig(initial_config_file='test/test.py')
+        c.parse_args(['--cfg', 'test/test_override.py,test/test_override2.py',
+                      '--opt-cfg', 'test/test_optional.py'])
+        self.assertEqual(c._config['opt_override'], "new stuff")
+
+    def test_optional_config_files_missing_config(self):
+        c = config.BaseConfig(initial_config_file='test/test.py')
+        c.parse_args(['--cfg', 'test/test_override.py,test/test_override2.py',
+                      '--opt-cfg', 'test/test_optional.py,does_not_exist.py'])
+        self.assertEqual(c._config['opt_override'], "new stuff")
+
+    def test_optional_config_files_keep_string(self):
+        c = config.BaseConfig(initial_config_file='test/test.py')
+        c.parse_args(['--cfg', 'test/test_override.py,test/test_override2.py',
+                      '--opt-cfg', 'test/test_optional.py'])
+        self.assertEqual(c._config['keep_string'], "don't change me")
 
 class TestReadOnlyDict(unittest.TestCase):
     control_dict = {
         'b': '2',
         'c': {'d': '4'},
         'e': ['f', 'g'],
+        'e': ['f', 'g', {'turtles': ['turtle1']}],
+        'd': {
+            'turtles': ['turtle1']
+        }
     }
 
     def get_unlocked_ROD(self):
@@ -179,6 +201,49 @@ class TestReadOnlyDict(unittest.TestCase):
         r = self.get_locked_ROD()
         self.assertRaises(AssertionError, r.clear)
 
+    def test_locked_second_level_dict_pop(self):
+        r = self.get_locked_ROD()
+        self.assertRaises(AssertionError, r['c'].update, {})
+
+    def test_locked_second_level_list_pop(self):
+        r = self.get_locked_ROD()
+        with self.assertRaises(AttributeError):
+            r['e'].pop()
+
+    def test_locked_third_level_mutate(self):
+        r = self.get_locked_ROD()
+        with self.assertRaises(AttributeError):
+            r['d']['turtles'].append('turtle2')
+
+    def test_locked_object_in_tuple_mutate(self):
+        r = self.get_locked_ROD()
+        with self.assertRaises(AttributeError):
+            r['e'][2]['turtles'].append('turtle2')
+
+    def test_locked_second_level_dict_pop(self):
+        r = self.get_locked_ROD()
+        self.assertRaises(AssertionError, r['c'].update, {})
+
+    def test_locked_second_level_list_pop(self):
+        r = self.get_locked_ROD()
+        with self.assertRaises(AttributeError):
+            r['e'].pop()
+
+    def test_locked_third_level_mutate(self):
+        r = self.get_locked_ROD()
+        with self.assertRaises(AttributeError):
+            r['d']['turtles'].append('turtle2')
+
+    def test_locked_object_in_tuple_mutate(self):
+        r = self.get_locked_ROD()
+        with self.assertRaises(AttributeError):
+            r['e'][2]['turtles'].append('turtle2')
+
+    def test_locked_deepcopy_set(self):
+        r = self.get_locked_ROD()
+        c = deepcopy(r)
+        c['e'] = 'hey'
+        self.assertEqual(c['e'], 'hey', "can't set var in ROD after deepcopy")
 
 class TestActions(unittest.TestCase):
     all_actions = ['a', 'b', 'c', 'd', 'e']

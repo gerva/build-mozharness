@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-# Mozilla licence shtuff
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import os
 import sys
@@ -51,6 +53,13 @@ class ServoBuild(MockMixin, BaseScript, VCSMixin, BuildbotMixin):
                                 'build',
                                 'check',
                             ],
+                            default_actions=[
+                                'checkout-servo',
+                                'clobber-obj',
+                                'configure',
+                                'build',
+                                'check',
+                            ],
                             config={
                                 'default_vcs': 'gittool',
                                 'backup_rust': True,
@@ -73,11 +82,8 @@ class ServoBuild(MockMixin, BaseScript, VCSMixin, BuildbotMixin):
 
     # Actions {{{2
     def setup_mock(self):
-        if self.config.get('mock_target'):
-            MockMixin.setup_mock(self)
-            self.enable_mock()
-        else:
-            self.info('Skipping setup_mock because no mock_target is set.')
+        MockMixin.setup_mock(self)
+        self.enable_mock()
 
     def checkout_servo(self):
         dirs = self.query_abs_dirs()
@@ -94,7 +100,7 @@ class ServoBuild(MockMixin, BaseScript, VCSMixin, BuildbotMixin):
     def clobber_obj(self):
         dirs = self.query_abs_dirs()
 
-        if self.config.get('backup_rust') and os.path.exists(dirs['objdir']):
+        if self.config.get('backup_rust') and os.path.exists(os.path.join(dirs['objdir'], 'Makefile')):
             self.run_command(['make', 'backup-rust'], cwd=dirs['objdir'],
                              halt_on_failure=True)
         self.rmtree(dirs['objdir'])
@@ -131,4 +137,4 @@ class ServoBuild(MockMixin, BaseScript, VCSMixin, BuildbotMixin):
 # main {{{1
 if __name__ == '__main__':
     myScript = ServoBuild()
-    myScript.run()
+    myScript.run_and_exit()

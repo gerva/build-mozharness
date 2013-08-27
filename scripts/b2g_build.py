@@ -127,6 +127,11 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin, Toolto
             "dest": "publish_channel",
             "help": "channel where build is published to",
         }],
+        [["--debug"], {
+            "dest": "debug_build",
+            "action": "store_true",
+            "help": "Set B2G_DEBUG=1 (debug build)",
+        }],
     ]
 
     def __init__(self, require_config_file=False):
@@ -412,7 +417,8 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin, Toolto
                 channel=self.query_update_channel(),
                 version=self.query_b2g_version(),
             )
-
+        if self.config.get('debug_build'):
+            env['B2G_DEBUG'] = '1'
         return env
 
     def query_hgweb_url(self, repo, rev, filename=None):
@@ -1138,6 +1144,8 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin, Toolto
         target = self.load_gecko_config().get('upload_platform', self.config['target'])
         if c.get("target_suffix"):
             target += c["target_suffix"]
+        if self.config.get('debug_build'):
+            target += "-debug"
         if c['enable_try_uploads']:
             try:
                 user = self.buildbot_config['sourcestamp']['changes'][0]['who']
@@ -1239,6 +1247,16 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin, Toolto
 
             if self.config["target"] == "panda" and self.config.get('sendchange_masters'):
                 self.sendchange(downloadables=[download_url, "%s/%s" % (download_url, "gaia-tests.zip")])
+            if self.config["target"] == "generic" and self.config.get('sendchange_masters'):
+                # yay hardcodes
+                matches = glob.glob(os.path.join(dirs['abs_upload_dir'], 'b2g*tests.zip'))
+                if matches:
+                    self.sendchange(
+                        downloadables=[
+                            '%s/%s' % (download_url, 'emulator.tar.gz'),
+                            "%s/%s" % (download_url, os.path.basename(matches[0])),
+                        ]
+                    )
 
     def make_socorro_json(self):
         self.info("Creating socorro.json...")
@@ -1256,9 +1274,6 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin, Toolto
         self.run_command(["cat", file_path])
 
     def upload_source_manifest(self):
-        if not self.query_is_nightly():
-            self.info("Not a nightly build. Skipping...")
-            return
         manifest_config = self.config.get('manifest')
         branch = self.query_branch()
         if not manifest_config or not branch:
@@ -1267,54 +1282,71 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin, Toolto
         if branch not in manifest_config['branches']:
             self.info("Manifest upload not enabled for this branch. Skipping...")
             return
-        version = manifest_config['branches'][branch]
-        upload_remote_basepath = self.config['manifest']['upload_remote_basepath'] % {'version': version}
-
         dirs = self.query_abs_dirs()
         upload_dir = dirs['abs_upload_dir'] + '-manifest'
         # Delete the upload dir so we don't upload previous stuff by accident
         self.rmtree(upload_dir)
-
-        # Dates should be based on buildid
-        buildid = self.query_buildid()
-        if buildid:
-            try:
-                buildid = datetime.strptime(buildid, "%Y%m%d%H%M%S")
-            except ValueError:
-                buildid = None
-
-        if buildid is None:
-            # Default to now
-            buildid = datetime.now()
-
         target = self.config['target']
         if self.config['manifest'].get('target_suffix'):
             target += self.config['manifest']['target_suffix']
-        # emulator builds will disappear out of latest/ because they're once-daily
-        date_string = '%(year)04i-%(month)02i-%(day)02i-%(hour)02i' % dict(
-            year=buildid.year,
-            month=buildid.month,
-            day=buildid.day,
-            hour=buildid.hour,
-        )
-        xmlfilename = 'source_%(target)s_%(date_string)s.xml' % dict(
-            target=target,
-            date_string=date_string,
-        )
+        buildid = self.query_buildid()
+
+        if self.query_is_nightly():
+            version = manifest_config['branches'][branch]
+            upload_remote_basepath = self.config['manifest']['upload_remote_basepath'] % {'version': version}
+            # Dates should be based on buildid
+            if buildid:
+                try:
+                    buildid = datetime.strptime(buildid, "%Y%m%d%H%M%S")
+                except ValueError:
+                    buildid = None
+            if buildid is None:
+                # Default to now
+                buildid = datetime.now()
+            # emulator builds will disappear out of latest/ because they're once-daily
+            date_string = '%(year)04i-%(month)02i-%(day)02i-%(hour)02i' % dict(
+                year=buildid.year,
+                month=buildid.month,
+                day=buildid.day,
+                hour=buildid.hour,
+            )
+            xmlfilename = 'source_%(target)s_%(date_string)s.xml' % dict(
+                target=target,
+                date_string=date_string,
+            )
+            socorro_json = os.path.join(dirs['work_dir'], 'socorro.json')
+            socorro_filename = 'socorro_%(target)s_%(date_string)s.json' % dict(
+                target=target,
+                date_string=date_string,
+            )
+            if os.path.exists(socorro_json):
+                self.copy_to_upload_dir(
+                    socorro_json,
+                    os.path.join(upload_dir, socorro_filename)
+                )
+            tbpl_string = None
+        else:
+            upload_remote_basepath = self.config['manifest']['depend_upload_remote_basepath'] % {
+                'branch': branch,
+                'platform': target,
+                'buildid': buildid,
+            }
+            sha = self.query_sha512sum(os.path.join(dirs['work_dir'], 'sources.xml'))
+            xmlfilename = "sources-%s.xml" % sha
+            tbpl_string = "TinderboxPrint: sources.xml: http://%s%s/%s" % (
+                self.config['manifest']['upload_remote_host'],
+                upload_remote_basepath,
+                xmlfilename,
+            )
+            self.copy_to_upload_dir(
+                os.path.join(dirs['work_dir'], 'sources.xml'),
+                os.path.join(upload_dir, 'sources.xml')
+            )
+
         self.copy_to_upload_dir(
             os.path.join(dirs['work_dir'], 'sources.xml'),
             os.path.join(upload_dir, xmlfilename)
         )
-        socorro_json = os.path.join(dirs['work_dir'], 'socorro.json')
-        socorro_filename = 'socorro_%(target)s_%(date_string)s.json' % dict(
-            target=target,
-            date_string=date_string,
-        )
-        if os.path.exists(socorro_json):
-            self.copy_to_upload_dir(
-                socorro_json,
-                os.path.join(upload_dir, socorro_filename)
-            )
         retval = self.rsync_upload_directory(
             upload_dir,
             self.config['manifest']['ssh_key'],
@@ -1325,22 +1357,26 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin, Toolto
         if retval is not None:
             self.error("Failed to upload")
             self.return_code = 2
+            return
+        if tbpl_string:
+            self.info(tbpl_string)
 
-        # run jgriffin's orgranize.py to shuffle the files around
-        # https://github.com/jonallengriffin/b2gautomation/blob/master/b2gautomation/organize.py
-        ssh = self.query_exe('ssh')
-        cmd = [ssh,
-               '-l', self.config['manifest']['ssh_user'],
-               '-i', self.config['manifest']['ssh_key'],
-               self.config['manifest']['upload_remote_host'],
-               'python ~/organize.py --directory %s' % upload_remote_basepath,
-               ]
-        retval = self.run_command(cmd)
-        if retval != 0:
-            self.error("Failed to move manifest to final location")
-            self.return_code = 2
-        else:
-            self.info("Upload successful")
+        if self.query_is_nightly():
+            # run jgriffin's orgranize.py to shuffle the files around
+            # https://github.com/jonallengriffin/b2gautomation/blob/master/b2gautomation/organize.py
+            ssh = self.query_exe('ssh')
+            cmd = [ssh,
+                   '-l', self.config['manifest']['ssh_user'],
+                   '-i', self.config['manifest']['ssh_key'],
+                   self.config['manifest']['upload_remote_host'],
+                   'python ~/organize.py --directory %s' % upload_remote_basepath,
+                   ]
+            retval = self.run_command(cmd)
+            if retval != 0:
+                self.error("Failed to move manifest to final location")
+                self.return_code = 2
+                return
+        self.info("Upload successful")
 
     def make_update_xml(self):
         if not self.query_is_nightly():
@@ -1451,4 +1487,4 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin, Toolto
 # main {{{1
 if __name__ == '__main__':
     myScript = B2GBuild()
-    myScript.run()
+    myScript.run_and_exit()

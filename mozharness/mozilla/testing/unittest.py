@@ -9,9 +9,9 @@ import os
 import re
 
 from mozharness.mozilla.testing.errors import TinderBoxPrintRe
-from mozharness.base.log import OutputParser, WARNING, INFO
-from mozharness.mozilla.buildbot import TBPL_WARNING, TBPL_FAILURE
-from mozharness.mozilla.buildbot import TBPL_SUCCESS, TBPL_STATUS_DICT
+from mozharness.base.log import OutputParser, WARNING, INFO, CRITICAL
+from mozharness.mozilla.buildbot import TBPL_WARNING, TBPL_FAILURE, TBPL_RETRY
+from mozharness.mozilla.buildbot import TBPL_SUCCESS, TBPL_WORST_LEVEL_TUPLE
 
 SUITE_CATEGORIES = ['mochitest', 'reftest', 'xpcshell']
 
@@ -22,11 +22,13 @@ class TestSummaryOutputParserHelper(OutputParser):
         self.failed = 0
         self.passed = 0
         self.todo = 0
+        self.last_line = None
         super(TestSummaryOutputParserHelper, self).__init__(**kwargs)
 
     def parse_single_line(self, line):
         super(TestSummaryOutputParserHelper, self).parse_single_line(line)
-        m = self.regex.match(line)
+        self.last_line = line
+        m = self.regex.search(line)
         if m:
             try:
                 setattr(self, m.group(1), int(m.group(2)))
@@ -64,6 +66,7 @@ class DesktopUnittestOutputParser(OutputParser):
         self.summary_suite_re = TinderBoxPrintRe.get('%s_summary' % suite_category, {})
         self.harness_error_re = TinderBoxPrintRe['harness_error']['minimum_regex']
         self.full_harness_error_re = TinderBoxPrintRe['harness_error']['full_regex']
+        self.harness_retry_re = TinderBoxPrintRe['harness_error']['retry_regex']
         self.fail_count = -1
         self.pass_count = -1
         # known_fail_count does not exist for some suites
@@ -100,7 +103,7 @@ class DesktopUnittestOutputParser(OutputParser):
             self.warning(' %s' % line)
             self.worst_log_level = self.worst_level(WARNING, self.worst_log_level)
             self.tbpl_status = self.worst_level(TBPL_WARNING, self.tbpl_status,
-                                                levels=TBPL_STATUS_DICT.keys())
+                                                levels=TBPL_WORST_LEVEL_TUPLE)
             full_harness_match = self.full_harness_error_re.match(line)
             if full_harness_match:
                 r = full_harness_match.group(1)
@@ -111,11 +114,18 @@ class DesktopUnittestOutputParser(OutputParser):
                 else:
                     self.leaked = True
             return  # skip base parse_single_line
+        if self.harness_retry_re.search(line):
+            self.critical(' %s' % line)
+            self.worst_log_level = self.worst_level(CRITICAL, self.worst_log_level)
+            self.tbpl_status = self.worst_level(TBPL_RETRY, self.tbpl_status,
+                                                levels=TBPL_WORST_LEVEL_TUPLE)
+            return  # skip base parse_single_line
         super(DesktopUnittestOutputParser, self).parse_single_line(line)
 
     def evaluate_parser(self, return_code):
         if self.num_errors:  # mozharness ran into a script error
-            self.tbpl_status = TBPL_FAILURE
+            self.tbpl_status = self.worst_level(TBPL_FAILURE, self.tbpl_status,
+                                                levels=TBPL_WORST_LEVEL_TUPLE)
 
         # I have to put this outside of parse_single_line because this checks not
         # only if fail_count was more then 0 but also if fail_count is still -1
@@ -123,7 +133,7 @@ class DesktopUnittestOutputParser(OutputParser):
         if self.fail_count != 0:
             self.worst_log_level = self.worst_level(WARNING, self.worst_log_level)
             self.tbpl_status = self.worst_level(TBPL_WARNING, self.tbpl_status,
-                                                levels=TBPL_STATUS_DICT.keys())
+                                                levels=TBPL_WORST_LEVEL_TUPLE)
         # we can trust in parser.worst_log_level in either case
         return (self.tbpl_status, self.worst_log_level)
 

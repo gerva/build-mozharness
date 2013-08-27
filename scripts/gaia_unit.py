@@ -15,6 +15,8 @@ sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.errors import TarErrorList, ZipErrorList, HgErrorList
 from mozharness.base.log import INFO, ERROR, WARNING, FATAL
+from mozharness.base.script import PreScriptAction
+from mozharness.base.transfer import TransferMixin
 from mozharness.base.vcs.vcsbase import MercurialScript
 from mozharness.mozilla.buildbot import TBPL_SUCCESS, TBPL_WARNING, TBPL_FAILURE
 from mozharness.mozilla.testing.testbase import TestingMixin, testing_config_options
@@ -22,7 +24,7 @@ from mozharness.mozilla.testing.unittest import TestSummaryOutputParserHelper
 from mozharness.mozilla.tooltool import TooltoolMixin
 
 
-class GaiaUnitTest(TestingMixin, TooltoolMixin, MercurialScript):
+class GaiaUnitTest(TestingMixin, TooltoolMixin, MercurialScript, TransferMixin):
     config_options = [
         [["--gaia-dir"],
          {"action": "store",
@@ -91,10 +93,29 @@ class GaiaUnitTest(TestingMixin, TooltoolMixin, MercurialScript):
     def pull(self, **kwargs):
         dirs = self.query_abs_dirs()
         repos = copy.deepcopy(self.config.get('repos', []))
-        repos.append({'repo': self.config.get('gaia_repo'),
-                      'revision': 'default',
+
+        gaia_repo_path = self.config.get('gaia_repo')
+        gaia_revision = 'default'
+        gaia_branch = self.config.get('gaia_branch')
+
+        if self.buildbot_config is not None:
+            # get gaia commit via hgweb
+            revision = self.buildbot_config['properties']['revision']
+            repo_path = self.buildbot_config['properties']['repo_path']
+            url = "https://hg.mozilla.org/{repo_path}/raw-file/{rev}/b2g/config/gaia.json".format(
+                repo_path=repo_path,
+                rev=revision)
+            contents = self.retry(self.load_json_from_url, args=(url,))
+            if contents.get('repo_path') and contents.get('revision'):
+                gaia_repo_path = 'https://hg.mozilla.org/%s' % contents['repo_path']
+                gaia_revision = contents['revision']
+                gaia_branch = None
+
+        repos.append({'repo': gaia_repo_path,
+                      'revision': gaia_revision,
                       'dest': 'gaia',
-                      'branch': self.config.get('gaia_branch')})
+                      'branch': gaia_branch})
+
         for repo in repos:
             dest = None
             if repo.get('dest') == 'gaia':
@@ -131,13 +152,10 @@ class GaiaUnitTest(TestingMixin, TooltoolMixin, MercurialScript):
         self.abs_dirs = abs_dirs
         return self.abs_dirs
 
-    def create_virtualenv(self, **kwargs):
-        super(GaiaUnitTest, self).create_virtualenv(**kwargs)
-
-        dirs = self.query_abs_dirs()
-        self.install_module(module='gaia-unit-tests',
-                            module_url=dirs['abs_runner_dir'],
-                            install_method='pip')
+    @PreScriptAction('create-virtualenv')
+    def _pre_create_virtualenv(self, action):
+        self.register_virtualenv_module('gaia-unit-tests',
+            url=self.query_abs_dirs()['abs_runner_dir'])
 
     def _build_arg(self, option, value):
         """
@@ -202,6 +220,7 @@ class GaiaUnitTest(TestingMixin, TooltoolMixin, MercurialScript):
                          cwd=dirs['abs_gaia_dir'],
                          env={'DEBUG': '1',
                               'NOFTU': '1',
+                              'DESKTOP': '0',
                               'USE_LOCAL_XULRUNNER_SDK': '1'
                               },
                          halt_on_failure=True)
@@ -220,7 +239,7 @@ class GaiaUnitTest(TestingMixin, TooltoolMixin, MercurialScript):
         cmd.extend(self._build_arg('--binary', os.path.join(dirs['abs_work_dir'],
                                                             'b2g', 'b2g-bin')))
         cmd.extend(self._build_arg('--profile', os.path.join(dirs['abs_gaia_dir'],
-                                                             'profile')))
+                                                             'profile-debug')))
 
         output_parser = TestSummaryOutputParserHelper(config=self.config,
                                                       log_obj=self.log_obj,
@@ -249,4 +268,4 @@ class GaiaUnitTest(TestingMixin, TooltoolMixin, MercurialScript):
 
 if __name__ == '__main__':
     gaia_unit_test = GaiaUnitTest()
-    gaia_unit_test.run()
+    gaia_unit_test.run_and_exit()

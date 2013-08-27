@@ -25,17 +25,30 @@ config = {
     "xpcshell_name": XPCSHELL_NAME,
     "virtualenv_path": 'venv',
     "virtualenv_python_dll": os.path.join(os.path.dirname(sys.executable), "python27.dll"),
-    "simplejson_url": "http://repos/python/packages/simplejson-2.1.3.tar.gz",
+    "find_links": [
+        "http://repos/python/packages",
+        "http://releng-puppet2.srv.releng.use1.mozilla.com/python/packages/",
+        "http://releng-puppet1.srv.releng.use1.mozilla.com/python/packages/",
+        "http://releng-puppet2.build.mtv1.mozilla.com/python/packages/",
+        "http://releng-puppet2.srv.releng.usw2.mozilla.com/python/packages/",
+        "http://releng-puppet1.srv.releng.usw2.mozilla.com/python/packages/",
+        "http://releng-puppet2.srv.releng.scl3.mozilla.com/python/packages/",
+        "http://releng-puppet2.build.scl1.mozilla.com/python/packages/",
+        "http://puppetagain.pub.build.mozilla.org/data/python/packages/",
+    ],
+    "pip_index": False,
     "run_file_names": {
         "mochitest": "runtests.py",
         "reftest": "runreftest.py",
-        "xpcshell": "runxpcshelltests.py"
+        "xpcshell": "runxpcshelltests.py",
+        "cppunittest": "runcppunittests.py"
     },
-    "minimum_tests_zip_dirs": ["bin/*", "certs/*", "modules/*", "mozbase/*"],
+    "minimum_tests_zip_dirs": ["bin/*", "certs/*", "modules/*", "mozbase/*", "config/*"],
     "specific_tests_zip_dirs": {
         "mochitest": ["mochitest/*"],
         "reftest": ["reftest/*", "jsreftest/*"],
-        "xpcshell": ["xpcshell/*"]
+        "xpcshell": ["xpcshell/*"],
+        "cppunittest": ["cppunittests/*"]
     },
     "reftest_options": [
         "--appname=%(binary_path)s", "--utility-path=tests/bin",
@@ -48,7 +61,12 @@ config = {
         "--console-level=INFO"
     ],
     "xpcshell_options": [
-        "--symbols-path=%(symbols_path)s"
+        "--symbols-path=%(symbols_path)s",
+        "--test-plugin-path=%(test_plugin_path)s"
+    ],
+    "cppunittest_options": [
+        "--symbols-path=%(symbols_path)s",
+        "--xre-path=application/firefox"
     ],
     #local mochi suites
     "all_mochitest_suites":
@@ -60,7 +78,7 @@ config = {
         "plain5": ["--total-chunks=5", "--this-chunk=5", "--chunk-by-dir=4"],
         "chrome": ["--chrome"],
         "browser-chrome": ["--browser-chrome"],
-        "metro-immersive": ["--browser-chrome", "--metro-immersive"],
+        "mochitest-metro-chrome": ["--browser-chrome", "--metro-immersive"],
         "a11y": ["--a11y"],
         "plugins": ['--setpref=dom.ipc.plugins.enabled=false',
                     '--setpref=dom.ipc.plugins.enabled.x86_64=false',
@@ -81,6 +99,9 @@ config = {
     "all_xpcshell_suites": {
         "xpcshell": ["--manifest=tests/xpcshell/tests/all-test-dirs.list",
         "%(abs_app_dir)s/" + XPCSHELL_NAME]
+    },
+    "all_cppunittest_suites": {
+        "cppunittest": ['tests/cppunittests']
     },
     "run_cmd_checks_enabled": True,
     "preflight_run_cmd_suites": [
@@ -108,7 +129,11 @@ config = {
         },
     ],
     "repos": [{"repo": "http://hg.mozilla.org/build/tools"}],
+    "vcs_output_timeout": 1000,
     "minidump_stackwalk_path": "%(abs_work_dir)s/tools/breakpad/win32/minidump_stackwalk.exe",
     "minidump_save_path": "%(abs_work_dir)s/../minidumps",
     "buildbot_max_log_size": 52428800,
+    "default_blob_upload_servers": [
+         "http://10.134.48.49:8080",
+    ],
 }

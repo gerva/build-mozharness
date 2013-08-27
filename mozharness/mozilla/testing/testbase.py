@@ -12,7 +12,11 @@ import platform
 from mozharness.base.config import ReadOnlyDict, parse_config_file
 from mozharness.base.errors import BaseErrorList
 from mozharness.base.log import FATAL
-from mozharness.base.python import virtualenv_config_options, VirtualenvMixin
+from mozharness.base.python import (
+    ResourceMonitoringMixin,
+    VirtualenvMixin,
+    virtualenv_config_options,
+)
 from mozharness.mozilla.buildbot import BuildbotMixin
 
 INSTALLER_SUFFIXES = ('.tar.bz2', '.zip', '.dmg', '.exe', '.apk', '.tar.gz')
@@ -54,7 +58,7 @@ testing_config_options = [
 
 
 # TestingMixin {{{1
-class TestingMixin(VirtualenvMixin, BuildbotMixin):
+class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
     """
     The steps to identify + download the proper bits for [browser] unit
     tests and Talos.
@@ -103,7 +107,8 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin):
                     expected_length = [2]
                 actual_length = len(files)
                 if actual_length not in expected_length:
-                    self.fatal("Unexpected number of files in buildbot config %s: %d != %d!" % (c['buildbot_json_path'], actual_length, expected_length))
+                    self.fatal("Unexpected number of files in buildbot config %s.\nExpected these number(s) of files: %s, but got: %d" %
+                               (c['buildbot_json_path'], str(expected_length), actual_length))
                 for f in files:
                     if f['name'].endswith('tests.zip'): # yuk
                         # str() because of unicode issues on mac
@@ -186,7 +191,9 @@ You can set this by:
         if target_unzip_dirs:
             unzip_cmd.extend(target_unzip_dirs)
         # TODO error_list
-        self.run_command(unzip_cmd, cwd=test_install_dir, halt_on_failure=True)
+        # unzip return code 11 is 'no matching files were found'
+        self.run_command(unzip_cmd, cwd=test_install_dir,
+                         halt_on_failure=True, success_codes=[0, 11])
 
     def _read_tree_config(self):
         """Reads an in-tree config file"""

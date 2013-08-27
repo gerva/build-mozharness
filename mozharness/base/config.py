@@ -28,6 +28,9 @@ from copy import deepcopy
 from optparse import OptionParser, Option, OptionGroup
 import os
 import sys
+import urllib2
+import socket
+import time
 try:
     import simplejson as json
 except ImportError:
@@ -61,6 +64,24 @@ class ExtendOption(Option):
                 self, action, dest, opt, value, values, parser)
 
 
+def make_immutable(item):
+    if isinstance(item, list) or isinstance(item, tuple):
+        result = LockedTuple(item)
+    elif isinstance(item, dict):
+        result = ReadOnlyDict(item)
+        result.lock()
+    else:
+        result = item
+    return result
+
+
+class LockedTuple(tuple):
+    def __new__(cls, items):
+        return tuple.__new__(cls, (make_immutable(x) for x in items))
+    def __deepcopy__(self, memo):
+        return [deepcopy(elem, memo) for elem in self]
+
+
 # ReadOnlyDict {{{1
 class ReadOnlyDict(dict):
     def __init__(self, dictionary):
@@ -71,6 +92,8 @@ class ReadOnlyDict(dict):
         assert not self._lock, "ReadOnlyDict is locked!"
 
     def lock(self):
+        for (k, v) in self.items():
+            self[k] = make_immutable(v)
         self._lock = True
 
     def __setitem__(self, *args):
@@ -101,6 +124,18 @@ class ReadOnlyDict(dict):
         self._check_lock()
         dict.update(self, *args)
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        result._lock = False
+        for k, v in self.items():
+            result[k] = deepcopy(v, memo)
+        print result
+        print result._lock
+        return result
 
 # parse_config_file {{{1
 def parse_config_file(file_name, quiet=False, search_path=None,
@@ -135,6 +170,40 @@ def parse_config_file(file_name, quiet=False, search_path=None,
         raise RuntimeError("Unknown config file type %s!" % file_name)
     # TODO return file_path
     return config
+
+
+def download_config_file(url, file_name):
+    n = 0
+    attempts = 5
+    sleeptime = 60
+    max_sleeptime = 5 * 60
+    while True:
+        if n >= attempts:
+            print "Failed to download from url %s after %d attempts, quiting..." % (url, attempts)
+            raise SystemError(-1)
+        try:
+            contents = urllib2.urlopen(url, timeout=30).read()
+            break
+        except urllib2.URLError, e:
+            print "Error downloading from url %s: %s" % (url, str(e))
+        except socket.timeout, e:
+            print "Time out accessing %s: %s" % (url, str(e))
+        except socket.error, e:
+            print "Socket error when accessing %s: %s" % (url, str(e))
+        print "Sleeping %d seconds before retrying" % sleeptime
+        time.sleep(sleeptime)
+        sleeptime = sleeptime * 2
+        if sleeptime > max_sleeptime:
+            sleeptime = max_sleeptime
+        n += 1
+
+    try:
+        f = open(file_name, 'w')
+        f.write(contents)
+        f.close()
+    except IOError, e:
+        print "Error writing downloaded contents to file %s: %s" % (file_name, str(e))
+        raise SystemError(-1)
 
 
 # BaseConfig {{{1
@@ -194,6 +263,11 @@ class BaseConfig(object):
         self.config_parser.add_option(
             "-c", "--config-file", "--cfg", action="extend", dest="config_files",
             type="string", help="Specify the config files"
+        )
+        self.config_parser.add_option(
+            "-C", "--opt-config-file", "--opt-cfg", action="extend",
+            dest="opt_config_files", type="string", default=[],
+            help="Specify the optional config files"
         )
 
         # Logging
@@ -314,8 +388,22 @@ class BaseConfig(object):
                 raise SystemExit(-1)
         else:
             config = {}
-            for cf in options.config_files:
-                config.update(parse_config_file(cf))
+            # append opt_config to allow them to overwrite previous configs
+            all_config_files = options.config_files + options.opt_config_files
+            for cf in all_config_files:
+                try:
+                    if '://' in cf: # config file is an url
+                        file_name = os.path.basename(cf)
+                        file_path = os.path.join(os.getcwd(), file_name)
+                        download_config_file(cf, file_path)
+                        config.update(parse_config_file(file_path))
+                    else:
+                        config.update(parse_config_file(cf))
+                except Exception:
+                    if cf in options.opt_config_files:
+                        print("WARNING: optional config file not found %s" % cf)
+                    else:
+                        raise
             self.set_config(config)
         for key in defaults.keys():
             value = getattr(options, key)

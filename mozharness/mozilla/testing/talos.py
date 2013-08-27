@@ -13,10 +13,10 @@ import pprint
 import re
 
 from mozharness.base.config import parse_config_file
-from mozharness.base.errors import PythonErrorList, TarErrorList
+from mozharness.base.errors import PythonErrorList
 from mozharness.base.log import OutputParser, DEBUG, ERROR, CRITICAL, FATAL
-from mozharness.base.script import BaseScript
 from mozharness.mozilla.testing.testbase import TestingMixin, testing_config_options, INSTALLER_SUFFIXES
+from mozharness.base.vcs.vcsbase import MercurialScript
 
 TalosErrorList = PythonErrorList + [
  {'regex': re.compile(r'''run-as: Package '.*' is unknown'''), 'level': DEBUG},
@@ -63,7 +63,7 @@ talos_config_options = [
     ]
 
 
-class Talos(TestingMixin, BaseScript):
+class Talos(TestingMixin, MercurialScript):
     """
     install and run Talos tests:
     https://wiki.mozilla.org/Buildbot/Talos
@@ -113,19 +113,21 @@ class Talos(TestingMixin, BaseScript):
         kwargs.setdefault('all_actions', ['clobber',
                                           'read-buildbot-config',
                                           'download-and-extract',
+                                          'clone-talos',
                                           'create-virtualenv',
                                           'install',
                                           'run-tests',
                                          ])
         kwargs.setdefault('default_actions', ['clobber',
                                               'download-and-extract',
+                                              'clone-talos',
                                               'create-virtualenv',
                                               'install',
                                               'run-tests',
                                              ])
         kwargs.setdefault('config', {})
         kwargs['config'].setdefault('virtualenv_modules', ["talos", "mozinstall"])
-        BaseScript.__init__(self, **kwargs)
+        super(Talos, self).__init__(**kwargs)
 
         self.workdir = self.query_abs_dirs()['abs_work_dir'] # convenience
 
@@ -138,10 +140,15 @@ class Talos(TestingMixin, BaseScript):
         self.talos_json_url = self.config.get("talos_json_url")
         self.talos_json = self.config.get("talos_json")
         self.talos_json_config = self.config.get("talos_json_config")
+        self.talos_path = os.path.join(self.workdir, 'talos_repo')
+        self.has_cloned_talos = False
         self.tests = None
         self.pagesets_url = None
         self.pagesets_parent_dir_path = None
         self.pagesets_manifest_path = None
+        self.abs_pagesets_paths = None
+        self.pagesets_manifest_filename = None
+        self.pagesets_manifest_parent_path = None
         if 'run-tests' in self.actions:
             self.preflight_run_tests()
 
@@ -243,14 +250,24 @@ class Talos(TestingMixin, BaseScript):
             options += c['talos_extra_options']
         return options
 
-    def query_talos_url(self):
+    def query_talos_repo(self):
         """Where do we install the talos python package from?
         This needs to be overrideable by the talos json.
         """
+        default_repo = "http://hg.mozilla.org/build/talos"
         if self.query_talos_json_config():
-            return self.talos_json_config['global']['talos_url']
+            return self.talos_json_config.get('global', {}).get('talos_repo', default_repo)
         else:
-            return self.config.get('talos_url')
+            return self.config.get('talos_repo', default_repo)
+
+    def query_talos_revision(self):
+        """Which talos revision do we want to use?
+        This needs to be overrideable by the talos json.
+        """
+        if self.query_talos_json_config():
+            return self.talos_json_config['global']['talos_revision']
+        else:
+            return self.config.get('talos_revision')
 
     def query_pagesets_url(self):
         """Certain suites require external pagesets to be downloaded and
@@ -285,6 +302,39 @@ class Talos(TestingMixin, BaseScript):
             self.pagesets_manifest_path = self.talos_json_config['suites'][self.config['suite']].get('pagesets_manifest_path')
             return self.pagesets_manifest_path
 
+    def query_pagesets_manifest_filename(self):
+        if self.pagesets_manifest_filename:
+            return self.pagesets_manifest_filename
+        else:
+            manifest_path = self.query_pagesets_manifest_path()
+            self.pagesets_manifest_filename = os.path.basename(manifest_path)
+            return self.pagesets_manifest_filename
+
+    def query_pagesets_manifest_parent_path(self):
+        if self.pagesets_manifest_parent_path:
+            return self.pagesets_manifest_parent_path
+        if self.query_talos_json_config():
+            manifest_path = self.query_pagesets_manifest_path()
+            self.pagesets_manifest_parent_path = os.path.dirname(manifest_path)
+            return self.pagesets_manifest_parent_path
+
+    def query_abs_pagesets_paths(self):
+        """ Returns a bunch of absolute pagesets directory paths.
+        We need this to make the dir and copy the manifest to the local dir.
+        """
+        if self.abs_pagesets_paths:
+            return self.abs_pagesets_paths
+        else:
+            paths = {}
+            manifest_parent_path = self.query_pagesets_manifest_parent_path()
+            paths['pagesets_manifest_parent'] = os.path.join(self.talos_path, manifest_parent_path)
+
+            manifest_path = self.query_pagesets_manifest_path()
+            paths['pagesets_manifest'] = os.path.join(self.talos_path, manifest_path)
+
+            self.abs_pagesets_paths = paths
+            return self.abs_pagesets_paths
+
     def talos_options(self, args=None, **kw):
         """return options to talos"""
         # binary path
@@ -296,6 +346,9 @@ class Talos(TestingMixin, BaseScript):
         options = ['-v',] # hardcoded options (for now)
         if self.config.get('python_webserver', True):
             options.append('--develop')
+        # talos can't gather data if the process name ends with '.exe'
+        if binary_path.endswith('.exe'):
+            binary_path = binary_path[:-4]
         kw_options = {'output': 'talos.yml', # options overwritten from **kw
                       'executablePath': binary_path,
                       'results_url': self.results_url}
@@ -317,6 +370,10 @@ class Talos(TestingMixin, BaseScript):
         # add datazilla results urls
         for url in self.config.get('datazilla_urls', []):
             options.extend(['--datazilla-url', url])
+        # add datazilla authfile
+        authfile = self.config.get('datazilla_authfile')
+        if authfile:
+            options.extend(['--authfile', authfile])
         # extra arguments
         if args is None:
             args = self.query_talos_options()
@@ -333,31 +390,45 @@ class Talos(TestingMixin, BaseScript):
     def _populate_webroot(self):
         """Populate the production test slaves' webroots"""
         c = self.config
-        talos_url = self.query_talos_url()
-        if not c.get('webroot') or not talos_url:
-            self.fatal("Both webroot and talos_url need to be set to populate_webroot!")
+        talos_repo = self.query_talos_repo()
+        talos_revision = self.query_talos_revision()
+        if not c.get('webroot') or not talos_repo:
+            self.fatal("Both webroot and talos_repo need to be set to populate_webroot!")
         self.info("Populating webroot %s..." % c['webroot'])
         talos_webdir = os.path.join(c['webroot'], 'talos')
         self.mkdir_p(c['webroot'], error_level=FATAL)
         self.rmtree(talos_webdir, error_level=FATAL)
-        tarball = self.download_file(talos_url, parent_dir=self.workdir,
-                                     error_level=FATAL)
-        if self._is_windows():
-            tarball = self.query_msys_path(tarball)
-        command = c.get('webroot_extract_cmd')
-        if command:
-            command = command % {'tarball': tarball}
-        else:
-            tar = self.query_exe('tar', return_type='list')
-            command = tar + ['zx', '--strip-components=1', '-f', tarball,
-                             '**/talos/']
-        self.run_command(command, cwd=c['webroot'],
-                         error_list=TarErrorList, halt_on_failure=True)
+
+        # clone talos' repo
+        repo = {
+            'repo': talos_repo,
+            'vcs': 'hg',
+            'dest': self.talos_path,
+            'revision': talos_revision
+            }
+        self.vcs_checkout(**repo)
+        self.has_cloned_talos = True
+
+        # the apache server needs the talos directory (talos/talos)
+        # to be in the webroot
+        src_talos_webdir = os.path.join(self.talos_path, 'talos')
+        self.copytree(src_talos_webdir, talos_webdir)
+
         if c.get('use_talos_json'):
             if self.query_pagesets_url():
                 self.info("Downloading pageset...")
                 pagesets_path = os.path.join(c['webroot'], self.query_pagesets_parent_dir_path())
                 self._download_unzip(self.pagesets_url, pagesets_path)
+
+                # mkdir for the missing manifest directory in talos_repo/talos/page_load_test directory
+                abs_pagesets_paths = self.query_abs_pagesets_paths()
+                abs_manifest_parent_path = abs_pagesets_paths['pagesets_manifest_parent']
+                self.mkdir_p(abs_manifest_parent_path, error_level=FATAL)
+
+                # copy all the manifest file from unzipped zip file into the manifest dir
+                src_manifest_file = os.path.join(c['webroot'], self.query_pagesets_manifest_path())
+                dest_manifest_file = abs_pagesets_paths['pagesets_manifest']
+                self.copyfile(src_manifest_file, dest_manifest_file, error_level=FATAL)
             plugins_url = self.talos_json_config['suites'][c['suite']].get('plugins', {}).get(c['system_bits'])
             if plugins_url:
                 self.info("Downloading plugin...")
@@ -373,23 +444,36 @@ class Talos(TestingMixin, BaseScript):
     # Action methods. {{{1
     # clobber defined in BaseScript
     # read_buildbot_config defined in BuildbotMixin
+    # download_and_extract defined in TestingMixin
 
-    def download_and_extract(self):
-        super(Talos, self).download_and_extract()
+    def clone_talos(self):
         c = self.config
         if not c.get('python_webserver', True) and c.get('populate_webroot'):
             self._populate_webroot()
 
     def create_virtualenv(self, **kwargs):
         """VirtualenvMixin.create_virtualenv() assuemes we're using
-        self.config['virtualenv_modules'].  Since we're overriding talos_url
-        when using the talos json, we have to wrap that method here."""
-        if self.query_talos_json_config():
-            talos_url = self.query_talos_url()
-            virtualenv_modules = self.config.get('virtualenv_modules', [])
+        self.config['virtualenv_modules']. Since we are installing
+        talos from its source, we have to wrap that method here."""
+        # XXX This method could likely be replaced with a PreScriptAction hook.
+        if self.has_cloned_talos:
+            virtualenv_modules = list(self.config.get('virtualenv_modules', []))
             if 'talos' in virtualenv_modules:
+
+                # Bug 900015 - Silent warnings on osx when libyaml is not found
+                pyyaml_module = {
+                    'name': 'PyYAML',
+                    'url': None,
+                    'global_options': ['--without-libyaml']
+                }
+                virtualenv_modules.insert(0, pyyaml_module)
+
                 i = virtualenv_modules.index('talos')
-                virtualenv_modules[i] = {'talos': talos_url}
+                virtualenv_modules[i] = {
+                    'name': 'talos',
+                    'url': self.talos_path,
+                    'global_options': []
+                }
                 self.info(pprint.pformat(virtualenv_modules))
             return super(Talos, self).create_virtualenv(modules=virtualenv_modules)
         else:

@@ -58,10 +58,12 @@ class MercurialVCS(ScriptMixin, LogMixin, object):
     #  apply_and_push, update, get_revision, out, BRANCH, REVISION,
     #  get_branches, cleanOutgoingRevs
 
-    def __init__(self, log_obj=None, config=None, vcs_config=None):
+    def __init__(self, log_obj=None, config=None, vcs_config=None,
+                 script_obj=None):
         super(MercurialVCS, self).__init__()
         self.can_share = None
         self.log_obj = log_obj
+        self.script_obj = script_obj
         if config:
             self.config = config
         else:
@@ -75,7 +77,7 @@ class MercurialVCS(ScriptMixin, LogMixin, object):
         #  ssh_key: ssh_key,
         # }
         self.vcs_config = vcs_config
-        self.hg = [self.query_exe('hg')] + HG_OPTIONS
+        self.hg = self.query_exe("hg", return_type="list") + HG_OPTIONS
 
     def _make_absolute(self, repo):
         if repo.startswith("file://"):
@@ -176,7 +178,7 @@ class MercurialVCS(ScriptMixin, LogMixin, object):
             msg += " to revision %s" % revision
         self.info("%s." % msg)
         parent_dest = os.path.dirname(dest)
-        if not os.path.exists(parent_dest):
+        if parent_dest and not os.path.exists(parent_dest):
             self.mkdir_p(parent_dest)
         if os.path.exists(dest):
             self.info("Removing %s before clone." % dest)
@@ -195,7 +197,10 @@ class MercurialVCS(ScriptMixin, LogMixin, object):
                 cmd.extend(['-b', branch])
 
         cmd.extend([repo, dest])
-        self.run_command(cmd, error_list=HgErrorList)
+        output_timeout = self.config.get("vcs_output_timeout", None)
+        if self.run_command(cmd, error_list=HgErrorList,
+                            output_timeout=output_timeout) != 0:
+            raise VCSException("Unable to clone %s to %s!" % (repo, dest))
 
         if update_dest:
             return self.update(dest, branch, revision)
@@ -418,6 +423,9 @@ class MercurialVCS(ScriptMixin, LogMixin, object):
         return self.update(dest, branch=branch, revision=revision)
 
     # End hg share methods 2}}}
+
+    def query_python_site_packages_path(self):
+        return self.script_obj.query_python_site_packages_path()
 
     def ensure_repo_and_revision(self):
         """Makes sure that `dest` is has `revision` or `branch` checked out
