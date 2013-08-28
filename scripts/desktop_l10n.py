@@ -556,6 +556,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.get_mar_tools()
         self.get_previous_mar()
         self.unpack_previous_mar()
+        p_build_id = self.get_buildid_form_ini(self.get_previous_application_ini_file())
+        print p_build_id
+
 
     def _download_to_file(self, url, filename, ignoreErrors=[]):
         try:
@@ -692,6 +695,33 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                          cwd=cwd,
                          env=env,
                          halt_on_failure=True)
+
+    def get_value_from_ini(self, ini_file, section, option):
+        """ parses an ini file and returns the value of option from section"""
+        from ConfigParser import SafeConfigParser
+        parser = SafeConfigParser()
+        print "ini file: {0}".format(ini_file)
+        parser.read(ini_file)
+        return parser.get(section, option)
+
+    def get_buildid_form_ini(self, ini_file):
+        return self.get_value_from_ini(ini_file, 'App', 'BuildID')
+
+    def find_file(self, root_dir, filename):
+        """ find <root_dir> -type f -name <filename>
+            returns a single file,
+        """
+        for dirpath, dirnames, filenames in os.walk(root_dir):
+            for f in filenames:
+                if f == filename:
+                    return os.path.join(dirpath, f)
+
+    def get_previous_application_ini_file(self):
+        dirs = self.query_abs_dirs()
+        mar_dir = os.path.join(dirs['abs_mozilla_dir'], 'previous')
+        print "base dir  = {}".format(mar_dir)
+        return self.find_file(mar_dir, 'application.ini')
+
 
 # main {{{
 if __name__ == '__main__':
