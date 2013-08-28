@@ -13,3 +13,5 @@ htmlcov
 venv
 build/
 logs/
+l10n/
+properties/
