@@ -14,8 +14,6 @@ import os
 import re
 import subprocess
 import sys
-import urllib2
-import stat
 
 try:
     import simplejson as json
@@ -38,6 +36,7 @@ from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
+import mozharness.base.utils as utils
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -556,42 +555,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         p_build_id = self.get_buildid_form_ini(self.get_previous_application_ini_file())
         print p_build_id
 
-
-    def _download_to_file(self, url, filename, ignoreErrors=[]):
-        try:
-            response = urllib2.urlopen(url)
-            with open(filename, "w") as f:
-                f.write(response.read())
-        except urllib2.HTTPError as e:
-            print 'The server couldn\'t fulfill the request.'
-            print url
-            print 'Error code: ', e.code
-            raise
-        except urllib2.URLError as e:
-            if e.code in ignoreErrors:
-                pass
-            else:
-                print 'We failed to reach a server.'
-                print 'Reason: ', e.reason
-                print url
-                raise
-
     def local_mar_dir(self):
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], 'dist', 'update')
 
     def local_mar_filename(self):
         return os.path.join(self.local_mar_dir(), 'previous.mar')
-
-    def get_html_from_url(self, url, left_delimiter, right_delimiter):
-        request = urllib2.urlopen(url)
-        elements = []
-        for line in request.read().split('\n'):
-            element = line.partition(left_delimiter)[2]
-            element = element.partition('/"')[0]
-            element = element.strip()
-            elements.append(element)
-        return elements
 
     def query_latest_version(self):
         """ find latest available version from CANDIDATES_URL """
@@ -601,7 +570,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         update_env = self.query_env(partial_env=c.get("update_env"))
         url = update_env['CANDIDATES_URL']
-        versions = self.get_html_from_url(url, 'href="', '/"')
+        versions = utils.parse_html_page(url, 'href="', '/"')
         versions = filter(lambda v: '-candidates' in v, versions)
         versions = filter(lambda v: 'esr' not in v, versions)
         versions = [v.partition('-candidates')[0] for v in versions]
@@ -638,19 +607,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             os.makedirs(self.local_mar_dir())
         print "downloading {0} to {1}".format(self.previous_mar_url(),
                                               self.local_mar_filename())
-        self._download_to_file(self.previous_mar_url(),
+        utils.download_to_file(self.previous_mar_url(),
                                self.local_mar_filename())
-
-    def get_latest_build_from_url(self, url):
-        builds = self.get_html_from_url(url, '<td><a href="', '/"')
-        builds = filter(lambda b: 'build' in b, builds)
-        b = 0
-        for build in builds:
-            b_temp = int(build.partition('build')[2])
-            if b_temp > b:
-                b = b_temp
-        print "latest: build{0}".format(b)
-        return "build{0}".format(b)
 
     def local_mar_tool_dir(self):
         dirs = self.query_abs_dirs()
@@ -662,7 +620,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         base_url = update_env['CANDIDATES_URL']
         version = self.query_latest_version()  # self.latest_version() ??
         partial_url = "/".join((base_url, "{0}-candidates".format(version)))
-        buildnum = self.get_latest_build_from_url(partial_url)
+        buildnum = utils.latest_build_from(partial_url)
         url = "/".join((partial_url, buildnum, 'mar-tools', 'macosx64'))
         destination_dir = self.local_mar_tool_dir()
         if not os.path.exists(destination_dir):
@@ -670,9 +628,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         for element in ('mar', 'mbsdiff'):
             from_url = "/".join((url, element))
             local_dst = os.path.join(destination_dir, element)
-            self._download_file(from_url, local_dst)
-            st = os.stat(local_dst)
-            os.chmod(local_dst, st.st_mode | stat.S_IEXEC)
+            utils.download_to_file(from_url, local_dst)
+            utils.make_executable(local_dst)
 
     def unpack_previous_mar(self):
         c = self.config
@@ -704,20 +661,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def get_buildid_form_ini(self, ini_file):
         return self.get_value_from_ini(ini_file, 'App', 'BuildID')
 
-    def find_file(self, root_dir, filename):
-        """ find <root_dir> -type f -name <filename>
-            returns a single file,
-        """
-        for dirpath, dirnames, filenames in os.walk(root_dir):
-            for f in filenames:
-                if f == filename:
-                    return os.path.join(dirpath, f)
-
     def get_previous_application_ini_file(self):
         dirs = self.query_abs_dirs()
         mar_dir = os.path.join(dirs['abs_mozilla_dir'], 'previous')
         print "base dir  = {}".format(mar_dir)
-        return self.find_file(mar_dir, 'application.ini')
+        return utils.find_file(mar_dir, 'application.ini')
 
 
 # main {{{
