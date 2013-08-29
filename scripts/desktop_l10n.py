@@ -349,11 +349,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         for make_dir in c.get('make_dirs', []):
             cwd = os.path.join(dirs['abs_objdir'], make_dir)
             make_args = []
-            # taken from:
-            # https://mxr.mozilla.org/build/source/tools/lib/python/build/l10n.py#63
-       #     if os.path.basename(make_dir).startswith("tier"):
-       #         cwd = os.path.join(dirs['abs_objdir'], os.path.dirname(make_dir))
-       #         make_args.append(os.path.basename(make_dir))
             self.run_command(make + make_args,
                              cwd=cwd,
                              env=env,
@@ -372,11 +367,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         mozconfig_path = os.path.join(dirs['abs_mozilla_dir'], '.mozconfig')
         self.copyfile(os.path.join(dirs['abs_work_dir'], c['mozconfig']),
                       mozconfig_path)
-        # TODO stop using cat
-        cat = self.query_exe("cat")
         hg = self.query_exe("hg")
         make = self.query_exe("make", return_type="list")
-        self.run_command([cat, mozconfig_path])
+        # log the content of mozconfig
+        with open(mozconfig_path, 'r') as f:
+            for line in f:
+                self.info(line.strip())
         env = self.query_repack_env()
         self._setup_configure()
         self.run_command(make + ["wget-en-US"],
@@ -393,6 +389,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if not revision:
             self.fatal("Can't determine revision!")
         # TODO do this through VCSMixin instead of hardcoding hg
+        #self.update(dest=dirs["abs_mozilla_dir"], revision=revision)
         self.run_command([hg, "update", "-r", revision],
                          cwd=dirs["abs_mozilla_dir"],
                          env=env,
