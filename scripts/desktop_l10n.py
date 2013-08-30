@@ -36,7 +36,8 @@ from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
-import mozharness.base.utils as utils
+import mozharness.helpers.filesystem as filesystem
+import mozharness.helpers.download as download
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -570,7 +571,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         update_env = self.query_env(partial_env=c.get("update_env"))
         url = update_env['CANDIDATES_URL']
-        versions = utils.parse_html_page(url, 'href="', '/"')
+        versions = download.parse_html(url, 'href="', '/"')
         versions = filter(lambda v: '-candidates' in v, versions)
         versions = filter(lambda v: 'esr' not in v, versions)
         versions = [v.partition('-candidates')[0] for v in versions]
@@ -607,7 +608,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             os.makedirs(self.local_mar_dir())
         print "downloading {0} to {1}".format(self.previous_mar_url(),
                                               self.local_mar_filename())
-        utils.download_to_file(self.previous_mar_url(),
+        download.to_file(self.previous_mar_url(),
                                self.local_mar_filename())
 
     def local_mar_tool_dir(self):
@@ -620,7 +621,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         base_url = update_env['CANDIDATES_URL']
         version = self.query_latest_version()  # self.latest_version() ??
         partial_url = "/".join((base_url, "{0}-candidates".format(version)))
-        buildnum = utils.latest_build_from(partial_url)
+        buildnum = download.get_latest_build_number(partial_url)
         url = "/".join((partial_url, buildnum, 'mar-tools', 'macosx64'))
         destination_dir = self.local_mar_tool_dir()
         if not os.path.exists(destination_dir):
@@ -628,8 +629,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         for element in ('mar', 'mbsdiff'):
             from_url = "/".join((url, element))
             local_dst = os.path.join(destination_dir, element)
-            utils.download_to_file(from_url, local_dst)
-            utils.make_executable(local_dst)
+            download.to_file(from_url, local_dst)
+            filesystem.make_executable(local_dst)
 
     def unpack_previous_mar(self):
         c = self.config
@@ -665,7 +666,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         mar_dir = os.path.join(dirs['abs_mozilla_dir'], 'previous')
         print "base dir  = {}".format(mar_dir)
-        return utils.find_file(mar_dir, 'application.ini')
+        return filesystem.find_file(mar_dir, 'application.ini')
 
 
 # main {{{
