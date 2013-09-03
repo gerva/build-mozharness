@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 try:
     import simplejson as json
@@ -37,7 +38,7 @@ from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
 import mozharness.helpers.filesystem as filesystem
-import mozharness.helpers.download as download
+import mozharness.helpers.html_parse as html_parse
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -565,33 +566,21 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def query_latest_version(self):
         """ find latest available version from CANDIDATES_URL """
-        def to_string(v, padding=5):
-            """ tuple to string using padding so it can be sorted (dictionary sort)"""
-            return "".join(["{0}".format(str(n).zfill(padding)) for n in v])
         c = self.config
         update_env = self.query_env(partial_env=c.get("update_env"))
         url = update_env['CANDIDATES_URL']
-        versions = download.parse_html(url, 'href="', '/"')
-        versions = filter(lambda v: '-candidates' in v, versions)
-        versions = filter(lambda v: 'esr' not in v, versions)
-        versions = [v.partition('-candidates')[0] for v in versions]
-        v = (0, 0, 0)
-        for version in versions:
-            # version = 24.0b5
-            # major = 24
-            # minor = 0
-            # beta = 5
-            major, sep, rest = version.partition(".")
-            minor, sep, beta = rest.partition("b")
-            try:
-                v_temp = (int(major), int(minor), int(beta))
-                if to_string(v) < to_string(v_temp):
-                    v = v_temp
-            except ValueError:
-                # int(...) failed:
-                # major, minor and/or beta are not numbers, skip
-                pass
-        return "{0}.{1}b{2}".format(*v)
+        temp_out = tempfile.NamedTemporaryFile(delete=False)
+        self.download_file(url, temp_out.name)
+        version = html_parse.get_last_version_number(temp_out.name)
+        os.remove(temp_out.name)
+        return version
+
+    def query_buildnumber(self, url):
+        temp_out = tempfile.NamedTemporaryFile(delete=False)
+        self.download_file(url, temp_out.name)
+        buildnum = html_parse.get_latest_build_number(temp_out.name)
+        os.remove(temp_out.name)
+        return buildnum
 
     def previous_mar_url(self):
         c = self.config
@@ -604,12 +593,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return "/".join((base_url, remote_filename))
 
     def get_previous_mar(self):
-        if not os.path.exists(self.local_mar_dir()):
-            os.makedirs(self.local_mar_dir())
-        print "downloading {0} to {1}".format(self.previous_mar_url(),
-                                              self.local_mar_filename())
-        download.to_file(self.previous_mar_url(),
-                               self.local_mar_filename())
+        self.mkdir_p(self.local_mar_dir())
+        self.download_file(self.previous_mar_url(),
+                           self.local_mar_filename())
 
     def local_mar_tool_dir(self):
         dirs = self.query_abs_dirs()
@@ -621,16 +607,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         base_url = update_env['CANDIDATES_URL']
         version = self.query_latest_version()  # self.latest_version() ??
         partial_url = "/".join((base_url, "{0}-candidates".format(version)))
-        buildnum = download.get_latest_build_number(partial_url)
+        buildnum = self.query_buildnumber(partial_url)
+        # TODO remove macosx64 hardcoded value, get if from config
         url = "/".join((partial_url, buildnum, 'mar-tools', 'macosx64'))
         destination_dir = self.local_mar_tool_dir()
-        if not os.path.exists(destination_dir):
-            os.makedirs(destination_dir)
+        self.mkdir_p(destination_dir)
         for element in ('mar', 'mbsdiff'):
             from_url = "/".join((url, element))
             local_dst = os.path.join(destination_dir, element)
-            download.to_file(from_url, local_dst)
-            filesystem.make_executable(local_dst)
+            self.download_file(from_url, file_name=local_dst)
+            self.chmod(local_dst, 0755)
 
     def unpack_previous_mar(self):
         c = self.config
@@ -641,7 +627,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cmd = ['perl', script, self.local_mar_filename()]
         cwd = os.path.join(dirs['abs_mozilla_dir'], 'previous')
         if not os.path.exists(cwd):
-            os.makedirs(cwd)
+            self.mkdir_p(cwd)
         env = self.query_env(partial_env=c.get("update_env"))
         env['MAR'] = os.path.join(self.local_mar_tool_dir(), 'mar')
         env['MBSDIFF'] = os.path.join(self.local_mar_tool_dir(), 'mbsdiff')
