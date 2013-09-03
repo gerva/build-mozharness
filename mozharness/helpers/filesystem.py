@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # ***** BEGIN LICENSE BLOCK *****
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -6,13 +5,6 @@
 # ***** END LICENSE BLOCK *****
 
 import os
-import stat
-
-
-# files utils
-def make_executable(filename):
-    st = os.stat(filename)
-    os.chmod(filename, st.st_mode | stat.S_IEXEC)
 
 
 def find_file(root_dir, filename):
