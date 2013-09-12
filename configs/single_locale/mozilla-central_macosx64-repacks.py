@@ -17,9 +17,7 @@ AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 
 config = {
     "mozilla_dir": MOZILLA_DIR,
-    "app_name": "browser",
-    "brand_name": "Minefield",
-    "snippet_base_url": "http://example.com",
+    "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig" % MOZILLA_DIR,
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
     "repos": [{
