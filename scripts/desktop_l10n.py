@@ -118,11 +118,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "pull",
                 "list-locales",
                 "setup",
-                "generate_partials",
                 "repack",
-                "upload-repacks",
+                "generate_partials",
                 "create-nightly-snippets",
-                "upload-nightly-snippets",
+                "upload-nightly-repacks",
+                "upload-snippets",
                 "summary",
             ],
             require_config_file=require_config_file
@@ -406,12 +406,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         buildid = self.query_buildid()
         self._setup_configure(buildid=buildid)
 
-    def _touch_file(self, file_name, times=None):
-        """touch a file; If times is None, then the file's access and modified
-           times are set to the current time
-        """
-        os.utime(file_name, times)
-
     def repack(self):
         # TODO per-locale logs and reporting.
         self.enable_mock()
@@ -519,12 +513,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                        base_package_name % {'locale': locale})
             # for win repacks
             binary_path = binary_path.replace(os.sep, "/")
-            print "=========================="
-            print "binary_dir:            >{0}<".format(binary_dir)
-            print "base_package_name:     >{0}<".format(base_package_name)
-            print "base_package_name (2): >{0}<".format(base_package_name % {'locale': locale})
-            print "binary_path:           >{0}<".format(binary_path)
-            print "=========================="
             url = self.query_upload_url(locale)
             if not url:
                 self.add_failure(locale, "Can't create a snippet for %s without an upload url." % locale)
@@ -533,7 +521,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.add_failure(locale, message="Errors creating snippet for %s!  Removing snippet directory." % locale)
                 self.rmtree(aus_abs_dir)
                 continue
-            self.run_command(["touch", os.path.join(aus_abs_dir, "partial.txt")])
+            self._touch_file(os.path.join(aus_abs_dir, "partial.txt"))
             success_count += 1
         self.summarize_success_count(success_count, total_count,
                                      message="Created %d of %d snippets successfully.")
