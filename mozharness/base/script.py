@@ -786,6 +786,12 @@ class ScriptMixin(object):
         else:
             return output
 
+    def _touch_file(self, file_name, times=None):
+        """touch a file; If times is None, then the file's access and modified
+           times are set to the current time
+        """
+        os.utime(file_name, times)
+        self.info("Touching %s" % file_name)
 
 def PreScriptRun(func):
     """Decorator for methods that will be called before script execution.
