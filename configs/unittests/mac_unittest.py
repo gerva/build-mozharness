@@ -73,6 +73,7 @@ config = {
         "plain4": ["--total-chunks=5", "--this-chunk=4", "--chunk-by-dir=4"],
         "plain5": ["--total-chunks=5", "--this-chunk=5", "--chunk-by-dir=4"],
         "chrome": ["--chrome"],
+        "browser-chrome": ["--browser-chrome"],
         "browser-chrome-1": ["--total-chunks=3", "--this-chunk=1"],
         "browser-chrome-2": ["--total-chunks=3", "--this-chunk=2"],
         "browser-chrome-3": ["--total-chunks=3", "--this-chunk=3"],
