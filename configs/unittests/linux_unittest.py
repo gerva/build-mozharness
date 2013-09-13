@@ -84,6 +84,7 @@ config = {
         "browser-chrome-1": ["--total-chunks=3", "--this-chunk=1"],
         "browser-chrome-2": ["--total-chunks=3", "--this-chunk=2"],
         "browser-chrome-3": ["--total-chunks=3", "--this-chunk=3"],
+        "chrome": ["--chrome"],
         "a11y": ["--a11y"],
         "plugins": ['--setpref=dom.ipc.plugins.enabled=false',
                     '--setpref=dom.ipc.plugins.enabled.x86_64=false',
@@ -147,6 +148,6 @@ config = {
     "minidump_save_path": "%(abs_work_dir)s/../minidumps",
     "buildbot_max_log_size": 52428800,
     "default_blob_upload_servers": [
-         "http://10.134.48.49:8080",
+        "http://10.134.48.49:8080",
     ],
 }

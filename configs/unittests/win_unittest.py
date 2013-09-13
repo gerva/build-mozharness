@@ -82,6 +82,7 @@ config = {
         "plain3": ["--total-chunks=5", "--this-chunk=3", "--chunk-by-dir=4"],
         "plain4": ["--total-chunks=5", "--this-chunk=4", "--chunk-by-dir=4"],
         "plain5": ["--total-chunks=5", "--this-chunk=5", "--chunk-by-dir=4"],
+        "chrome": ["--chrome"],
         "browser-chrome-1": ["--total-chunks=3", "--this-chunk=1"],
         "browser-chrome-2": ["--total-chunks=3", "--this-chunk=2"],
         "browser-chrome-3": ["--total-chunks=3", "--this-chunk=3"],
@@ -105,7 +106,7 @@ config = {
     },
     "all_xpcshell_suites": {
         "xpcshell": ["--manifest=tests/xpcshell/tests/all-test-dirs.list",
-        "%(abs_app_dir)s/" + XPCSHELL_NAME]
+                     "%(abs_app_dir)s/" + XPCSHELL_NAME]
     },
     "all_cppunittest_suites": {
         "cppunittest": ['tests/cppunittests']
@@ -144,6 +145,6 @@ config = {
     "minidump_save_path": "%(abs_work_dir)s/../minidumps",
     "buildbot_max_log_size": 52428800,
     "default_blob_upload_servers": [
-         "http://10.134.48.49:8080",
+        "http://10.134.48.49:8080",
     ],
 }
