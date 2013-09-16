@@ -89,10 +89,12 @@ config = {
     "buildid_section": 'App',
     "buildid_option": "BuildID",
     "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
-    "mar_bin": "host/bin/mar",
-    "mbsdiff_bin": "host/bin/mbsdiff",
+    "local_mar_tool_dir": "host/bin",
+    "mar_bin": "mar",
+    "mbsdiff_bin": "mbsdiff",
     "candidates_base_url": CANDIDATES_URL,
     "partials_url": "%(base_url)s/%(version)s-candidates",
+    "mar_tools_url": "%(partials_url)s/%(buildnum)s/mar-tools/macosx64",
 
 
     # AUS
