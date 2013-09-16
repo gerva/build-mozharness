@@ -85,6 +85,12 @@ config = {
     "hg_l10n_tag": "default",
     "merge_locales": True,
 
+    #MAR
+    "previous_mar_dir": "previous",
+    "application_ini": "Contents/MacOS/application.ini",
+    "buildid_section": 'App',
+    "buildid_option": "BuildID",
+
     # AUS
     "build_target": "Linux_x86-gcc3",
     "aus_server": AUS_SERVER,

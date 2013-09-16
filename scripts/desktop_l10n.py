@@ -37,7 +37,6 @@ from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
-import mozharness.helpers.filesystem as filesystem
 import mozharness.helpers.html_parse as html_parse
 
 # when running get_output_form_command, pymake has some extra output
@@ -614,13 +613,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         script = os.path.join(dirs['abs_mozilla_dir'], 'tools', 'update-packaging',
                               'unwrap_full_update.pl')
         cmd = ['perl', script, self.local_mar_filename()]
-        cwd = os.path.join(dirs['abs_mozilla_dir'], 'previous')
+
+        cwd = self.get_previous_mar_dir()
         if not os.path.exists(cwd):
             self.mkdir_p(cwd)
         env = self.query_env(partial_env=c.get("update_env"))
         env['MAR'] = os.path.join(self.local_mar_tool_dir(), 'mar')
         env['MBSDIFF'] = os.path.join(self.local_mar_tool_dir(), 'mbsdiff')
-        print env
         self.run_command(cmd,
                          cwd=cwd,
                          env=env,
@@ -630,18 +629,27 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """ parses an ini file and returns the value of option from section"""
         from ConfigParser import SafeConfigParser
         parser = SafeConfigParser()
-        print "ini file: {0}".format(ini_file)
         parser.read(ini_file)
         return parser.get(section, option)
 
     def get_buildid_form_ini(self, ini_file):
-        return self.get_value_from_ini(ini_file, 'App', 'BuildID')
+        c = self.config
+        return self.get_value_from_ini(ini_file,
+                                       c.get('buildid_section'),
+                                       c.get('buildid_option'))
+
+    def get_previous_mar_dir(self):
+        dirs = self.query_abs_dirs()
+        c = self.config
+        return os.path.join(dirs['abs_mozilla_dir'],
+                            c.get('previous_mar_dir'))
 
     def get_previous_application_ini_file(self):
-        dirs = self.query_abs_dirs()
-        mar_dir = os.path.join(dirs['abs_mozilla_dir'], 'previous')
-        print "base dir  = {}".format(mar_dir)
-        return filesystem.find_file(mar_dir, 'application.ini')
+        c = self.config
+        ini_file = os.path.join(self.get_previous_mar_dir(),
+                                c.get('application_ini'))
+        self.info("application.ini file: %s" % ini_file)
+        return ini_file
 
 
 # main {{{
