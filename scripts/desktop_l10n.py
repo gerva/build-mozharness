@@ -543,14 +543,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.get_previous_mar()
         self.unpack_previous_mar()
         p_build_id = self.get_buildid_form_ini(self.get_previous_application_ini_file())
-        print p_build_id
+        self.info("previous build id %s" % p_build_id)
 
-    def local_mar_dir(self):
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], 'dist', 'update')
 
     def local_mar_filename(self):
-        return os.path.join(self.local_mar_dir(), 'previous.mar')
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['local_mar_dir'], 'previous.mar')
 
     def query_latest_version(self):
         """ find latest available version from CANDIDATES_URL """
@@ -581,7 +581,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return "/".join((base_url, remote_filename))
 
     def get_previous_mar(self):
-        self.mkdir_p(self.local_mar_dir())
+        dirs = self.query_abs_dirs()
+        self.mkdir_p(dirs['local_mar_dir'])
         self.download_file(self.previous_mar_url(),
                            self.local_mar_filename())
 
