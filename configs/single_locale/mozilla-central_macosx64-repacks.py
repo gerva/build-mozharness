@@ -95,6 +95,7 @@ config = {
     "candidates_base_url": CANDIDATES_URL,
     "partials_url": "%(base_url)s/%(version)s-candidates",
     "mar_tools_url": "%(partials_url)s/%(buildnum)s/mar-tools/macosx64",
+    "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
 
 
     # AUS

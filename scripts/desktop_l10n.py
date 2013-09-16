@@ -576,7 +576,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         base_url = update_env['EN_US_BINARY_URL']
         platform = update_env['MOZ_PKG_PLATFORM']
         version = self.query_version()
-        remote_filename = "".join(("firefox-", version, ".en-US.", platform, ".complete.mar"))
+        remote_filename = c["complete_mar"] % {'version': version,
+                                               'platform': platform}
+        #remote_filename = "".join(("firefox-", version, ".en-US.", platform, ".complete.mar"))
         return "/".join((base_url, remote_filename))
 
     def get_previous_mar(self):
