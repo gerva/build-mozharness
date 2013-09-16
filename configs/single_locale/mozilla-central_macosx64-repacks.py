@@ -47,10 +47,6 @@ config = {
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "MOZ_SYMBOLS_EXTRA_BUILDID": "mac",
         "MOZ_PKG_PLATFORM": "mac",
-        #"MOZ_PKG_PRETTYNAMES": "1",
-        #"MOZ_MACBUNDLE_NAME": "Firefox%s.app" % MOZ_UPDATE_CHANNEL.title(),
-        #"_APPNAME": "Firefox%s.app" % MOZ_UPDATE_CHANNEL.title(),
-        #"MOZ_APP_DISPLAYNAME": "Firefox%s" % MOZ_UPDATE_CHANNEL.title(),
     },
     "update_env": {
         # just a copy of repack env
@@ -76,6 +72,11 @@ config = {
         "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
         "UPLOAD_TO_TEMP": "1"
     },
+
+    "unpack_env": {
+        "MAR": "%s/host/bin/mar" % OBJDIR,
+        "MBSDIFF": "%s/host/bin/mbsdiff" % OBJDIR,
+    },
     #l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "../l10n",
@@ -90,6 +91,7 @@ config = {
     "application_ini": "Contents/MacOS/application.ini",
     "buildid_section": 'App',
     "buildid_option": "BuildID",
+    "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
 
     # AUS
     "build_target": "Linux_x86-gcc3",

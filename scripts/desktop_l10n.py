@@ -610,8 +610,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         # find /tools dir from configuration ???
-        script = os.path.join(dirs['abs_mozilla_dir'], 'tools', 'update-packaging',
-                              'unwrap_full_update.pl')
+        script = os.path.join(dirs['abs_mozilla_dir'],
+                              c.get('unpack_script'))
+        # 'tools', 'update-packaging',
+        #                      'unwrap_full_update.pl')
         cmd = ['perl', script, self.local_mar_filename()]
 
         cwd = self.get_previous_mar_dir()
