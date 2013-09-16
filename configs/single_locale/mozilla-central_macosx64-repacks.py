@@ -73,10 +73,6 @@ config = {
         "UPLOAD_TO_TEMP": "1"
     },
 
-    "unpack_env": {
-        "MAR": "%s/host/bin/mar" % OBJDIR,
-        "MBSDIFF": "%s/host/bin/mbsdiff" % OBJDIR,
-    },
     #l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "../l10n",
@@ -92,6 +88,8 @@ config = {
     "buildid_section": 'App',
     "buildid_option": "BuildID",
     "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
+    "mar_bin": "host/bin/mar",
+    "mbsdiff_bin": "host/bin/mbsdiff",
 
     # AUS
     "build_target": "Linux_x86-gcc3",

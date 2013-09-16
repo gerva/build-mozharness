@@ -619,9 +619,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cwd = self.get_previous_mar_dir()
         if not os.path.exists(cwd):
             self.mkdir_p(cwd)
-        env = self.query_env(partial_env=c.get("update_env"))
-        env['MAR'] = os.path.join(self.local_mar_tool_dir(), 'mar')
-        env['MBSDIFF'] = os.path.join(self.local_mar_tool_dir(), 'mbsdiff')
+        #env = self.query_env(partial_env=c.get("unpack_env"))
+        env = {}
+        env['MAR'] = os.path.join(dirs['abs_objdir'], c.get('mar_bin'))
+        env['MBSDIFF'] = os.path.join(dirs['abs_objdir'], c.get('mbsdiff_bin'))
+        #env['MAR'] = os.path.join(self.local_mar_tool_dir(), 'mar')
+        #env['MBSDIFF'] = os.path.join(self.local_mar_tool_dir(), 'mbsdiff')
         self.run_command(cmd,
                          cwd=cwd,
                          env=env,
