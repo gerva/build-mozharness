@@ -14,6 +14,7 @@ AUS_USER = "ffxbld"
 AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
 AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
+CANDIDATES_URL = "https://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 
 config = {
     "mozilla_dir": MOZILLA_DIR,
@@ -56,7 +57,7 @@ config = {
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "MOZ_SYMBOLS_EXTRA_BUILDID": "mac",
         "MOZ_PKG_PLATFORM": "mac",
-        "CANDIDATES_URL": "https://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
+        "CANDIDATES_URL": CANDIDATES_URL,
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
@@ -90,6 +91,9 @@ config = {
     "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
     "mar_bin": "host/bin/mar",
     "mbsdiff_bin": "host/bin/mbsdiff",
+    "candidates_base_url": CANDIDATES_URL,
+    "partials_url": "%(base_url)s/%(version)s-candidates",
+
 
     # AUS
     "build_target": "Linux_x86-gcc3",

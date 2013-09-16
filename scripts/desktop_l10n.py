@@ -591,13 +591,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def get_mar_tools(self):
         c = self.config
-        update_env = self.query_env(partial_env=c.get("update_env"))
-        base_url = update_env['CANDIDATES_URL']
+        #update_env = self.query_env(partial_env=c.get("update_env"))
         version = self.query_latest_version()  # self.latest_version() ??
-        partial_url = "/".join((base_url, "{0}-candidates".format(version)))
-        buildnum = self.query_buildnumber(partial_url)
+        #partials_url = "/".join((base_url, "{0}-candidates".format(version)))
+        partials_url = c["partials_url"] % {'base_url': c.get('candidates_base_url'),
+                                            'version': version}
+        buildnum = self.query_buildnumber(partials_url)
         # TODO remove macosx64 hardcoded value, get if from config
-        url = "/".join((partial_url, buildnum, 'mar-tools', 'macosx64'))
+        url = "/".join((partials_url, buildnum, 'mar-tools', 'macosx64'))
         destination_dir = self.local_mar_tool_dir()
         self.mkdir_p(destination_dir)
         for element in ('mar', 'mbsdiff'):
@@ -609,22 +610,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def unpack_previous_mar(self):
         c = self.config
         dirs = self.query_abs_dirs()
-        # find /tools dir from configuration ???
         script = os.path.join(dirs['abs_mozilla_dir'],
                               c.get('unpack_script'))
-        # 'tools', 'update-packaging',
-        #                      'unwrap_full_update.pl')
         cmd = ['perl', script, self.local_mar_filename()]
-
         cwd = self.get_previous_mar_dir()
         if not os.path.exists(cwd):
             self.mkdir_p(cwd)
-        #env = self.query_env(partial_env=c.get("unpack_env"))
         env = {}
         env['MAR'] = os.path.join(dirs['abs_objdir'], c.get('mar_bin'))
         env['MBSDIFF'] = os.path.join(dirs['abs_objdir'], c.get('mbsdiff_bin'))
-        #env['MAR'] = os.path.join(self.local_mar_tool_dir(), 'mar')
-        #env['MBSDIFF'] = os.path.join(self.local_mar_tool_dir(), 'mbsdiff')
         self.run_command(cmd,
                          cwd=cwd,
                          env=env,
