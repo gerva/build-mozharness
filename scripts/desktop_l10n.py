@@ -398,12 +398,17 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # if checkout updates CLOBBER file with a newer timestamp,
         # next make -f client.mk configure  will delete archives
         # downloaded with make wget_en_US, so just touch CLOBBER file
-        clobber_file = os.path.join(dirs['abs_objdir'], 'CLOBBER')
+        clobber_file = self.clobber_file()
         if os.path.exists(clobber_file):
             self._touch_file(clobber_file)
         # Configure again since the hg update may have invalidated it.
         buildid = self.query_buildid()
         self._setup_configure(buildid=buildid)
+
+    def clobber_file(self):
+        c = self.config
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['abs_objdir'], c.get('clobber_file'))
 
     def repack(self):
         # TODO per-locale logs and reporting.
@@ -552,7 +557,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return os.path.join(dirs['local_mar_dir'], 'previous.mar')
 
     def query_latest_version(self):
-        """ find latest available version from CANDIDATES_URL """
+        """ find latest available version from candidates_base_url """
         c = self.config
         url = c.get('candidates_base_url')
         temp_out = tempfile.NamedTemporaryFile(delete=False)
@@ -571,7 +576,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def previous_mar_url(self):
         c = self.config
         update_env = self.query_env(partial_env=c.get("update_env"))
-        #TODO nightly is hardcoded here... fix it!!
+        # why from env?
         base_url = update_env['EN_US_BINARY_URL']
         platform = update_env['MOZ_PKG_PLATFORM']
         version = self.query_version()
@@ -593,14 +598,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def get_mar_tools(self):
         c = self.config
-        #update_env = self.query_env(partial_env=c.get("update_env"))
         version = self.query_latest_version()  # self.latest_version() ??
-        #partials_url = "/".join((base_url, "{0}-candidates".format(version)))
         partials_url = c["partials_url"] % {'base_url': c.get('candidates_base_url'),
                                             'version': version}
         buildnum = self.query_buildnumber(partials_url)
-        # TODO remove macosx64 hardcoded value, get if from config
-        # url = "/".join((partials_url, buildnum, 'mar-tools', 'macosx64'))
         url = c["mar_tools_url"] % {'partials_url': partials_url,
                                     'buildnum': buildnum}
         destination_dir = self.local_mar_tool_dir()
