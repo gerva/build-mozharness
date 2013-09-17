@@ -554,8 +554,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def query_latest_version(self):
         """ find latest available version from CANDIDATES_URL """
         c = self.config
-        update_env = self.query_env(partial_env=c.get("update_env"))
-        url = update_env['CANDIDATES_URL']
+        url = c.get('candidates_base_url')
         temp_out = tempfile.NamedTemporaryFile(delete=False)
         self.download_file(url, temp_out.name)
         version = html_parse.get_last_version_number(temp_out.name)
