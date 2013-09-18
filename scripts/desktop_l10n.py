@@ -368,23 +368,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.copyfile(os.path.join(dirs['abs_work_dir'], c['mozconfig']),
                       mozconfig_path)
         hg = self.query_exe("hg")
-        make = self.query_exe("make", return_type="list")
         # log the content of mozconfig
         with open(mozconfig_path, 'r') as f:
             for line in f:
                 self.info(line.strip())
         env = self.query_repack_env()
         self._setup_configure()
-        self.run_command(make + ["wget-en-US"],
-                         cwd=dirs['abs_locales_dir'],
-                         env=env,
-                         error_list=MakefileErrorList,
-                         halt_on_failure=True)
-        self.run_command(make + ["unpack"],
-                         cwd=dirs['abs_locales_dir'],
-                         env=env,
-                         error_list=MakefileErrorList,
-                         halt_on_failure=True)
+        self.make_wget_en_US()
+        self.make_unpack()
         revision = self.query_revision()
         if not revision:
             self.fatal("Can't determine revision!")
@@ -405,6 +396,42 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         buildid = self.query_buildid()
         self._setup_configure(buildid=buildid)
 
+    def _make(self, target, cwd, env, error_list=MakefileErrorList,
+              halt_on_failure=True, return_type="list", silent=False):
+        make = self.query_exe("make", return_type=return_type)
+        return self.run_command(make + target,
+                                cwd=cwd,
+                                env=env,
+                                error_list=error_list,
+                                halt_on_failure=halt_on_failure)
+
+    def make_unpack(self):
+        env = self.query_repack_env()
+        dirs = self.query_abs_dirs()
+        cwd = dirs['abs_locales_dir']
+        return self._make(target=["unpack"], cwd=cwd, env=env)
+
+    def make_wget_en_US(self):
+        env = self.query_repack_env()
+        dirs = self.query_abs_dirs()
+        cwd = dirs['abs_locales_dir']
+        return self._make(target=["wget-en-US"], cwd=cwd, env=env)
+
+    def make_installers(self, locale):
+        env = self.query_repack_env()
+        dirs = self.query_abs_dirs()
+        cwd = os.path.join(dirs['abs_locales_dir'])
+        target = ["installers-%s" % locale]
+        return self._make(target=target, cwd=cwd,
+                          env=env, halt_on_failure=False)
+
+    def make_complete_mar(self):
+        dirs = self.query_abs_dirs()
+        env = self.query_repack_env()
+        cmd = os.path.join(dirs['abs_objdir'], 'tools', 'update-packaging')
+        if self._make(target=['-C', cmd], cwd=dirs['abs_mozilla_dir'], env=env):
+            self.fatal("error creating complete mar file")
+
     def clobber_file(self):
         c = self.config
         dirs = self.query_abs_dirs()
@@ -413,13 +440,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def repack(self):
         # TODO per-locale logs and reporting.
         self.enable_mock()
-        #c = self.config
-        dirs = self.query_abs_dirs()
         locales = self.query_locales()
-        make = self.query_exe("make", return_type="list")
-        repack_env = self.query_repack_env()
-        #base_package_name = self.query_base_package_name()
-        #base_package_dir = os.path.join(dirs['abs_objdir'], 'dist')
         success_count = total_count = 0
         for locale in locales:
             total_count += 1
@@ -427,11 +448,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if result:
                 self.add_failure(locale, message="%s failed in compare-locales!" % locale)
                 continue
-            if self.run_command(make + ["installers-%s" % locale],
-                                cwd=os.path.join(dirs['abs_locales_dir']),
-                                env=repack_env,
-                                error_list=MakefileErrorList,
-                                halt_on_failure=False):
+            if self.make_installers(locale):
                 self.add_failure(locale, message="%s failed in make installers-%s!" % (locale, locale))
             else:
                 success_count += 1
@@ -543,6 +560,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.return_code += 1
 
     def generate_partials(self):
+        self.make_complete_mar()
         self.get_mar_tools()
         self.get_previous_mar()
         self.unpack_previous_mar()
@@ -553,9 +571,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return os.path.join(dirs['abs_objdir'], 'dist', 'update')
 
     def delete_pgc_files(self):
-        for f in self.pgc_files():
-            self.info("removing %f" % f)
-            #os.remove(f)
+        for d in (self.get_previous_mar_dir(), self.get_current_mar_dir()):
+            for f in self.pgc_files(d):
+                self.info("removing %f" % f)
+                #os.remove(f)
 
     def local_mar_filename(self):
         dirs = self.query_abs_dirs()
@@ -617,13 +636,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.download_file(from_url, file_name=local_dst)
             self.chmod(local_dst, 0755)
 
-    def unpack_previous_mar(self):
+    def unpack_mar(self, dst_dir):
         c = self.config
         dirs = self.query_abs_dirs()
         script = os.path.join(dirs['abs_mozilla_dir'],
                               c.get('unpack_script'))
         cmd = ['perl', script, self.local_mar_filename()]
-        cwd = self.get_previous_mar_dir()
+        cwd = dst_dir
         if not os.path.exists(cwd):
             self.mkdir_p(cwd)
         env = {}
@@ -666,9 +685,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.info("application.ini file: %s" % ini_file)
         return ini_file
 
-    def pgc_files(self):
+    def pgc_files(self, base_dir):
         pgc_files = []
-        for dirpath, files, dirs in os.walk(self.get_previous_mar_dir()):
+        for dirpath, files, dirs in os.walk(base_dir):
             for f in files:
                 if f.endswith('.pgc'):
                     pgc_files.append(os.path.join(dirpath, f))
