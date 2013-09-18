@@ -548,9 +548,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.unpack_previous_mar()
         p_build_id = self.get_buildid_form_ini(self.get_previous_application_ini_file())
         self.info("previous build id %s" % p_build_id)
-
+        self.delete_pgc_files()
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], 'dist', 'update')
+
+    def delete_pgc_files(self):
+        for f in self.pgc_files():
+            self.info("removing %f" % f)
+            #os.remove(f)
 
     def local_mar_filename(self):
         dirs = self.query_abs_dirs()
@@ -643,10 +648,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                        c.get('buildid_option'))
 
     def get_previous_mar_dir(self):
-        dirs = self.query_abs_dirs()
         c = self.config
-        return os.path.join(dirs['abs_mozilla_dir'],
-                            c.get('previous_mar_dir'))
+        return os.path.join(self.get_abs_dir(), c.get('previous_mar_dir'))
+
+    def get_current_mar_dir(self):
+        c = self.config
+        return os.path.join(self.get_abs_dir(), c.get('current_mar_dir'))
+
+    def get_abs_dir(self):
+        dirs = self.query_abs_dirs()
+        return dirs['abs_mozilla_dir']
 
     def get_previous_application_ini_file(self):
         c = self.config
@@ -655,6 +666,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.info("application.ini file: %s" % ini_file)
         return ini_file
 
+    def pgc_files(self):
+        pgc_files = []
+        for dirpath, files, dirs in os.walk(self.get_previous_mar_dir()):
+            for f in files:
+                if f.endswith('.pgc'):
+                    pgc_files.append(os.path.join(dirpath, f))
+        return pgc_files
 
 # main {{{
 if __name__ == '__main__':

@@ -86,6 +86,7 @@ config = {
 
     #MAR
     "previous_mar_dir": "previous",
+    "current_mar_dir": "current",
     "application_ini": "Contents/MacOS/application.ini",
     "buildid_section": 'App',
     "buildid_option": "BuildID",
