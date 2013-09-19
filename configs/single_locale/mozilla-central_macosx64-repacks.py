@@ -2,7 +2,7 @@ BRANCH = "mozilla-central"
 MOZILLA_DIR = BRANCH
 HG_SHARE_BASE_DIR = "/builds/hg-shared"
 EN_US_BINARY_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central"
-OBJDIR = "obj-l10n"
+OBJDIR = "obj-firefox"
 MOZ_UPDATE_CHANNEL = "nightly"
 STAGE_SERVER = "dev-stage01.build.sjc1.mozilla.com"
 #STAGE_SERVER = "stage.mozilla.org"
@@ -46,8 +46,9 @@ config = {
         "EN_US_BINARY_URL": EN_US_BINARY_URL,
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
-        "MOZ_SYMBOLS_EXTRA_BUILDID": "mac",
+        "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
         "MOZ_PKG_PLATFORM": "mac",
+        "IS_NIGHTLY": "yes",
     },
     "update_env": {
         # just a copy of repack env
@@ -55,9 +56,10 @@ config = {
         "EN_US_BINARY_URL": EN_US_BINARY_URL,
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
-        "MOZ_SYMBOLS_EXTRA_BUILDID": "mac",
+        "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
         "MOZ_PKG_PLATFORM": "mac",
         "CANDIDATES_URL": CANDIDATES_URL,
+        "IS_NIGHTLY": "yes",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
@@ -87,6 +89,7 @@ config = {
     #MAR
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
+    "current_work_mar_dir": "current.work",
     "application_ini": "Contents/MacOS/application.ini",
     "buildid_section": 'App',
     "buildid_option": "BuildID",

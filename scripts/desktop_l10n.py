@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import shutil
 
 try:
     import simplejson as json
@@ -560,6 +561,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.return_code += 1
 
     def generate_partials(self):
+        self.delete_mar_dirs()
+        self.create_mar_dirs()
         self.make_complete_mar()
         self.get_mar_tools()
         self.get_previous_mar()
@@ -614,6 +617,28 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.mkdir_p(dirs['local_mar_dir'])
         self.download_file(self.previous_mar_url(),
                            self.local_mar_filename())
+
+    def create_mar_dirs(self):
+        for d in (self.get_previous_mar_dir(),
+                  self.get_current_mar_dir()):
+            self.info("creating: %s" % d)
+            self.mkdir_p(d)
+
+    def delete_mar_dirs(self):
+        for d in (self.get_previous_mar_dir(),
+                  self.get_current_mar_dir(),
+                  self.get_current_work_mar_dir()):
+            self.info("deleting: %s" % d)
+            shutil.rmtree(d)
+
+    def rm_previous_mar(self):
+        pass
+
+    def make_previous_mar(self):
+        pass
+
+    def make_upload(self):
+        pass
 
     def local_mar_tool_dir(self):
         c = self.config
@@ -673,6 +698,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def get_current_mar_dir(self):
         c = self.config
         return os.path.join(self.get_abs_dir(), c.get('current_mar_dir'))
+
+    def get_current_work_mar_dir(self):
+        c = self.config
+        return os.path.join(self.get_abs_dir(), c.get('current_work_mar_dir'))
 
     def get_abs_dir(self):
         dirs = self.query_abs_dirs()
