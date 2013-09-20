@@ -629,7 +629,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                   self.get_current_mar_dir(),
                   self.get_current_work_mar_dir()):
             self.info("deleting: %s" % d)
-            shutil.rmtree(d)
+            if os.path.exists(d):
+                shutil.rmtree(d)
 
     def rm_previous_mar(self):
         pass
