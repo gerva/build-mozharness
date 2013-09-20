@@ -410,6 +410,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
         cwd = dirs['abs_locales_dir']
+        self.info("REMOVEME: cwd = %s" % cwd)
         return self._make(target=["unpack"], cwd=cwd, env=env)
 
     def make_wget_en_US(self):
@@ -694,19 +695,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def get_previous_mar_dir(self):
         c = self.config
-        return os.path.join(self.get_abs_dir(), c.get('previous_mar_dir'))
+        return os.path.join(self.get_objdir(), c.get('previous_mar_dir'))
 
     def get_current_mar_dir(self):
         c = self.config
-        return os.path.join(self.get_abs_dir(), c.get('current_mar_dir'))
+        return os.path.join(self.get_objdir(), c.get('current_mar_dir'))
 
     def get_current_work_mar_dir(self):
         c = self.config
-        return os.path.join(self.get_abs_dir(), c.get('current_work_mar_dir'))
+        return os.path.join(self.get_objdir(), c.get('current_work_mar_dir'))
 
-    def get_abs_dir(self):
+    def get_objdir(self):
         dirs = self.query_abs_dirs()
-        return dirs['abs_mozilla_dir']
+        return dirs['abs_obj_dir']
 
     def get_previous_application_ini_file(self):
         c = self.config
