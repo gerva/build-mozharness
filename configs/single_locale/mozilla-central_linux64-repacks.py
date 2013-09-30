@@ -127,7 +127,7 @@ config = {
      'gstreamer-devel', 'gstreamer-plugins-base-devel',
      'freetype-2.3.11-6.el6_1.8.x86_64',
      'freetype-devel-2.3.11-6.el6_1.8.x86_64', ],
-    'mock_copyin_files': [
+    'mock_files': [
         ('/home/cltbld/.ssh', '/home/mock_mozilla/.ssh'),
         ('/home/cltbld/.hgrc', '/builds/.hgrc'),
     ],
