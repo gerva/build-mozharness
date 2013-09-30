@@ -23,17 +23,22 @@ config = {
     "snippet_base_url": "http://example.com",
     "mozconfig": "%s/browser/config/mozconfigs/linux64/l10n-mozconfig" % MOZILLA_DIR,
     "repos": [{
-        "vcs": "hgtool",
+        "vcs": "hg",
         "repo": "http://hg.mozilla.org/mozilla-central",
         "revision": "default",
         "dest": MOZILLA_DIR,
     }, {
-        "vcs": "hgtool",
+        "vcs": "hg",
         "repo": "http://hg.mozilla.org/build/buildbot-configs",
         "revision": "default",
         "dest": "buildbot-configs"
     }, {
-        "vcs": "hgtool",
+        "vcs": "hg",
+        "repo": "http://hg.mozilla.org/build/tools",
+        "revision": "default",
+        "dest": "tools",
+    }, {
+        "vcs": "hg",
         "repo": "http://hg.mozilla.org/build/compare-locales",
         "revision": "RELEASE_AUTOMATION"
     }],
@@ -41,7 +46,19 @@ config = {
         "MOZ_OBJDIR": OBJDIR,
         "EN_US_BINARY_URL": EN_US_BINARY_URL,
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
-        "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL
+        "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
+        "IS_NIGHTLY": "yes",
+    },
+    "update_env": {
+        # just a copy of repack env
+        "MOZ_OBJDIR": OBJDIR,
+        "EN_US_BINARY_URL": EN_US_BINARY_URL,
+        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
+        "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
+        "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
+        "MOZ_PKG_PLATFORM": "mac",
+        "CANDIDATES_URL": CANDIDATES_URL,
+        "IS_NIGHTLY": "yes",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
@@ -65,6 +82,25 @@ config = {
     "hg_l10n_base": "http://hg.mozilla.org/l10n-central",
     "hg_l10n_tag": "default",
     "merge_locales": True,
+    "clobber_file": 'CLOBBER',
+
+    #MAR
+    "previous_mar_dir": "previous",
+    "current_mar_dir": "current",
+    "current_work_mar_dir": "current.work",
+    # this need to be fixed...
+    "application_ini": "Contents/MacOS/application.ini",
+    "buildid_section": 'App',
+    "buildid_option": "BuildID",
+    "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
+    "local_mar_tool_dir": "host/bin",
+    "mar_bin": "mar",
+    "mbsdiff_bin": "mbsdiff",
+    "candidates_base_url": CANDIDATES_URL,
+    "partials_url": "%(base_url)s/%(version)s-candidates",
+    "mar_tools_url": "%(partials_url)s/%(buildnum)s/mar-tools/macosx64",
+    "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
+
 
     # AUS
     "build_target": "Linux_x86-gcc3",
