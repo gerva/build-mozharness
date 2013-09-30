@@ -336,30 +336,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _setup_configure(self, buildid=None):
         self.enable_mock()
-        c = self.config
-        dirs = self.query_abs_dirs()
-        env = self.query_repack_env()
-        configure_cmd = ["-f", "client.mk", "configure"]
-        export_cmd = ["export", 'MOZ_BUILD_DATE=%s' % str(buildid)]
-        make = self.query_exe("make", return_type="list")
-        if self.run_command(make + configure_cmd,
-                            cwd=dirs['abs_mozilla_dir'],
-                            env=env,
-                            error_list=MakefileErrorList):
+        if self.make_configure():
             self.fatal("Configure failed!")
-        for make_dir in c.get('make_dirs', []):
-            cwd = os.path.join(dirs['abs_objdir'], make_dir)
-            make_args = []
-            self.run_command(make + make_args,
-                             cwd=cwd,
-                             env=env,
-                             error_list=MakefileErrorList,
-                             halt_on_failure=True)
-            if buildid:
-                self.run_command(make + export_cmd,
-                                 cwd=cwd,
-                                 env=env,
-                                 error_list=MakefileErrorList)
+        self.make_dirs()
+        self.make_export(buildid)
 
     def setup(self):
         self.enable_mock()
@@ -407,6 +387,30 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                 env=env,
                                 error_list=error_list,
                                 halt_on_failure=halt_on_failure)
+
+    def make_configure(self):
+        env = self.query_repack_env()
+        dirs = self.query_abs_dirs()
+        cwd = dirs['abs_mozilla_dir']
+        target = ["-f", "client.mk", "configure"]
+        return self._make(target=target, cwd=cwd, env=env)
+
+    def make_dirs(self):
+        c = self.config
+        env = self.query_repack_env()
+        dirs = self.query_abs_dirs()
+        target = []
+        for make_dir in c.get('make_dirs', []):
+            cwd = os.path.join(dirs['abs_objdir'], make_dir)
+            self._make(target=target, cwd=cwd, env=env, halt_on_failure=True)
+
+    def make_export(self, buildid):
+        if buildid is None:
+            return
+        env = self.query_repack_env()
+        dirs = self.query_abs_dirs()
+        target = ["export", 'MOZ_BUILD_DATE=%s' % str(buildid)]
+        return self._make(target=target, cwd=cwd, env=env)
 
     def make_unpack(self):
         env = self.query_repack_env()
