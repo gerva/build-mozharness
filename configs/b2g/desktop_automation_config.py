@@ -1,10 +1,9 @@
-# This is a template config file for b2g emulator unittest testing
+# This is a template config file for b2g desktop unittest production.
 
 config = {
-    # mozharness script options
-    "xre_url": "http://runtime-binaries.pvt.build.mozilla.org/tooltool/sha512/d4a0da54e75c27cd2f535e66b586f119ef08b3bde4a9eee03662d296b3434189c542c0a7e7a75954030c04396a9823e22e1f884f5d87c0f4017944cd50ff38de",
-
-    # mozharness configuration
+    # mozharness options
+    "application": "b2g",
+    "xre_url": "http://runtime-binaries.pvt.build.mozilla.org/tooltool/sha512/cba263cef46b57585334f4b71fbbd15ce740fa4b7260571a9f7a76f8f0d6b492b93b01523cb01ee54697cc9b1de1ccc8e89ad64da95a0ea31e0f119fe744c09f",
     "tooltool_servers": ["http://runtime-binaries.pvt.build.mozilla.org/tooltool/"],
 
     "exes": {
@@ -31,10 +30,24 @@ config = {
     "default_actions": [
         'clobber',
         'read-buildbot-config',
-        'pull',
         'download-and-extract',
         'create-virtualenv',
         'install',
         'run-tests',
+    ],
+    "download_symbols": "ondemand",
+    "download_minidump_stackwalk": True,
+
+    # test harness options
+    "run_file_names": {
+        "mochitest": "runtestsb2g.py",
+    },
+
+    "mochitest_options": [
+        "--console-level=INFO", "--test-manifest=%(test_manifest)s",
+        "--total-chunks=%(total_chunks)s", "--this-chunk=%(this_chunk)s",
+        "--profile=%(gaia_profile)s", "--app=%(application)s", "--desktop",
+        "--utility-path=%(utility_path)s", "--xre-path=%(utility_path)s",
+        "--certificate-path=%(cert_path)s",
     ],
 }

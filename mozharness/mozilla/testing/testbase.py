@@ -23,38 +23,37 @@ INSTALLER_SUFFIXES = ('.tar.bz2', '.zip', '.dmg', '.exe', '.apk', '.tar.gz')
 
 testing_config_options = [
     [["--installer-url"],
-    {"action": "store",
+     {"action": "store",
      "dest": "installer_url",
      "default": None,
      "help": "URL to the installer to install",
-    }],
+      }],
     [["--installer-path"],
-    {"action": "store",
+     {"action": "store",
      "dest": "installer_path",
      "default": None,
      "help": "Path to the installer to install.  This is set automatically if run with --download-and-extract.",
-    }],
+      }],
     [["--binary-path"],
-    {"action": "store",
+     {"action": "store",
      "dest": "binary_path",
      "default": None,
      "help": "Path to installed binary.  This is set automatically if run with --install.",
-    }],
+      }],
     [["--test-url"],
-    {"action":"store",
+     {"action":"store",
      "dest": "test_url",
      "default": None,
      "help": "URL to the zip file containing the actual tests",
-    }],
+      }],
     [["--download-symbols"],
-    {"action": "store",
+     {"action": "store",
      "dest": "download_symbols",
      "type": "choice",
      "choices": ['ondemand', 'true'],
      "help": "Download and extract crash reporter symbols.",
-    }],
+      }],
 ] + copy.deepcopy(virtualenv_config_options)
-
 
 
 # TestingMixin {{{1
@@ -72,8 +71,33 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
     tree_config = ReadOnlyDict({})
     symbols_url = None
     symbols_path = None
+    jsshell_url = None
     minidump_stackwalk_path = None
     default_tools_repo = 'http://hg.mozilla.org/build/tools'
+
+    def query_jsshell_url(self):
+        """
+        Attempt to determine the url of the js shell package given
+        the installer url.
+        """
+        if self.jsshell_url:
+            return self.jsshell_url
+        if not self.installer_url:
+            self.fatal("Can't figure out jsshell without an installer_url!")
+
+        last_slash = self.installer_url.rfind('/')
+        base_url = self.installer_url[:last_slash]
+
+        for suffix in INSTALLER_SUFFIXES:
+            if self.installer_url.endswith(suffix):
+                no_suffix = self.installer_url[:-len(suffix)]
+                last_dot = no_suffix.rfind('.')
+                pf = no_suffix[last_dot + 1:]
+
+                self.jsshell_url = base_url + '/jsshell-' + pf + '.zip'
+                return self.jsshell_url
+        else:
+            self.fatal("Can't figure out jsshell from installer_url %s!" % self.installer_url)
 
     def query_symbols_url(self):
         if self.symbols_url:
@@ -102,18 +126,21 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
                 # Bug 868490 - Only require exactly two files if require_test_zip;
                 # otherwise accept either 1 or 2, since we'll be getting a
                 # test_zip url that we don't need.
-                expected_length = [1, 2]
+                expected_length = [1, 2, 3]
                 if c.get("require_test_zip"):
-                    expected_length = [2]
+                    expected_length = [2, 3]
                 actual_length = len(files)
                 if actual_length not in expected_length:
                     self.fatal("Unexpected number of files in buildbot config %s.\nExpected these number(s) of files: %s, but got: %d" %
                                (c['buildbot_json_path'], str(expected_length), actual_length))
                 for f in files:
-                    if f['name'].endswith('tests.zip'): # yuk
+                    if f['name'].endswith('tests.zip'):  # yuk
                         # str() because of unicode issues on mac
                         self.test_url = str(f['name'])
                         self.info("Found test url %s." % self.test_url)
+                    elif f['name'].endswith('crashreporter-symbols.zip'):  # yuk
+                        self.symbols_url = str(f['name'])
+                        self.info("Found symbols url %s." % self.symbols_url)
                     else:
                         self.installer_url = str(f['name'])
                         self.info("Found installer url %s." % self.installer_url)
@@ -132,7 +159,6 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
                 self.fatal("%s!" % (message % ('+'.join(missing))))
         else:
             self.fatal("self.buildbot_config isn't set after running read_buildbot_config!")
-
 
     def preflight_download_and_extract(self):
         message = ""
@@ -223,7 +249,7 @@ You can set this by:
         dirs = self.query_abs_dirs()
         self.symbols_url = self.query_symbols_url()
         if self.config.get('download_symbols') == 'ondemand':
-            self.symbols_path=self.symbols_url
+            self.symbols_path = self.symbols_url
             return
         if not self.symbols_path:
             self.symbols_path = os.path.join(dirs['abs_work_dir'], 'symbols')
@@ -247,7 +273,6 @@ You can set this by:
         self._download_installer()
         if self.config.get('download_symbols'):
             self._download_and_extract_symbols()
-
 
     # create_virtualenv is in VirtualenvMixin.
 

@@ -16,7 +16,8 @@ config = {
         "crashtest": "remotereftest.py",
         "jsreftest": "remotereftest.py",
         "robocop": "runtestsremote.py",
-        "xpcshell": "remotexpcshelltests.py"
+        "xpcshell": "remotexpcshelltests.py",
+        "jittest": "jit_test.py"
     },
     "hostutils_url":  "http://bm-remote.build.mozilla.org/tegra/tegra-host-utils.Linux.742597.zip",
     "verify_path":  "/builds/sut_tools/verify.py",
@@ -29,12 +30,12 @@ config = {
         "--http-port=%(http_port)s", "--ssl-port=%(ssl_port)s",
         "--run-only-tests=android.json", "--symbols-path=%(symbols_path)s"
     ],
-    # reftests other than crashtests or jsreftests not currently run on pandas
     "reftest_options": [
         "--deviceIP=%(device_ip)s",
         "--xre-path=../hostutils/xre",
         "--utility-path=../hostutils/bin",
-        "--app=%(app_name)s", "--ignore-window-size",
+        "--app=%(app_name)s",
+        "--ignore-window-size", "--bootstrap",
         "--http-port=%(http_port)s", "--ssl-port=%(ssl_port)s",
         "--symbols-path=%(symbols_path)s",
         "reftest/tests/layout/reftests/reftest.list"
@@ -80,6 +81,14 @@ config = {
         "--no-logfiles",
         "--symbols-path=%(symbols_path)s"
     ],
+    "jittest_options": [
+        "bin/js",
+        "--remote",
+        "--deviceTransport=sut",
+        "--deviceIP=%(device_ip)s",
+        "--localLib=../tests/bin",
+        "--tinderbox"
+     ],
     "all_mochitest_suites": {
         "mochitest-1": ["--total-chunks=8", "--this-chunk=1"],
         "mochitest-2": ["--total-chunks=8", "--this-chunk=2"],
@@ -92,11 +101,14 @@ config = {
         "mochitest-gl": ["--test-path", "content/canvas/test/webgl"],
     },
     "all_reftest_suites": {
-        "reftest-1": ["--total-chunks=5", "--this-chunk=1"],
-        "reftest-2": ["--total-chunks=5", "--this-chunk=2"],
-        "reftest-3": ["--total-chunks=5", "--this-chunk=3"],
-        "reftest-4": ["--total-chunks=5", "--this-chunk=4"],
-        "reftest-5": ["--total-chunks=5", "--this-chunk=5"],
+        "reftest-1": ["--total-chunks=8", "--this-chunk=1"],
+        "reftest-2": ["--total-chunks=8", "--this-chunk=2"],
+        "reftest-3": ["--total-chunks=8", "--this-chunk=3"],
+        "reftest-4": ["--total-chunks=8", "--this-chunk=4"],
+        "reftest-5": ["--total-chunks=8", "--this-chunk=5"],
+        "reftest-6": ["--total-chunks=8", "--this-chunk=6"],
+        "reftest-7": ["--total-chunks=8", "--this-chunk=7"],
+        "reftest-8": ["--total-chunks=8", "--this-chunk=8"],
     },
     "all_crashtest_suites": {
         "crashtest": []
@@ -114,6 +126,9 @@ config = {
     },
     "all_xpcshell_suites": {
         "xpcshell": []
+    },
+    "all_jittest_suites": {
+        "jittest": []
     },
     "find_links": [
         "http://repos/python/packages",
@@ -133,8 +148,8 @@ config = {
     "default_actions": [
         'clobber',
         'read-buildbot-config',
-        'create-virtualenv',
         'download-and-extract',
+        'create-virtualenv',
         'request-device',
         'run-test',
         'close-request',

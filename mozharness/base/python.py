@@ -8,6 +8,7 @@
 '''
 
 import os
+import sys
 import traceback
 
 from mozharness.base.script import (
@@ -72,8 +73,9 @@ class VirtualenvMixin(object):
         self._virtualenv_modules = []
         super(VirtualenvMixin, self).__init__(*args, **kwargs)
 
-    def register_virtualenv_module(self, name, url=None, method=None,
-                                   requirements=None, optional=False):
+    def register_virtualenv_module(self, name=None, url=None, method=None,
+                                   requirements=None, optional=False,
+                                   two_pass=False):
         """Register a module to be installed with the virtualenv.
 
         This method can be called up until create_virtualenv() to register
@@ -83,7 +85,7 @@ class VirtualenvMixin(object):
         applied.
         """
         self._virtualenv_modules.append((name, url, method, requirements,
-                                         optional))
+                                         optional, two_pass))
 
     def query_virtualenv_path(self):
         c = self.config
@@ -166,7 +168,8 @@ class VirtualenvMixin(object):
         return package_name.lower() in [package.lower() for package in packages]
 
     def install_module(self, module=None, module_url=None, install_method=None,
-                       requirements=(), optional=False, global_options=[]):
+                       requirements=(), optional=False, global_options=[],
+                       no_deps=False):
         """
         Install module via pip.
 
@@ -196,6 +199,8 @@ class VirtualenvMixin(object):
             pypi_url = c.get("pypi_url")
             if pypi_url:
                 command += ["--pypi-url", pypi_url]
+            if no_deps:
+                command += ["--no-deps"]
             virtualenv_cache_dir = c.get("virtualenv_cache_dir", os.path.join(venv_path, "cache"))
             if virtualenv_cache_dir:
                 command += ["--download-cache", virtualenv_cache_dir]
@@ -238,12 +243,18 @@ class VirtualenvMixin(object):
         # for optional packages.
         success_codes = [0, 1] if optional else [0]
 
+        # If we're only installing a single requirements file, use
+        # the file's directory as cwd, so relative paths work correctly.
+        cwd = dirs['abs_work_dir']
+        if not module and len(requirements) == 1:
+            cwd = os.path.dirname(requirements[0])
+
         # Allow for errors while building modules, but require a
         # return status of 0.
         if self.run_command(command,
                             error_list=VirtualenvErrorList,
                             success_codes=success_codes,
-                            cwd=dirs['abs_work_dir']) != 0:
+                            cwd=cwd) != 0:
             if optional:
                 self.warning("Unable to install optional package %s." %
                              module_url)
@@ -367,8 +378,14 @@ class VirtualenvMixin(object):
                                 requirements=requirements,
                                 global_options=global_options)
 
-        for module, url, method, requirements, optional in \
+        for module, url, method, requirements, optional, two_pass in \
                 self._virtualenv_modules:
+            if two_pass:
+                self.install_module(
+                    module=module, module_url=url,
+                    install_method=method, requirements=requirements or (),
+                    optional=optional, no_deps=True
+                )
             self.install_module(
                 module=module, module_url=url,
                 install_method=method, requirements=requirements or (),
@@ -412,6 +429,12 @@ class ResourceMonitoringMixin(object):
     @PostScriptAction('create-virtualenv')
     def _start_resource_monitoring(self, action, success=None):
         self.activate_virtualenv()
+
+        # Resource Monitor requires Python 2.7, however it's currently optional.
+        # Remove when all machines have had their Python version updated (bug 711299).
+        if sys.version_info[:2] < (2, 7):
+            self.warning('Resource monitoring will not be enabled! Python 2.7+ required.')
+            return
 
         try:
             from mozsystemmonitor.resourcemonitor import SystemResourceMonitor

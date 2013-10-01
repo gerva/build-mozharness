@@ -8,7 +8,6 @@
 import copy
 import getpass
 import os
-import re
 import sys
 import time
 import socket
@@ -16,20 +15,19 @@ import socket
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
-from mozharness.mozilla.buildbot import TBPL_SUCCESS, BuildbotMixin
-from mozharness.base.errors import BaseErrorList
-from mozharness.base.log import INFO, ERROR, FATAL
+from mozharness.mozilla.buildbot import BuildbotMixin
+from mozharness.base.log import INFO, FATAL
 from mozharness.base.python import VirtualenvMixin
 from mozharness.base.vcs.vcsbase import MercurialScript
 from mozharness.mozilla.testing.mozpool import MozpoolMixin
 from mozharness.mozilla.testing.device import SUTDeviceMozdeviceMixin
 from mozharness.mozilla.testing.testbase import TestingMixin, testing_config_options
-from mozharness.mozilla.testing.unittest import DesktopUnittestOutputParser
+from mozharness.mozilla.testing.talos import TalosOutputParser, TalosErrorList
 
-SUITE_CATEGORIES = ['mochitest', 'reftest', 'crashtest', 'jsreftest', 'robocop', 'xpcshell', 'jittest']
+SUITE_CATEGORIES = ['talos', ]
 
 
-class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, BuildbotMixin, SUTDeviceMozdeviceMixin):
+class PandaTalosTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, BuildbotMixin, SUTDeviceMozdeviceMixin):
     test_suites = SUITE_CATEGORIES
     config_options = [
         [["--mozpool-api-url"], {
@@ -59,62 +57,19 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
             "dest": "extra_args",
             "help": "Extra arguments",
         }],
-        [['--mochitest-suite', ], {
+        [['--talos-suite', ], {
             "action": "extend",
-            "dest": "specified_mochitest_suites",
+            "dest": "specified_talos_suites",
             "type": "string",
-            "help": "Specify which mochi suite to run. "
-                    "Suites are defined in the config file.\n"
-                    "Examples: 'all', 'plain1', 'plain5', 'chrome', or 'a11y'"}
-         ],
-        [['--reftest-suite', ], {
-            "action": "extend",
-            "dest": "specified_reftest_suites",
-            "type": "string",
-            "help": "Specify which reftest suite to run. "
-                    "Suites are defined in the config file.\n"
-                    "Examples: 'all', 'crashplan', or 'jsreftest'"}
-         ],
-        [['--crashtest-suite', ], {
-            "action": "extend",
-            "dest": "specified_crashtest_suites",
-            "type": "string",
-            "help": "Specify which crashtest suite to run. "
+            "help": "Specify which talos suite to run. "
                     "Suites are defined in the config file\n."
-                    "Examples: 'crashtest'"}
-         ],
-        [['--jsreftest-suite', ], {
-            "action": "extend",
-            "dest": "specified_jsreftest_suites",
-            "type": "string",
-            "help": "Specify which jsreftest suite to run. "
-                    "Suites are defined in the config file\n."
-                    "Examples: 'jsreftest'"}
-         ],
-        [['--robocop-suite', ], {
-            "action": "extend",
-            "dest": "specified_robocop_suites",
-            "type": "string",
-            "help": "Specify which robocop suite to run. "
-                    "Suites are defined in the config file\n."
-                    "Examples: 'robocop'"}
-         ],
-         [['--xpcshell-suite', ], {
-            "action": "extend",
-            "dest": "specified_xpcshell_suites",
-            "type": "string",
-            "help": "Specify which xpcshell suite to run. "
-                    "Suites are defined in the config file\n."
-                    "Examples: 'xpcshell'"}
-         ],
-         [['--jittest-suite', ], {
-            "action": "extend",
-            "dest": "specified_jittest_suites",
-            "type": "string",
-            "help": "Specify which jittest suite to run. "
-                    "Suites are defined in the config file\n."
-                    "Examples: 'jittest'"}
-         ],
+                    "Examples: 'remote-trobocheck', 'remote-trobocheck2', 'remote-trobopan', 'remote-troboprovider', 'remote-tsvg', 'tpn', 'ts'",
+        }],
+        [["--branch-name"], {
+            "action": "store",
+            "dest": "talos_branch",
+            "help": "Graphserver branch to report to"
+        }],
         [['--run-all-suites', ], {
             "action": "store_true",
             "dest": "run_all_suites",
@@ -130,12 +85,11 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
 
     virtualenv_modules = [
         'mozpoolclient',
-        'mozcrash',
-        {'name': 'mozdevice', 'url': os.path.join('tests', os.path.join('mozbase', 'mozdevice'))}
+        'mozcrash'
     ]
 
     def __init__(self, require_config_file=False):
-        super(PandaTest, self).__init__(
+        super(PandaTalosTest, self).__init__(
             config_options=self.config_options,
             all_actions=['clobber',
                          'read-buildbot-config',
@@ -156,22 +110,21 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
 
         self.mozpool_assignee = self.config.get('mozpool_assignee', getpass.getuser())
         self.request_url = None
-        self.installer_url = self.config.get("installer_url")
         self.test_url = self.config.get("test_url")
         self.mozpool_device = self.config.get("mozpool_device")
-        self.symbols_url = self.config.get('symbols_url')
+        self.talos_branch = self.config.get("talos_branch")
 
     def postflight_read_buildbot_config(self):
-        super(PandaTest, self).postflight_read_buildbot_config()
+        super(PandaTalosTest, self).postflight_read_buildbot_config()
         self.mozpool_device = self.config.get('mozpool_device', self.buildbot_config.get('properties')["slavename"])
         dirs = self.query_abs_dirs()
         #touch the shutdown file
         shutdown_file = os.path.join(dirs['shutdown_dir'], 'shutdown.stamp')
         try:
-            self.info("*** Touching the shutdown file **")
-            open(shutdown_file, 'w').close()
+           self.info("*** Touching the shutdown file **")
+           open(shutdown_file, 'w').close()
         except Exception, e:
-            self.warning("We failed to create the shutdown file: str(%s)" % str(e)) 
+           self.warning("We failed to create the shutdown file: str(%s)" % str(e))
 
     def request_device(self):
         self.retrieve_android_device(b2gbase="")
@@ -180,7 +133,7 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
         if self.run_command(cmd, env=env):
             self.critical("Preparing to abort run due to failed verify check.")
             self.close_request()
-            self.fatal("Dieing due to failing verification")
+            self.fatal("Dying due to failing verification")
         else:
             self.info("Successfully verified the device")
 
@@ -189,6 +142,21 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
         self.info("Current time on device: %s - %s" %
                   (device_time, time.strftime("%x %H:%M:%S", time.gmtime(float(device_time)))))
 
+    def preflight_talos(self, suite_category, suites):
+        """preflight perf config etc"""
+        env = self.query_env(partial_env={'DM_TRANS': "sut", 'TEST_DEVICE': self.mozpool_device})
+        self.info("Running preflight...")
+        preflight_category = "preflight_" + str(suite_category)
+        dirs = self.query_abs_dirs()
+        abs_base_cmd = self._query_abs_base_cmd(preflight_category)
+        cmd = abs_base_cmd[:]
+        replace_dict = {}
+        for suite in suites:
+            for arg in suites[suite]:
+                cmd.append(arg % replace_dict)
+        self._install_app()
+        self.run_command(cmd, dirs['abs_talosdatatalos_dir'], env=env, halt_on_failure=True)
+
     def _run_category_suites(self, suite_category, preflight_run_method=None):
         """run suite(s) to a specific category"""
 
@@ -196,67 +164,33 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
         self.info("Running tests...")
 
         suites = self._query_specified_suites(suite_category)
-        level = INFO
 
         if preflight_run_method:
-            preflight_run_method(suites)
+            preflight_run_method(suite_category, suites)
         if suites:
             self.info('#### Running %s suites' % suite_category)
             for suite in suites:
                 dirs = self.query_abs_dirs()
-                self._download_unzip_hostutils()
                 abs_base_cmd = self._query_abs_base_cmd(suite_category)
-                if 'robocop' in suite:
-                    self._download_robocop_apk()
-
-                if 'jittest' in suite:
-                    self._download_unzip(self.query_jsshell_url(), dirs['abs_test_bin_dir'])
-
-                self._install_app()
                 cmd = abs_base_cmd[:]
-                replace_dict = {}
-                for arg in suites[suite]:
-                    cmd.append(arg % replace_dict)
-                if 'mochitest-gl' in suite:
-                    cmd.remove("--run-only-tests=android.json")
                 tbpl_status, log_level = None, None
-                error_list = BaseErrorList + [{
-                    'regex': re.compile(r"(?:TEST-UNEXPECTED-FAIL|PROCESS-CRASH) \| .* \| (application crashed|missing output line for total leaks!|negative leaks caught!|\d+ bytes leaked)"),
-                    'level': ERROR,
-                }]
                 c = self.config
                 if c.get('minidump_stackwalk_path'):
                     env['MINIDUMP_STACKWALK'] = c['minidump_stackwalk_path']
                 if c.get('minidump_save_path'):
                     env['MINIDUMP_SAVE_PATH'] = c['minidump_save_path']
                 env = self.query_env(partial_env=env, log_level=INFO)
-                if env.has_key('PYTHONPATH'):
-                    del env['PYTHONPATH']
-                test_summary_parser = DesktopUnittestOutputParser(suite_category,
-                                                                  config=self.config,
-                                                                  error_list=error_list,
-                                                                  log_obj=self.log_obj)
 
-                return_code = self.run_command(cmd, cwd=dirs['abs_test_install_dir'], env=env, output_parser=test_summary_parser)
+                parser = TalosOutputParser(config=self.config, log_obj=self.log_obj,
+                                           error_list=TalosErrorList)
 
-                tbpl_status, log_level = test_summary_parser.evaluate_parser(return_code)
-
-                if tbpl_status != TBPL_SUCCESS:
-                    self.info("Output logcat...")
-                    try:
-                        lines = self.get_logcat()
-                        self.info("*** STARTING LOGCAT ***")
-                        for l in lines:
-                            self.info(l)
-                        self.info("*** END LOGCAT ***")
-                    except Exception, e:
-                        self.warning("We failed to run logcat: str(%s)" % str(e))
-
-                test_summary_parser.append_tinderboxprint_line(suite)
-                self.buildbot_status(tbpl_status, level=level)
-
-                self.log("The %s suite: %s ran with return status: %s" %
-                         (suite_category, suite, tbpl_status), level=log_level)
+                if parser.minidump_output:
+                    self.info("Looking at the minidump files for debugging purposes...")
+                    for item in parser.minidump_output:
+                        self.run_command(["ls", "-l", item])
+                return_code = self.run_command(cmd, dirs['abs_talosdatatalos_dir'], env=env, output_parser=parser)
+                if return_code != 0:
+                    self.fatal("Failed talos " + str(cmd) + " command run.")
 
     def _query_specified_suites(self, category):
         # logic goes: if at least one '--{category}-suite' was given,
@@ -294,87 +228,107 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
         self.info("Running tests...")
 
         for category in SUITE_CATEGORIES:
-            self._run_category_suites(category)
-
-    def _download_unzip_hostutils(self):
-        c = self.config
-        dirs = self.query_abs_dirs()
-        self.host_utils_url = c['hostutils_url']
-        #create the hostutils dir, get the zip and extract it
-        self.mkdir_p(dirs['abs_hostutils_dir'])
-        self._download_unzip(self.host_utils_url, dirs['abs_hostutils_dir'])
+            self._run_category_suites(category, preflight_run_method=self.preflight_talos)
 
     def _install_app(self):
-        c = self.config
-        base_work_dir = c['base_work_dir']
-        cmd = ['python', self.config.get("install_app_path"), self.device_ip, 'build/' + str(self.filename_apk), self.app_name]
-        self.run_command(cmd, cwd=base_work_dir, halt_on_failure=True)
-
-    def _download_robocop_apk(self):
         dirs = self.query_abs_dirs()
-        self.apk_url = self.installer_url[:self.installer_url.rfind('/')]
-        robocop_url = self.apk_url + '/robocop.apk'
-        self.info("Downloading robocop...")
-        self.download_file(robocop_url, 'robocop.apk', dirs['abs_work_dir'], error_level=FATAL)
+        cmd = ['python', self.config.get("install_app_path"), self.device_ip, os.path.join(dirs['abs_talosdata_dir'], self.filename_apk), self.app_name]
+        self.run_command(cmd, dirs['abs_talosdata_dir'], halt_on_failure=True)
 
     def query_abs_dirs(self):
         if self.abs_dirs:
             return self.abs_dirs
-        abs_dirs = super(PandaTest, self).query_abs_dirs()
+        abs_dirs = super(PandaTalosTest, self).query_abs_dirs()
         dirs = {}
-        dirs['abs_test_install_dir'] = os.path.join(
-            abs_dirs['abs_work_dir'], 'tests')
-        dirs['abs_test_bin_dir'] = os.path.join(dirs['abs_test_install_dir'], 'bin')
-        dirs['abs_mochitest_dir'] = os.path.join(
-            dirs['abs_test_install_dir'], 'mochitest')
-        dirs['abs_reftest_dir'] = os.path.join(
-            dirs['abs_test_install_dir'], 'reftest')
-        dirs['abs_crashtest_dir'] = os.path.join(
-            dirs['abs_test_install_dir'], 'reftest')
-        dirs['abs_jsreftest_dir'] = os.path.join(
-            dirs['abs_test_install_dir'], 'reftest')
-        dirs['abs_xpcshell_dir'] = os.path.join(
-            dirs['abs_test_install_dir'], 'xpcshell')
-        dirs['abs_xre_dir'] = os.path.join(
-            abs_dirs['abs_work_dir'], 'xre')
-        dirs['abs_utility_path'] = os.path.join(
-            abs_dirs['abs_work_dir'], 'bin')
-        dirs['abs_certificate_path'] = os.path.join(
-            abs_dirs['abs_work_dir'], 'certs')
-        dirs['abs_hostutils_dir'] = os.path.join(
-            abs_dirs['abs_work_dir'], 'hostutils')
-        dirs['abs_robocop_dir'] = os.path.join(
-            dirs['abs_test_install_dir'], 'mochitest')
-        dirs['abs_jittest_dir'] = os.path.join(dirs['abs_test_install_dir'], "jit-test", "jit-test")
         dirs['shutdown_dir'] = abs_dirs['abs_work_dir'].rsplit("/", 2)[0]
+        dirs['abs_fennec_dir'] = os.path.join(
+            dirs['shutdown_dir'], 'talos-data/fennec')
+        dirs['abs_talosdata_dir'] = os.path.join(
+            dirs['shutdown_dir'], 'talos-data')
+        dirs['abs_symbols_dir'] = os.path.join(
+            dirs['abs_talosdata_dir'], 'symbols')
+        dirs['abs_talosdatatalos_dir'] = os.path.join(
+            dirs['shutdown_dir'], 'talos-data/talos')
+        dirs['abs_talosbuild_dir'] = os.path.join(
+            dirs['shutdown_dir'], 'talos-data/build')
+        dirs['abs_talos_dir'] = dirs['abs_talosdatatalos_dir']
+        dirs['abs_preflight_talos_dir'] = dirs['abs_talosdatatalos_dir']
         for key in dirs.keys():
             if key not in abs_dirs:
                 abs_dirs[key] = dirs[key]
         self.abs_dirs = abs_dirs
         return self.abs_dirs
 
-    def _query_symbols_url(self):
-        """query the full symbols URL based upon binary URL"""
-        # may break with name convention changes but is one less 'input' for script
-        if self.symbols_url:
-            return self.symbols_url
+    def download_and_extract(self):
+        dirs = self.query_abs_dirs()
 
+        #mkdir talos in  /builds/panda-0052/test/../talos-data
+        fennec_ids_url = self.installer_url.rsplit("/", 1)[0] + "/fennec_ids.txt"
+        self.mkdir_p(dirs['abs_talosbuild_dir'])
+        robocop_url = self.installer_url.rsplit("/", 1)[0] + "/robocop.apk"
+        self.mkdir_p(dirs['abs_talosdatatalos_dir'])
+
+        #download and extract apk to /builds/panda-0nnn/talos-data
+        self.rmtree(dirs['abs_talosdata_dir'])
+        self.mkdir_p(dirs['abs_talosdata_dir'])
+        self.mkdir_p(dirs['abs_symbols_dir'])
+        self.mkdir_p(dirs['abs_fennec_dir'])
+        self._download_unzip(self.installer_url,
+                             dirs['abs_fennec_dir'])
+        #this is ugly but you can't specify a file in download_unzip to extract the file to, by default it's the abs_work_dir
+        #should think of a better way
+        self.download_file(self.installer_url,
+                           parent_dir=dirs['abs_talosdata_dir'],
+                           error_level=FATAL)
+
+        #download and extract fennec_ids.txt to /builds/panda-0nnn/talos-data
+        self.download_file(fennec_ids_url, file_name='fennec_ids.txt',
+                           parent_dir=dirs['abs_talosdata_dir'],
+                           error_level=FATAL)
+        #download and extract robocop.apk to /builds/panda-0nnn/talos-data/build
+        self.download_file(robocop_url, file_name='robocop.apk',
+                           parent_dir=dirs['abs_talosbuild_dir'],
+                           error_level=FATAL)
+        self.symbols_url = self.query_symbols_url()
+
+        self._download_unzip(self.symbols_url,
+                             dirs['abs_symbols_dir'])
+
+        self._download_unzip(self.config['retry_url'],
+                             dirs['abs_talosdata_dir'])
+
+        revision = self.config.get('revision', self.buildbot_config.get('properties')["revision"])
+        repo_path = self.config.get('repo_path', self.buildbot_config.get('properties')["repo_path"])
+        taloscode = self.config.get("talos_from_code_url")
+        talosjson = self.config.get("talos_json_url")
+
+        talos_from_code_url = (taloscode % (repo_path, revision))
+        talos_json_url = (talosjson % (repo_path, revision))
+
+        self.download_file(talos_from_code_url, file_name='talos_from_code.py',
+                           parent_dir=dirs['abs_talosdata_dir'],
+                           error_level=FATAL)
+
+        talos_base_cmd = ['python']
+        talos_code_path = (os.path.join(dirs['abs_talosdata_dir'], "talos_from_code.py"))
+        talos_zip_path = (os.path.join(dirs['abs_talosdata_dir'], "talos.zip"))
+        talos_base_cmd.append(talos_code_path)
+        talos_base_cmd.append("--talos-json-url")
+        talos_base_cmd.append(talos_json_url)
+        env = self.query_env()
+        self.run_command(talos_base_cmd, dirs['abs_talosdata_dir'], env=env, halt_on_failure=True)
+        unzip = self.query_exe("unzip")
+        unzip_cmd = [unzip, '-q', '-o',  talos_zip_path]
+        self.run_command(unzip_cmd, cwd=dirs['abs_talosdata_dir'], halt_on_failure=True)
+        
     def _query_abs_base_cmd(self, suite_category):
-        #check for apk first with if ?
-        c = self.config
         dirs = self.query_abs_dirs()
         options = []
-        run_file = c['run_file_names'][suite_category]
+        run_file = self.config['run_file_names'][suite_category]
         base_cmd = ['python']
         base_cmd.append(os.path.join((dirs["abs_%s_dir" % suite_category]), run_file))
         self.device_ip = socket.gethostbyname(self.mozpool_device)
-        #applies to mochitest, reftest, jsreftest
-        # TestingMixin._download_and_extract_symbols() will set
-        # self.symbols_path when downloading/extracting.
-        hostnumber = 0
-        mozpool_device_list = self.mozpool_device.split('-')
-        if len(mozpool_device_list) == 2:
-            hostnumber = int(mozpool_device_list[1])
+        hostnumber = int(self.mozpool_device.split('-')[1])
         http_port = '30%03i' % hostnumber
         ssl_port = '31%03i' % hostnumber
         #get filename from installer_url
@@ -383,23 +337,28 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
         apk_dir = self.abs_dirs['abs_work_dir']
         self.apk_path = os.path.join(apk_dir, self.filename_apk)
         unzip = self.query_exe("unzip")
-        package_path = os.path.join(apk_dir, 'package-name.txt')
+        package_path = os.path.join(dirs['abs_fennec_dir'], 'package-name.txt')
         unzip_cmd = [unzip, '-q', '-o',  self.apk_path]
-        self.run_command(unzip_cmd, cwd=apk_dir, halt_on_failure=True)
+        self.run_command(unzip_cmd, cwd=dirs['abs_fennec_dir'], halt_on_failure=True)
         self.app_name = str(self.read_from_file(package_path, verbose=True)).rstrip()
 
         str_format_values = {
             'device_ip': self.device_ip,
             'hostname': self.mozpool_device,
-            'symbols_path': self._query_symbols_url(),
             'http_port': http_port,
             'ssl_port':  ssl_port,
             'app_name':  self.app_name,
-            'apk_name':  self.filename_apk
+            'talos_branch':  self.talos_branch,
         }
         if self.config['%s_options' % suite_category]:
             for option in self.config['%s_options' % suite_category]:
                 options.append(option % str_format_values)
+            for url in self.config.get('datazilla_urls', []):
+                options.extend(['--datazilla-url', url])
+            # add datazilla authfile
+            authfile = self.config.get('datazilla_authfile')
+            if authfile:
+                options.extend(['--authfile', authfile])
             abs_base_cmd = base_cmd + options
             return abs_base_cmd
         else:
@@ -423,6 +382,11 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
                                " then do not specify to run only specific suites "
                                "like:\n '--mochitest-suite browser-chrome'")
 
+    def _post_fatal(self, message=None, exit_code=None):
+        """ After we call fatal(), run this method before exiting.
+            """
+        self.close_request()
+
     def close_request(self):
         mph = self.query_mozpool_handler(self.mozpool_device)
         mph.close_request(self.request_url)
@@ -438,5 +402,5 @@ class PandaTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixin, Bu
         return [str(option), str(value)]
 
 if __name__ == '__main__':
-    pandaTest = PandaTest()
-    pandaTest.run_and_exit()
+    pandaTalosTest = PandaTalosTest()
+    pandaTalosTest.run_and_exit()

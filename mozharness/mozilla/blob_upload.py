@@ -28,7 +28,7 @@ class BlobUploadMixin(VirtualenvMixin):
     #TODO: documentation about the Blobber Server on wiki
     def __init__(self, *args, **kwargs):
         requirements = [
-            'blobuploader',
+            'blobuploader==0.9',
         ]
         super(BlobUploadMixin, self).__init__(*args, **kwargs)
         for req in requirements:
@@ -48,7 +48,8 @@ class BlobUploadMixin(VirtualenvMixin):
             if dirs.get('abs_blob_upload_dir'):
                 blob_dir = dirs['abs_blob_upload_dir']
             else:
-                self.fatal("Couldn't find the blob upload folder's path!")
+                self.warning("Couldn't find the blob upload folder's path!")
+                return
 
             if not os.path.isdir(blob_dir):
                 self.warning("Blob upload directory does not exist!")
