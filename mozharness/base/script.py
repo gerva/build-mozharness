@@ -816,12 +816,21 @@ class ScriptMixin(object):
         """touch a file; If times is None, then the file's access and modified
            times are set to the current time
         """
+        self.info("Touching: %s" % file_name)
+        try:
+            os.utime(file_name, times)
+        except OSError:
+            try:
+                open(file_name, 'w').close()
+            except IOError as e:
+                self.fatal("I/O error({0}): {1}".format(e.errno, e.strerror))
+
         os.utime(file_name, times)
         self.info("Touching %s" % file_name)
 
     def unpack(self, filename, extract_to):
         '''
-        This method allows us to extract a file regardless of its extension 
+        This method allows us to extract a file regardless of its extension
         '''
         # XXX: Make sure that filename has a extension of one of our supported file formats
         m = re.search('\.tar\.(bz2|gz)$', filename)
@@ -835,6 +844,7 @@ class ScriptMixin(object):
         else:
             # XXX implement
             pass
+
 
 def PreScriptRun(func):
     """Decorator for methods that will be called before script execution.
