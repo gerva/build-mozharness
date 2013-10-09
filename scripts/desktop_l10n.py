@@ -363,7 +363,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self._setup_configure()
         self.make_wget_en_US()
         self.make_unpack()
-        self.make_complete_mar()
         revision = self.query_revision()
         if not revision:
             self.fatal("Can't determine revision!")
@@ -578,7 +577,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         self.delete_mar_dirs()
         self.create_mar_dirs()
-        self.make_complete_mar()
+        #self.make_complete_mar()
         self.get_previous_mar()
         self.unpack_previous_mar()
         p_build_id = self.get_buildid_form_ini(self.get_previous_application_ini_file())
@@ -640,7 +639,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         self.mkdir_p(dirs['local_mar_dir'])
         self.download_file(self.previous_mar_url(),
-                           self.local_mar_filename())
+                           self.get_previous_mar_filename())
+
+    def get_previous_mar_filename(self):
+        c = self.config
+        return os.path.join(self.get_previous_mar_dir(), c['previous_mar_filename'])
 
     def create_mar_dirs(self):
         for d in (self.get_previous_mar_dir(),
@@ -710,7 +713,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                          halt_on_failure=True)
 
     def unpack_previous_mar(self):
-        self.unpack_mar(self.get_previous_mar(), self.get_previous_mar_dir())
+        self.unpack_mar(self.get_previous_mar_filename(), self.get_previous_mar_dir())
 
     def unpack_current_mar(self):
         self.unpack_mar(self.current_mar_filename(), self.get_current_mar_dir())

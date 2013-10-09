@@ -89,6 +89,7 @@ config = {
     #MAR
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
+    "previous_mar_filename": "previous.mar",
     "current_work_mar_dir": "current.work",
     "application_ini": "Contents/MacOS/application.ini",
     "buildid_section": 'App',
