@@ -341,6 +341,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.make_dirs()
         self.make_export(buildid)
 
+    def print_dirs(self):
+        #REMOVE ME
+        dirs = self.query_abs_dirs()
+        for i in dirs:
+            self.info("%s  -> %s" % (i, dirs[i]))
+
     def setup(self):
         self.enable_mock()
         c = self.config
@@ -356,8 +362,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         env = self.query_repack_env()
         self._setup_configure()
         self.make_wget_en_US()
-        for i in dirs:
-            self.info("%s  -> %s" % (i, dirs[i]))
+        self.make_unpack()
         self.make_complete_mar()
         revision = self.query_revision()
         if not revision:
@@ -407,8 +412,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def make_export(self, buildid):
         if buildid is None:
             return
-        env = self.query_repack_env()
         dirs = self.query_abs_dirs()
+        cwd = dirs['abs_locales_dir']
+        env = self.query_repack_env()
         target = ["export", 'MOZ_BUILD_DATE=%s' % str(buildid)]
         return self._make(target=target, cwd=cwd, env=env)
 
@@ -433,9 +439,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           env=env, halt_on_failure=False)
 
     def make_complete_mar(self):
+        c = self.config
         dirs = self.query_abs_dirs()
         env = self.query_repack_env()
-        cmd = os.path.join(dirs['abs_objdir'], 'tools', 'update-packaging')
+        cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
+        #'tools', 'update-packaging')
         if self._make(target=['-C', cmd], cwd=dirs['abs_mozilla_dir'], env=env):
             self.fatal("error creating complete mar file")
 
@@ -593,7 +601,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         version = self.query_version()
         update_env = self.query_env(partial_env=c.get("update_env"))
-        dirs = self.query_abs_dirs()
         platform = update_env['MOZ_PKG_PLATFORM']
         version = self.query_version()
         filename = c["complete_mar"] % {'version': version,

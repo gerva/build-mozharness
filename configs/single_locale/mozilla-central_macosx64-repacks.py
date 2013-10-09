@@ -78,7 +78,7 @@ config = {
 
     #l10n
     "ignore_locales": ["en-US"],
-    "l10n_dir": "../l10n",
+    "l10n_dir": "l10n",
     "locales_file": "%s/browser/locales/all-locales" % MOZILLA_DIR,
     "locales_dir": "browser/locales",
     "hg_l10n_base": "http://hg.mozilla.org/l10n-central",
@@ -94,6 +94,7 @@ config = {
     "buildid_section": 'App',
     "buildid_option": "BuildID",
     "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
+    "update_packaging_dir": "tools/update-packaging",
     "local_mar_tool_dir": "host/bin",
     "mar_bin": "mar",
     "mbsdiff_bin": "mbsdiff",
