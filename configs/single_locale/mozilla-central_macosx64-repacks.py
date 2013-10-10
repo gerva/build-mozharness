@@ -98,7 +98,7 @@ config = {
     "buildid_option": "BuildID",
     "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
     "update_packaging_dir": "tools/update-packaging",
-    "local_mar_tool_dir": "host/bin",
+    "local_mar_tool_dir": "dist/host/bin",
     "mar_bin": "mar",
     "mbsdiff_bin": "mbsdiff",
     "candidates_base_url": CANDIDATES_URL,

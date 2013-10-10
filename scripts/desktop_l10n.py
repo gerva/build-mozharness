@@ -458,6 +458,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         self.create_mar_dirs()
+        self.get_mar_tools()
         package_base_dir = os.path.join(dirs['abs_objdir'], c['package_base_dir'])
         for locale in self.locales:
             cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
