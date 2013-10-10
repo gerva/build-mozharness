@@ -50,6 +50,11 @@ config = {
         "MOZ_PKG_PLATFORM": "mac",
         "IS_NIGHTLY": "yes",
     },
+    "complete_mar_env": {
+        "PACKAGE_BASE_DIR": "%(abs_objdir)s/dist/l10n-stage",
+        "MOZ_PKG_PRETTYNAMES": "1",
+        "DIST": "%(abs_objdir)s/dist"
+    },
     "update_env": {
         # just a copy of repack env
         "MOZ_OBJDIR": OBJDIR,
@@ -60,6 +65,9 @@ config = {
         "MOZ_PKG_PLATFORM": "mac",
         "CANDIDATES_URL": CANDIDATES_URL,
         "IS_NIGHTLY": "yes",
+    },
+    "generate_complete_env": {
+        "PACKAGE_BASE_DIR": "%(abs_objdir)s/dist/firefox/l10n-stage",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
@@ -75,16 +83,20 @@ config = {
         "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
         "UPLOAD_TO_TEMP": "1"
     },
-
     #l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
+    "l10n_stage_dir": "dist/firefox/l10n-stage",
     "locales_file": "%s/browser/locales/all-locales" % MOZILLA_DIR,
     "locales_dir": "browser/locales",
     "hg_l10n_base": "http://hg.mozilla.org/l10n-central",
     "hg_l10n_tag": "default",
     "merge_locales": True,
     "clobber_file": 'CLOBBER',
+    #"PACKAGE_BASE_DIR": "%(abs_objdir)s/dist/l10n-stage/firefox",
+    "package_base_dir": "dist/l10n-stage",
+    "MOZ_PKG_PRETTYNAMES": "1",
+    "DIST": "%(abs_objdir)s/dist",
 
     #MAR
     "previous_mar_dir": "previous",

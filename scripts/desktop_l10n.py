@@ -119,6 +119,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "list-locales",
                 "setup",
                 "repack",
+                "generate_complete_mar",
                 "generate_partials",
                 "create-nightly-snippets",
                 "upload-nightly-repacks",
@@ -131,6 +132,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.buildid = None
         self.make_ident_output = None
         self.repack_env = None
+        self.complete_mar_env = None
+        self.upload_env = None
         self.revision = None
         self.upload_env = None
         self.version = None
@@ -141,6 +144,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.enable_mock()
 
     # Helper methods {{{2
+    def query_generate_complete_env(self):
+        c = self.config
+        dirs = self.query_abs_dirs()
+        return self.query_env(partial_env=c.get("generate_complete_env"),
+                              replace_dict=dirs)
+
     def query_repack_env(self):
         if self.repack_env:
             return self.repack_env
@@ -161,6 +170,18 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             repack_env['MOZ_SIGN_CMD'] = subprocess.list2cmdline(self.query_moz_sign_cmd(formats=None))
         self.repack_env = repack_env
         return self.repack_env
+
+    def query_complete_mar_env(self):
+        if self.complete_mar_env:
+            return self.complete_mar_env
+        c = self.config
+        replace_dict = self.query_abs_dirs()
+        replace_dict['buildid'] = self.query_buildid()
+        replace_dict['version'] = self.query_version()
+        complete_mar_env = self.query_env(partial_env=c.get("upload_env"),
+                                          replace_dict=replace_dict)
+        self.complete_mar_env = complete_mar_env
+        return self.complete_mar_env
 
     def query_upload_env(self):
         if self.upload_env:
@@ -418,9 +439,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._make(target=target, cwd=cwd, env=env)
 
     def make_unpack(self):
-        env = self.query_repack_env()
+        c = self.config
         dirs = self.query_abs_dirs()
-        cwd = dirs['abs_locales_dir']
+        env = self.query_repack_env()
+        cwd = os.path.join(dirs['abs_objdir'], c['locales_dir'])
         return self._make(target=["unpack"], cwd=cwd, env=env)
 
     def make_wget_en_US(self):
@@ -433,18 +455,25 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
-        target = ["installers-%s" % locale]
+        target = ["installers-%s" % locale,
+                  "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"]]
         return self._make(target=target, cwd=cwd,
                           env=env, halt_on_failure=False)
 
-    def make_complete_mar(self):
+    def generate_complete_mar(self):
         c = self.config
         dirs = self.query_abs_dirs()
-        env = self.query_repack_env()
-        cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
-        #'tools', 'update-packaging')
-        if self._make(target=['-C', cmd], cwd=dirs['abs_mozilla_dir'], env=env):
-            self.fatal("error creating complete mar file")
+        #env = {"PACKAGE_BASE_DIR": os.path.join(dirs['abs_objdir'], c["PACKAGE_BASE_DIR"])}
+        #env = {"PACKAGE_BASE": os.path.join(dirs['abs_objdir'], c["PACKAGE_BASE_DIR"])}
+        #for key in ("PACKAGE_BASE_DIR", "MOZ_PKG_PRETTYNAMES", "DIST"):
+        #    env[key] = c[key] % dirs
+        package_base_dir = os.path.join(dirs['abs_objdir'], c['package_base_dir'])
+        for locale in self.locales:
+            cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
+            cmd = ['-C', cmd, 'full-update', 'AB_CD=%s' % locale,
+                   'PACKAGE_BASE_DIR=%s' % package_base_dir]
+            if self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=None):
+                self.fatal("error creating complete mar file")
 
     def clobber_file(self):
         c = self.config
@@ -574,17 +603,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.return_code += 1
 
     def generate_partials(self):
-        dirs = self.query_abs_dirs()
         self.delete_mar_dirs()
         self.create_mar_dirs()
-        #self.make_complete_mar()
         self.get_previous_mar()
         self.unpack_previous_mar()
         p_build_id = self.get_buildid_form_ini(self.get_previous_application_ini_file())
         self.info("previous build id %s" % p_build_id)
         self.delete_pgc_files()
-        dirs = self.query_abs_dirs()
-        return os.path.join(dirs['abs_objdir'], 'dist', 'update')
+        #dirs = self.query_abs_dirs()
+        #return os.path.join(dirs['abs_objdir'], 'dist', 'update')
 
     def delete_pgc_files(self):
         for d in (self.get_previous_mar_dir(), self.get_current_mar_dir()):
