@@ -460,12 +460,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.create_mar_dirs()
         self.get_mar_tools()
         package_base_dir = os.path.join(dirs['abs_objdir'], c['package_base_dir'])
+        success_count = 0
+        total_count = 0
         for locale in self.locales:
+            total_count += 1
             cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
             cmd = ['-C', cmd, 'full-update', 'AB_CD=%s' % locale,
                    'PACKAGE_BASE_DIR=%s' % package_base_dir]
             if self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=None):
-                self.fatal("error creating complete mar file")
+                self.add_failure(locale, message="%s failed in create complete mar!" % locale)
+            else:
+                success_count += 1
+        self.summarize_success_count(success_count, total_count,
+                                     message="Created %d of %d complete mar sucessfully.")
 
     def clobber_file(self):
         c = self.config
