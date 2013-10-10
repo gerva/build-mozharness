@@ -144,12 +144,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.enable_mock()
 
     # Helper methods {{{2
-    def query_generate_complete_env(self):
-        c = self.config
-        dirs = self.query_abs_dirs()
-        return self.query_env(partial_env=c.get("generate_complete_env"),
-                              replace_dict=dirs)
-
     def query_repack_env(self):
         if self.repack_env:
             return self.repack_env
@@ -463,10 +457,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def generate_complete_mar(self):
         c = self.config
         dirs = self.query_abs_dirs()
-        #env = {"PACKAGE_BASE_DIR": os.path.join(dirs['abs_objdir'], c["PACKAGE_BASE_DIR"])}
-        #env = {"PACKAGE_BASE": os.path.join(dirs['abs_objdir'], c["PACKAGE_BASE_DIR"])}
-        #for key in ("PACKAGE_BASE_DIR", "MOZ_PKG_PRETTYNAMES", "DIST"):
-        #    env[key] = c[key] % dirs
+        self.create_mar_dirs()
         package_base_dir = os.path.join(dirs['abs_objdir'], c['package_base_dir'])
         for locale in self.locales:
             cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])

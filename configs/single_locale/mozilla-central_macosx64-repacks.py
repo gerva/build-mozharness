@@ -50,11 +50,6 @@ config = {
         "MOZ_PKG_PLATFORM": "mac",
         "IS_NIGHTLY": "yes",
     },
-    "complete_mar_env": {
-        "PACKAGE_BASE_DIR": "%(abs_objdir)s/dist/l10n-stage",
-        "MOZ_PKG_PRETTYNAMES": "1",
-        "DIST": "%(abs_objdir)s/dist"
-    },
     "update_env": {
         # just a copy of repack env
         "MOZ_OBJDIR": OBJDIR,
@@ -65,9 +60,6 @@ config = {
         "MOZ_PKG_PLATFORM": "mac",
         "CANDIDATES_URL": CANDIDATES_URL,
         "IS_NIGHTLY": "yes",
-    },
-    "generate_complete_env": {
-        "PACKAGE_BASE_DIR": "%(abs_objdir)s/dist/firefox/l10n-stage",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
@@ -93,16 +85,14 @@ config = {
     "hg_l10n_tag": "default",
     "merge_locales": True,
     "clobber_file": 'CLOBBER',
-    #"PACKAGE_BASE_DIR": "%(abs_objdir)s/dist/l10n-stage/firefox",
-    "package_base_dir": "dist/l10n-stage",
-    "MOZ_PKG_PRETTYNAMES": "1",
-    "DIST": "%(abs_objdir)s/dist",
 
     #MAR
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
+    "update_mar_dir": "updare",  # sure?
     "previous_mar_filename": "previous.mar",
     "current_work_mar_dir": "current.work",
+    "package_base_dir": "dist/l10n-stage",
     "application_ini": "Contents/MacOS/application.ini",
     "buildid_section": 'App',
     "buildid_option": "BuildID",
