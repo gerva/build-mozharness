@@ -119,8 +119,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "list-locales",
                 "setup",
                 "repack",
-                "generate_complete_mar",
-                "generate_partials",
+                "generate-complete-mar",
+                "generate-partials",
                 "create-nightly-snippets",
                 "upload-nightly-repacks",
                 "upload-snippets",
@@ -625,7 +625,18 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         localized_ini = self.application_ini_file(previous_mar_dir)
         p_build_id = self.get_buildid_form_ini(localized_ini)
         self.info("previous build id %s" % p_build_id)
-        self.delete_pgc_files()
+        # localized_mar
+        #self.make_incremental_update(archive, fromdir, todir)
+
+    def make_incremental_update(self, archive, fromdir, todir):
+        """ wrapper aroud make_incremental_update.sh """
+        # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
+        cmd = [self.incremental_update_script(), archive,
+               fromdir, todir]
+        cwd = None
+        env = {}
+        # TODO add ARCHIVE FROMDIR TODIR to cmd
+        self.run_command(cmd, cwd=cwd, env=env)
 
     def delete_pgc_files(self):
         for d in (self.previous_mar_dir(), self.current_mar_dir()):
