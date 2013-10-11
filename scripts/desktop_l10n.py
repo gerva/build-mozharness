@@ -462,12 +462,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         package_base_dir = os.path.join(dirs['abs_objdir'], c['package_base_dir'])
         success_count = 0
         total_count = 0
+        env = {'MOZ_PKG_PRETTYNAMES': "1"}
+        env = {'DIST': dirs['abs_objdir']}
         for locale in self.locales:
             total_count += 1
             cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
             cmd = ['-C', cmd, 'full-update', 'AB_CD=%s' % locale,
                    'PACKAGE_BASE_DIR=%s' % package_base_dir]
-            if self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=None):
+            if self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=env):
                 self.add_failure(locale, message="%s failed in create complete mar!" % locale)
             else:
                 success_count += 1
@@ -602,18 +604,31 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.return_code += 1
 
     def generate_partials(self):
+        f = self.get_previous_mar()
+        for locale in self.locales:
+            self.generate_partials_from(mar_file=f, locale=locale)
+
+    def generate_partials_from(self, mar_file, locale):
+        c = self.config
         self.delete_mar_dirs()
-        self.create_mar_dirs()
-        self.get_previous_mar()
-        self.unpack_previous_mar()
-        p_build_id = self.get_buildid_form_ini(self.get_previous_application_ini_file())
+        #self.create_mar_dirs()
+        #self.get_previous_mar()
+        version = self.query_version()
+        previous_mar_dir = self.previous_mar_dir()
+        update_mar_dir = self.update_mar_dir()
+        platform = c['platform']
+        localized_mar = c['localized_mar'] % {'platform': platform,
+                                              'version': version,
+                                              'locale': locale}
+        localized_mar = os.path.join(update_mar_dir, localized_mar)
+        self.unpack_mar(localized_mar, previous_mar_dir)
+        localized_ini = self.application_ini_file(previous_mar_dir)
+        p_build_id = self.get_buildid_form_ini(localized_ini)
         self.info("previous build id %s" % p_build_id)
         self.delete_pgc_files()
-        #dirs = self.query_abs_dirs()
-        #return os.path.join(dirs['abs_objdir'], 'dist', 'update')
 
     def delete_pgc_files(self):
-        for d in (self.get_previous_mar_dir(), self.get_current_mar_dir()):
+        for d in (self.previous_mar_dir(), self.current_mar_dir()):
             for f in self.pgc_files(d):
                 self.info("removing %f" % f)
                 #os.remove(f)
@@ -665,21 +680,22 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         self.mkdir_p(dirs['local_mar_dir'])
         self.download_file(self.previous_mar_url(),
-                           self.get_previous_mar_filename())
+                           self._previous_mar_filename())
+        return self._previous_mar_filename()
 
-    def get_previous_mar_filename(self):
+    def _previous_mar_filename(self):
         c = self.config
-        return os.path.join(self.get_previous_mar_dir(), c['previous_mar_filename'])
+        return os.path.join(self.previous_mar_dir(), c['previous_mar_filename'])
 
     def create_mar_dirs(self):
-        for d in (self.get_previous_mar_dir(),
-                  self.get_current_mar_dir()):
+        for d in (self.previous_mar_dir(),
+                  self.current_mar_dir()):
             self.info("creating: %s" % d)
             self.mkdir_p(d)
 
     def delete_mar_dirs(self):
-        for d in (self.get_previous_mar_dir(),
-                  self.get_current_mar_dir(),
+        for d in (self.previous_mar_dir(),
+                  self.current_mar_dir(),
                   self.get_current_work_mar_dir()):
             self.info("deleting: %s" % d)
             if os.path.exists(d):
@@ -722,27 +738,47 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def unpack_mar(self, mar_file, dst_dir):
         self.get_mar_tools()
+        cmd = ['perl', self.unpack_script(), mar_file]
+        cwd = dst_dir
+        env = self.mar_tools_env()
+        env["MOZ_PKG_PRETTYNAMES"] = "1"
+        self.mkdir_p(cwd)
+        self.run_command(cmd, cwd=cwd, env=env, halt_on_failure=True)
+
+    def mar_tools_env(self):
+        env = {}
+        env['MAR'] = self.mar_bin()
+        env['MBSDIFF'] = self.mbsdiff_bin()
+        return env
+
+    def _update_packaging_script(self, script):
+        c = self.config
+        return os.path.join(self.update_packaging_dir(), c.get(script))
+
+    def update_packaging_dir(self):
         c = self.config
         dirs = self.query_abs_dirs()
-        script = os.path.join(dirs['abs_mozilla_dir'],
-                              c.get('unpack_script'))
-        cmd = ['perl', script, mar_file]
-        cwd = dst_dir
-        if not os.path.exists(cwd):
-            self.mkdir_p(cwd)
-        env = {}
-        env['MAR'] = os.path.join(self.local_mar_tool_dir(), c.get('mar_bin'))
-        env['MBSDIFF'] = os.path.join(self.local_mar_tool_dir(), c.get('mbsdiff_bin'))
-        self.run_command(cmd,
-                         cwd=cwd,
-                         env=env,
-                         halt_on_failure=True)
+        return os.path.join(dirs['abs_mozilla_dir'], c.get('update_packaging_dir'))
+
+    def unpack_script(self):
+        return self._update_packaging_script('unpack_script')
+
+    def incremental_update_script(self):
+        return self._update_packaging_script('incremental_update_script')
+
+    def mar_bin(self):
+        c = self.config
+        return os.path.join(self.local_mar_tool_dir(), c.get('mar_bin'))
+
+    def mbsdiff_bin(self):
+        c = self.config
+        return os.path.join(self.local_mar_tool_dir(), c.get('mbsdiff_bin'))
 
     def unpack_previous_mar(self):
-        self.unpack_mar(self.get_previous_mar_filename(), self.get_previous_mar_dir())
+        self.unpack_mar(self._previous_mar_filename(), self.previous_mar_dir())
 
     def unpack_current_mar(self):
-        self.unpack_mar(self.current_mar_filename(), self.get_current_mar_dir())
+        self.unpack_mar(self.current_mar_filename(), self.current_mar_dir())
 
     def get_value_from_ini(self, ini_file, section, option):
         """ parses an ini file and returns the value of option from section"""
@@ -757,13 +793,18 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                        c.get('buildid_section'),
                                        c.get('buildid_option'))
 
-    def get_previous_mar_dir(self):
-        c = self.config
-        return os.path.join(self.get_objdir(), c.get('previous_mar_dir'))
+    def previous_mar_dir(self):
+        return self._mar_dir('previous_mar_dir')
 
-    def get_current_mar_dir(self):
+    def update_mar_dir(self):
+        return self._mar_dir('update_mar_dir')
+
+    def current_mar_dir(self):
+        return self._mar_dir('current_mar_dir')
+
+    def _mar_dir(self, dirname):
         c = self.config
-        return os.path.join(self.get_objdir(), c.get('current_mar_dir'))
+        return os.path.join(self.get_objdir(), c.get(dirname))
 
     def get_current_work_mar_dir(self):
         c = self.config
@@ -773,10 +814,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         return dirs['abs_objdir']
 
-    def get_previous_application_ini_file(self):
+    def application_ini_file(self, mar_dir):
         c = self.config
-        ini_file = os.path.join(self.get_previous_mar_dir(),
-                                c.get('application_ini'))
+        ini_file = os.path.join(mar_dir, c.get('application_ini'))
         self.info("application.ini file: %s" % ini_file)
         return ini_file
 

@@ -15,12 +15,13 @@ AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
 AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "https://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
-
+PLATFORM = "mac64"
 config = {
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig" % MOZILLA_DIR,
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
+    "platform": PLATFORM,
     "repos": [{
         "vcs": "hg",
         "repo": "http://hg.mozilla.org/mozilla-central",
@@ -89,14 +90,15 @@ config = {
     #MAR
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
-    "update_mar_dir": "updare",  # sure?
+    "update_mar_dir": "dist/update",  # sure?
     "previous_mar_filename": "previous.mar",
     "current_work_mar_dir": "current.work",
     "package_base_dir": "dist/l10n-stage",
     "application_ini": "Contents/MacOS/application.ini",
     "buildid_section": 'App',
     "buildid_option": "BuildID",
-    "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
+    "unpack_script": "unwrap_full_update.pl",
+    "incremental_update_script": "make_incremental_update.sh",
     "update_packaging_dir": "tools/update-packaging",
     "local_mar_tool_dir": "dist/host/bin",
     "mar_bin": "mar",
@@ -105,6 +107,10 @@ config = {
     "partials_url": "%(base_url)s/%(version)s-candidates",
     "mar_tools_url": "%(partials_url)s/%(buildnum)s/mar-tools/macosx64",
     "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
+    "localized_mar": "firefox-%(version)s.%(locale)s.%(platform)s.complete.mar",
+    #../update/mac64/de/nightly-27.0a1.complete.mar
+    "generated_mar": "%(platform)s/%(locale)s/firefox-%(version)s.complete.mar",
+
 
 
     # AUS
