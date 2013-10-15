@@ -137,6 +137,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.revision = None
         self.upload_env = None
         self.version = None
+        self.latest_version = None
         self.upload_urls = {}
         self.locales_property = {}
 
@@ -605,37 +606,74 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def generate_partials(self):
         f = self.get_previous_mar()
-        for locale in self.locales:
-            self.generate_partials_from(mar_file=f, locale=locale)
-
-    def generate_partials_from(self, mar_file, locale):
+        partials = [f]
         c = self.config
-        self.delete_mar_dirs()
+        platform = c['platform']
+        version = self.query_version()
+        update_mar_dir = self.update_mar_dir()
+        temp_fromdir = tempfile.mkdtemp()
+        for locale in self.locales:
+            temp_todir = os.path.join(self.current_mar_dir(), locale)
+            self.mkdir_p(temp_todir)
+            localized_mar = c['localized_mar'] % {'platform': platform,
+                                                  'version': version,
+                                                  'locale': locale}
+            localized_mar = os.path.join(update_mar_dir, localized_mar)
+            self.unpack_mar(localized_mar, temp_todir)
+            to_localized_ini = self.application_ini_file(temp_todir)
+            to_buildid = self.get_buildid_form_ini(to_localized_ini)
+            for partial in partials:
+                # TODO avoid unpacking the same same files multiple times
+                mar_dir = os.path.join(update_mar_dir, locale)
+                self.mkdir_p(mar_dir)
+                self.unpack_mar(partial, temp_fromdir)
+                from_localized_ini = self.application_ini_file(temp_fromdir)
+                from_buildid = self.get_buildid_form_ini(from_localized_ini)
+                archive = c['partial_mar'] % {'version': version,
+                                              'locale': locale,
+                                              'from_buildid': from_buildid,
+                                              'to_buildid': to_buildid}
+                archive = os.path.join(mar_dir, archive)
+                self.generate_partials_from(archive, temp_fromdir, temp_todir)
+        self.delete_dir(temp_fromdir)
+
+    def delete_dir(self, dirname):
+        if os.path.exists(dirname):
+            self.info('removing directory: %s' % dirname)
+            shutil.rmtree(dirname)
+
+    def generate_partials_from(self, archive, fromdir, todir):
+        #c = self.config
+        #self.delete_mar_dirs()
         #self.create_mar_dirs()
         #self.get_previous_mar()
-        version = self.query_version()
-        previous_mar_dir = self.previous_mar_dir()
-        update_mar_dir = self.update_mar_dir()
-        platform = c['platform']
-        localized_mar = c['localized_mar'] % {'platform': platform,
-                                              'version': version,
-                                              'locale': locale}
-        localized_mar = os.path.join(update_mar_dir, localized_mar)
-        self.unpack_mar(localized_mar, previous_mar_dir)
-        localized_ini = self.application_ini_file(previous_mar_dir)
-        p_build_id = self.get_buildid_form_ini(localized_ini)
-        self.info("previous build id %s" % p_build_id)
+        #todir = self.previous_mar_dir()
+        #fromdir = self.update_mar_dir()
+        # unpack source mar_file
+        #self.unpack_mar(mar_file, fromdir)
+        # unpack destination mar file
+        #localized_mar = c['localized_mar'] % {'platform': platform,
+        #                                      'version': version,
+        #                                      'locale': locale}
+        #localized_mar = os.path.join(update_mar_dir, localized_mar)
+        #self.unpack_mar(localized_mar, todir)
+        #localized_ini = self.application_ini_file(previous_mar_dir)
+        #p_build_id = self.get_buildid_form_ini(localized_ini)
+        #self.info("previous build id %s" % p_build_id)
+        #archive_dir = os.path.join(self.get_objdir(), 'archive')
+        #self.mkdir_p(archive_dir)
+        #archive = os.path.join(archive_dir, 'TEST')
         # localized_mar
-        #self.make_incremental_update(archive, fromdir, todir)
+        self.info("generating partials: archive %s, %s, %s" % (archive, fromdir, todir))
+        self.make_incremental_update(archive, fromdir, todir)
 
     def make_incremental_update(self, archive, fromdir, todir):
-        """ wrapper aroud make_incremental_update.sh """
+        """ wrapper for make_incremental_update.sh """
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
         cmd = [self.incremental_update_script(), archive,
                fromdir, todir]
         cwd = None
-        env = {}
-        # TODO add ARCHIVE FROMDIR TODIR to cmd
+        env = self.mar_tools_env()
         self.run_command(cmd, cwd=cwd, env=env)
 
     def delete_pgc_files(self):
@@ -660,13 +698,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def query_latest_version(self):
         """ find latest available version from candidates_base_url """
+        if self.version:
+            return self.version
         c = self.config
         url = c.get('candidates_base_url')
-        temp_out = tempfile.NamedTemporaryFile(delete=False)
-        self.download_file(url, temp_out.name)
-        version = html_parse.get_last_version_number(temp_out.name)
-        os.remove(temp_out.name)
-        return version
+        temp_dir = tempfile.mkdtemp()
+        temp_out = os.path.join(temp_dir, 'versions')
+        self.download_file(url, temp_out)
+        self.version = "27.0a1"  # TODO parse does not work; fixit html_parse.get_last_version_number(temp_out)
+        self.delete_dir(temp_dir)
+        return self.version
 
     def query_buildnumber(self, url):
         temp_out = tempfile.NamedTemporaryFile(delete=False)
@@ -732,9 +773,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.info("getting mar tools")
         partials_url = c["partials_url"] % {'base_url': c.get('candidates_base_url'),
                                             'version': version}
-        buildnum = self.query_buildnumber(partials_url)
-        url = c["mar_tools_url"] % {'partials_url': partials_url,
-                                    'buildnum': buildnum}
+        url = c["mar_tools_url"] % {'partials_url': partials_url}
         destination_dir = self.local_mar_tool_dir()
         self.mkdir_p(destination_dir)
         for element in ('mar', 'mbsdiff'):

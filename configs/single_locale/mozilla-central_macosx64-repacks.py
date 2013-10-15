@@ -104,12 +104,15 @@ config = {
     "mar_bin": "mar",
     "mbsdiff_bin": "mbsdiff",
     "candidates_base_url": CANDIDATES_URL,
-    "partials_url": "%(base_url)s/%(version)s-candidates",
-    "mar_tools_url": "%(partials_url)s/%(buildnum)s/mar-tools/macosx64",
+    "partials_url": "%(base_url)s/latest-mozilla-central/",
+    "mar_tools_url": "%(partials_url)s/mar-tools/macosx64",
     "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.%(platform)s.complete.mar",
     #../update/mac64/de/nightly-27.0a1.complete.mar
     "generated_mar": "%(platform)s/%(locale)s/firefox-%(version)s.complete.mar",
+    #"partial_mar": "%(platform)s/%(locale)s/firefox-%(version)s.partial.mar",
+    #firefox-27.0a1.en-US.mac.partial.20130917030214-20130918030202.mar"
+    "partial_mar": "firefox-%(version)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
 
 
 
