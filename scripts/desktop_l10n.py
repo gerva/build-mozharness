@@ -28,6 +28,7 @@ sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.errors import BaseErrorList, MakefileErrorList
 from mozharness.base.log import OutputParser
+#from mozharness.base.log import LogMixin
 from mozharness.base.transfer import TransferMixin
 from mozharness.mozilla.release import ReleaseMixin
 from mozharness.mozilla.signing import MobileSigningMixin
@@ -38,6 +39,7 @@ from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
+#from mozharness.base.script import ScriptMixin
 import mozharness.helpers.html_parse as html_parse
 
 # when running get_output_form_command, pymake has some extra output
@@ -367,6 +369,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.enable_mock()
         c = self.config
         dirs = self.query_abs_dirs()
+        mt = MarTool(c, dirs)
+        mt.download()
         mozconfig_path = os.path.join(dirs['abs_mozilla_dir'], '.mozconfig')
         self.copyfile(os.path.join(dirs['abs_work_dir'], c['mozconfig']),
                       mozconfig_path)
@@ -459,7 +463,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         self.create_mar_dirs()
-        self.get_mar_tools()
+        mt = MarTool(c, dirs)
+        mt.download()
         package_base_dir = os.path.join(dirs['abs_objdir'], c['package_base_dir'])
         success_count = 0
         total_count = 0
@@ -673,7 +678,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cmd = [self.incremental_update_script(), archive,
                fromdir, todir]
         cwd = None
-        env = self.mar_tools_env()
+        mt = MarTool(self.config, self.query_abs_dirs())
+        env = mt.env()
         self.run_command(cmd, cwd=cwd, env=env)
 
     def delete_pgc_files(self):
@@ -762,44 +768,17 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def make_upload(self):
         pass
 
-    def local_mar_tool_dir(self):
+    def unpack_mar(self, mar_file, dst_dir):
         c = self.config
         dirs = self.query_abs_dirs()
-        return os.path.join(dirs['abs_objdir'], c.get("local_mar_tool_dir"))
-
-    def get_mar_tools(self):
-        c = self.config
-        version = self.query_latest_version()  # self.latest_version() ??
-        self.info("getting mar tools")
-        partials_url = c["partials_url"] % {'base_url': c.get('candidates_base_url'),
-                                            'version': version}
-        url = c["mar_tools_url"] % {'partials_url': partials_url}
-        destination_dir = self.local_mar_tool_dir()
-        self.mkdir_p(destination_dir)
-        for element in ('mar', 'mbsdiff'):
-            from_url = "/".join((url, element))
-            local_dst = os.path.join(destination_dir, element)
-            if not os.path.exists(local_dst):
-                self.download_file(from_url, file_name=local_dst)
-                self.info("downloaded %s" % local_dst)
-            else:
-                self.info("found %s, skipping download" % local_dst)
-            self.chmod(local_dst, 0755)
-
-    def unpack_mar(self, mar_file, dst_dir):
-        self.get_mar_tools()
+        mt = MarTool(c, dirs)
+        mt.download()
         cmd = ['perl', self.unpack_script(), mar_file]
         cwd = dst_dir
-        env = self.mar_tools_env()
+        env = mt.env()
         env["MOZ_PKG_PRETTYNAMES"] = "1"
         self.mkdir_p(cwd)
         self.run_command(cmd, cwd=cwd, env=env, halt_on_failure=True)
-
-    def mar_tools_env(self):
-        env = {}
-        env['MAR'] = self.mar_bin()
-        env['MBSDIFF'] = self.mbsdiff_bin()
-        return env
 
     def _update_packaging_script(self, script):
         c = self.config
@@ -815,14 +794,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def incremental_update_script(self):
         return self._update_packaging_script('incremental_update_script')
-
-    def mar_bin(self):
-        c = self.config
-        return os.path.join(self.local_mar_tool_dir(), c.get('mar_bin'))
-
-    def mbsdiff_bin(self):
-        c = self.config
-        return os.path.join(self.local_mar_tool_dir(), c.get('mbsdiff_bin'))
 
     def unpack_previous_mar(self):
         self.unpack_mar(self._previous_mar_filename(), self.previous_mar_dir())
@@ -877,6 +848,55 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 if f.endswith('.pgc'):
                     pgc_files.append(os.path.join(dirpath, f))
         return pgc_files
+
+
+class MarTool(BaseScript):
+    def __init__(self, config, dirs):
+        self.config = config
+        self.dirs = dirs
+        self.log_obj = None
+        self.binaries = {'mar': None,
+                         'mbsdiff': None}
+        super(BaseScript, self).__init__()
+                       #     require_config_file=False)
+
+    def local_dir(self):
+        c = self.config
+        return os.path.join(self.dirs['abs_objdir'],
+                            c.get("local_mar_tool_dir"))
+
+    def download(self):
+        c = self.config
+        self.info("getting mar tools")
+        partials_url = c["partials_url"] % {'base_url': c.get('candidates_base_url')}
+        url = c["mar_tools_url"] % {'partials_url': partials_url}
+        self.mkdir_p(self.local_dir())
+        for binary in self.binaries:
+            from_url = "/".join((url, binary))
+            full_path = self._query_bin(binary)
+            if not os.path.exists(full_path):
+                self.download_file(from_url, file_name=full_path)
+                self.info("downloaded %s" % full_path)
+            else:
+                self.info("found %s, skipping download" % full_path)
+            self.chmod(full_path, 0755)
+
+    def _query_bin(self, bin_name):
+        if not self.binaries[bin_name]:
+            c = self.config
+            self.binaries[bin_name] = os.path.join(self.local_dir(),
+                                                   c.get(bin_name))
+        return self.binaries[bin_name]
+
+    def env(self):
+        env = {}
+        for binary in self.binaries:
+            env[binary.upper()] = self._query_bin(binary)
+        return env
+
+
+class MarFile(object):
+    pass
 
 # main {{{
 if __name__ == '__main__':
