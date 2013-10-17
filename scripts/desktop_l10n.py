@@ -718,13 +718,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def incremental_update_script(self):
         return self._update_packaging_script('incremental_update_script')
 
-    def get_value_from_ini(self, ini_file, section, option):
-        """ parses an ini file and returns the value of option from section"""
-        from ConfigParser import SafeConfigParser
-        parser = SafeConfigParser()
-        parser.read(ini_file)
-        return parser.get(section, option)
-
     def previous_mar_dir(self):
         return self._mar_dir('previous_mar_dir')
 
