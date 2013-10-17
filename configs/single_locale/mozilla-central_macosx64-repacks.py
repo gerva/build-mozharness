@@ -112,7 +112,7 @@ config = {
     "generated_mar": "%(platform)s/%(locale)s/firefox-%(version)s.complete.mar",
     #"partial_mar": "%(platform)s/%(locale)s/firefox-%(version)s.partial.mar",
     #firefox-27.0a1.en-US.mac.partial.20130917030214-20130918030202.mar"
-    "partial_mar": "firefox-%(version)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
+    "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
 
 
 

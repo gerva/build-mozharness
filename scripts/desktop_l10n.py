@@ -613,74 +613,30 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         f = self.get_previous_mar()
         partials = [f]
         c = self.config
+        dirs = self.query_abs_dirs()
         platform = c['platform']
         version = self.query_version()
         update_mar_dir = self.update_mar_dir()
-        temp_fromdir = tempfile.mkdtemp()
         for locale in self.locales:
-            temp_todir = os.path.join(self.current_mar_dir(), locale)
-            self.mkdir_p(temp_todir)
             localized_mar = c['localized_mar'] % {'platform': platform,
                                                   'version': version,
                                                   'locale': locale}
             localized_mar = os.path.join(update_mar_dir, localized_mar)
-            self.unpack_mar(localized_mar, temp_todir)
-            to_localized_ini = self.application_ini_file(temp_todir)
-            to_buildid = self.get_buildid_form_ini(to_localized_ini)
+            to_mar = MarFile(c, dirs, localized_mar)
             for partial in partials:
                 # TODO avoid unpacking the same same files multiple times
-                mar_dir = os.path.join(update_mar_dir, locale)
-                self.mkdir_p(mar_dir)
-                self.unpack_mar(partial, temp_fromdir)
-                from_localized_ini = self.application_ini_file(temp_fromdir)
-                from_buildid = self.get_buildid_form_ini(from_localized_ini)
+                from_mar = MarFile(c, dirs, partial)
                 archive = c['partial_mar'] % {'version': version,
                                               'locale': locale,
-                                              'from_buildid': from_buildid,
-                                              'to_buildid': to_buildid}
-                archive = os.path.join(mar_dir, archive)
-                self.generate_partials_from(archive, temp_fromdir, temp_todir)
-        self.delete_dir(temp_fromdir)
+                                              'from_buildid': from_mar.buildid(),
+                                              'to_buildid': to_mar.buildid()}
+                archive = os.path.join(update_mar_dir, archive)
+                to_mar.incremental_update(from_mar, archive)
 
     def delete_dir(self, dirname):
         if os.path.exists(dirname):
             self.info('removing directory: %s' % dirname)
             shutil.rmtree(dirname)
-
-    def generate_partials_from(self, archive, fromdir, todir):
-        #c = self.config
-        #self.delete_mar_dirs()
-        #self.create_mar_dirs()
-        #self.get_previous_mar()
-        #todir = self.previous_mar_dir()
-        #fromdir = self.update_mar_dir()
-        # unpack source mar_file
-        #self.unpack_mar(mar_file, fromdir)
-        # unpack destination mar file
-        #localized_mar = c['localized_mar'] % {'platform': platform,
-        #                                      'version': version,
-        #                                      'locale': locale}
-        #localized_mar = os.path.join(update_mar_dir, localized_mar)
-        #self.unpack_mar(localized_mar, todir)
-        #localized_ini = self.application_ini_file(previous_mar_dir)
-        #p_build_id = self.get_buildid_form_ini(localized_ini)
-        #self.info("previous build id %s" % p_build_id)
-        #archive_dir = os.path.join(self.get_objdir(), 'archive')
-        #self.mkdir_p(archive_dir)
-        #archive = os.path.join(archive_dir, 'TEST')
-        # localized_mar
-        self.info("generating partials: archive %s, %s, %s" % (archive, fromdir, todir))
-        self.make_incremental_update(archive, fromdir, todir)
-
-    def make_incremental_update(self, archive, fromdir, todir):
-        """ wrapper for make_incremental_update.sh """
-        # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
-        cmd = [self.incremental_update_script(), archive,
-               fromdir, todir]
-        cwd = None
-        mt = MarTool(self.config, self.query_abs_dirs())
-        env = mt.env()
-        self.run_command(cmd, cwd=cwd, env=env)
 
     def delete_pgc_files(self):
         for d in (self.previous_mar_dir(), self.current_mar_dir()):
@@ -759,47 +715,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if os.path.exists(d):
                 shutil.rmtree(d)
 
-    def rm_previous_mar(self):
-        pass
-
-    def make_previous_mar(self):
-        pass
-
-    def make_upload(self):
-        pass
-
-    def unpack_mar(self, mar_file, dst_dir):
-        c = self.config
-        dirs = self.query_abs_dirs()
-        mt = MarTool(c, dirs)
-        mt.download()
-        cmd = ['perl', self.unpack_script(), mar_file]
-        cwd = dst_dir
-        env = mt.env()
-        env["MOZ_PKG_PRETTYNAMES"] = "1"
-        self.mkdir_p(cwd)
-        self.run_command(cmd, cwd=cwd, env=env, halt_on_failure=True)
-
-    def _update_packaging_script(self, script):
-        c = self.config
-        return os.path.join(self.update_packaging_dir(), c.get(script))
-
-    def update_packaging_dir(self):
-        c = self.config
-        dirs = self.query_abs_dirs()
-        return os.path.join(dirs['abs_mozilla_dir'], c.get('update_packaging_dir'))
-
-    def unpack_script(self):
-        return self._update_packaging_script('unpack_script')
-
     def incremental_update_script(self):
         return self._update_packaging_script('incremental_update_script')
-
-    def unpack_previous_mar(self):
-        self.unpack_mar(self._previous_mar_filename(), self.previous_mar_dir())
-
-    def unpack_current_mar(self):
-        self.unpack_mar(self.current_mar_filename(), self.current_mar_dir())
 
     def get_value_from_ini(self, ini_file, section, option):
         """ parses an ini file and returns the value of option from section"""
@@ -807,12 +724,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         parser = SafeConfigParser()
         parser.read(ini_file)
         return parser.get(section, option)
-
-    def get_buildid_form_ini(self, ini_file):
-        c = self.config
-        return self.get_value_from_ini(ini_file,
-                                       c.get('buildid_section'),
-                                       c.get('buildid_option'))
 
     def previous_mar_dir(self):
         return self._mar_dir('previous_mar_dir')
@@ -834,12 +745,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def get_objdir(self):
         dirs = self.query_abs_dirs()
         return dirs['abs_objdir']
-
-    def application_ini_file(self, mar_dir):
-        c = self.config
-        ini_file = os.path.join(mar_dir, c.get('application_ini'))
-        self.info("application.ini file: %s" % ini_file)
-        return ini_file
 
     def pgc_files(self, base_dir):
         pgc_files = []
@@ -895,8 +800,86 @@ class MarTool(BaseScript):
         return env
 
 
-class MarFile(object):
-    pass
+class MarFile(BaseScript):
+    def __init__(self, config, dirs, filename=None):
+        self.config = config
+        self.dirs = dirs
+        self.dst_dir = None
+        self.filename = filename
+        self.url = None
+        self.version = None
+        self.log_obj = None
+        self.mt = MarTool(self.config, dirs)
+        super(BaseScript, self).__init__()
+
+    def unpack(self, dst_dir):
+        self.download()
+        # downloading mar tools
+        mt = self.mt
+        mt.download()
+        cmd = ['perl', self.unpack_script(), self.filename]
+        env = mt.env()
+        env["MOZ_PKG_PRETTYNAMES"] = "1"
+        self.mkdir_p(dst_dir)
+        self.run_command(cmd,
+                         cwd=dst_dir,
+                         env=env,
+                         halt_on_failure=True)
+
+    def download(self):
+        if not os.path.exists(self.filename):
+            pass
+        return self.filename
+
+    def _update_packaging_script(self, script):
+        c = self.config
+        return os.path.join(self.update_packaging_dir(), c.get(script))
+
+    def incremental_update_script(self):
+        return self._update_packaging_script('incremental_update_script')
+
+    def incremental_update(self, other, partial_filename):
+        fromdir = tempfile.mkdtemp()
+        todir = tempfile.mkdtemp()
+        self.unpack(fromdir)
+        other.unpack(todir)
+        # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
+        cmd = [self.incremental_update_script(), partial_filename,
+               fromdir, todir]
+        mt = self.mt
+        env = mt.env()
+        self.run_command(cmd, cwd=None, env=env)
+        self.rmtree(todir)
+        self.rmtree(fromdir)
+
+    def buildid(self):
+        if self.buildid is not None:
+            return self.buildid
+        temp_dir = tempfile.mkdtemp()
+        self.unpack(temp_dir)
+        ini_file = self.application_ini_file(temp_dir)
+        self.buildid = self.get_buildid_form_ini(ini_file)
+        return self.buildid
+
+    def application_ini_file(self, basedir):
+        c = self.config
+        ini_file = os.path.join(basedir, c.get('application_ini'))
+        self.info("application.ini file: %s" % ini_file)
+        return ini_file
+
+    def get_buildid_form_ini(self, ini_file):
+        c = self.config
+        return self.get_value_from_ini(ini_file,
+                                       c.get('buildid_section'),
+                                       c.get('buildid_option'))
+
+    def update_packaging_dir(self):
+        c = self.config
+        dirs = self.dirs
+        return os.path.join(dirs['abs_mozilla_dir'], c.get('update_packaging_dir'))
+
+    def unpack_script(self):
+        return self._update_packaging_script('unpack_script')
 
 # main {{{
 if __name__ == '__main__':
