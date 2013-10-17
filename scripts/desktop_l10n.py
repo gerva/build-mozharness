@@ -26,10 +26,9 @@ except ImportError:
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
-from mozharness.base.errors import BaseErrorList, MakefileErrorList
 from mozharness.base.log import OutputParser
-#from mozharness.base.log import LogMixin
 from mozharness.base.transfer import TransferMixin
+from mozharness.base.errors import BaseErrorList, MakefileErrorList
 from mozharness.mozilla.release import ReleaseMixin
 from mozharness.mozilla.signing import MobileSigningMixin
 from mozharness.mozilla.signing import SigningMixin
@@ -39,8 +38,6 @@ from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
-#from mozharness.base.script import ScriptMixin
-import mozharness.helpers.html_parse as html_parse
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -670,13 +667,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.version = "27.0a1"  # TODO parse does not work; fixit html_parse.get_last_version_number(temp_out)
         self.delete_dir(temp_dir)
         return self.version
-
-    def query_buildnumber(self, url):
-        temp_out = tempfile.NamedTemporaryFile(delete=False)
-        self.download_file(url, temp_out.name)
-        buildnum = html_parse.get_latest_build_number(temp_out.name)
-        os.remove(temp_out.name)
-        return buildnum
 
     def previous_mar_url(self):
         c = self.config
