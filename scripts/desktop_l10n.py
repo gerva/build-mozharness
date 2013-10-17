@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import shutil
+import ConfigParser
 
 try:
     import simplejson as json
@@ -852,9 +853,10 @@ class MarFile(BaseScript):
 
     def get_buildid_form_ini(self, ini_file):
         c = self.config
-        return self.get_value_from_ini(ini_file,
-                                       c.get('buildid_section'),
-                                       c.get('buildid_option'))
+        ini = ConfigParser.SafeConfigParser()
+        ini.read(ini_file)
+        return ini.get(c.get('buildid_section'),
+                       c.get('buildid_option'))
 
     def update_packaging_dir(self):
         c = self.config
