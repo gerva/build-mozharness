@@ -364,19 +364,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def setup(self):
         self.enable_mock()
-        c = self.config
         dirs = self.query_abs_dirs()
-        mt = MarTool(c, dirs)
-        mt.download()
-        mozconfig_path = os.path.join(dirs['abs_mozilla_dir'], '.mozconfig')
-        self.copyfile(os.path.join(dirs['abs_work_dir'], c['mozconfig']),
-                      mozconfig_path)
-        hg = self.query_exe("hg")
-        # log the content of mozconfig
-        with open(mozconfig_path, 'r') as f:
-            for line in f:
-                self.info(line.strip())
-        env = self.query_repack_env()
+        self.copy_mozconfig()
         self._setup_configure()
         self.make_wget_en_US()
         self.make_unpack()
@@ -385,9 +374,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.fatal("Can't determine revision!")
         # TODO do this through VCSMixin instead of hardcoding hg
         #self.update(dest=dirs["abs_mozilla_dir"], revision=revision)
+        hg = self.query_exe("hg")
         self.run_command([hg, "update", "-r", revision],
                          cwd=dirs["abs_mozilla_dir"],
-                         env=env,
+                         env=self.query_repack_env(),
                          error_list=BaseErrorList,
                          halt_on_failure=True)
         # if checkout updates CLOBBER file with a newer timestamp,
@@ -400,8 +390,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         buildid = self.query_buildid()
         self._setup_configure(buildid=buildid)
 
+    def copy_mozconfig(self):
+        c = self.config
+        dirs = self.query_abs_dirs()
+        src = os.path.join(dirs['abs_work_dir'], c['mozconfig'])
+        dst = os.path.join(dirs['abs_mozilla_dir'], '.mozconfig')
+        self.copyfile(src, dst)
+        with open(dst, 'r') as f:
+            for line in f:
+                self.info(line.strip())
+
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True, return_type="list", silent=False):
+        """ a wrapper for make calls """
         make = self.query_exe("make", return_type=return_type)
         return self.run_command(make + target,
                                 cwd=cwd,
@@ -410,6 +411,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                 halt_on_failure=halt_on_failure)
 
     def make_configure(self):
+        """calls make -f client.mk configure"""
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
         cwd = dirs['abs_mozilla_dir']
@@ -435,6 +437,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._make(target=target, cwd=cwd, env=env)
 
     def make_unpack(self):
+        """wrapper for make unpack"""
         c = self.config
         dirs = self.query_abs_dirs()
         env = self.query_repack_env()
@@ -442,12 +445,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._make(target=["unpack"], cwd=cwd, env=env)
 
     def make_wget_en_US(self):
+        """wrapper for make wget-en-US"""
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
         cwd = dirs['abs_locales_dir']
         return self._make(target=["wget-en-US"], cwd=cwd, env=env)
 
     def make_installers(self, locale):
+        """wrapper for make installers-(locale)"""
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
@@ -630,11 +635,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 archive = os.path.join(update_mar_dir, archive)
                 to_mar.incremental_update(from_mar, archive)
 
-    def delete_dir(self, dirname):
-        if os.path.exists(dirname):
-            self.info('removing directory: %s' % dirname)
-            shutil.rmtree(dirname)
-
     def delete_pgc_files(self):
         for d in (self.previous_mar_dir(), self.current_mar_dir()):
             for f in self.pgc_files(d):
@@ -665,7 +665,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         temp_out = os.path.join(temp_dir, 'versions')
         self.download_file(url, temp_out)
         self.version = "27.0a1"  # TODO parse does not work; fixit html_parse.get_last_version_number(temp_out)
-        self.delete_dir(temp_dir)
+        self.rmtree(temp_dir)
         return self.version
 
     def previous_mar_url(self):
