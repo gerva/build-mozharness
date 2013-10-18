@@ -1178,7 +1178,6 @@ class BaseScript(ScriptMixin, LogMixin, object):
         dirs['abs_work_dir'] = os.path.join(c['base_work_dir'], c['work_dir'])
         dirs['abs_upload_dir'] = os.path.join(dirs['abs_work_dir'], 'upload')
         dirs['abs_log_dir'] = os.path.join(c['base_work_dir'], c.get('log_dir', 'logs'))
-        dirs['local_mar_dir'] = os.path.join(dirs['abs_work_dir'], 'dist', 'update')
         self.abs_dirs = dirs
         return self.abs_dirs
 
