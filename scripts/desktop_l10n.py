@@ -15,7 +15,6 @@ import re
 import subprocess
 import sys
 import tempfile
-import shutil
 import ConfigParser
 
 try:
@@ -146,6 +145,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     # Helper methods {{{2
     def query_repack_env(self):
+        """returns the env for repacks"""
         if self.repack_env:
             return self.repack_env
         c = self.config
@@ -160,9 +160,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                     replace_dict=replace_dict)
         if c.get('base_en_us_binary_url') and c.get('release_config_file'):
             rc = self.query_release_config()
-            repack_env['EN_US_BINARY_URL'] = c['base_en_us_binary_url'] % replace_dict
+            binary_url = c['base_en_us_binary_url'] % replace_dict
+            repack_env['EN_US_BINARY_URL'] = binary_url
         if 'MOZ_SIGNING_SERVERS' in os.environ:
-            repack_env['MOZ_SIGN_CMD'] = subprocess.list2cmdline(self.query_moz_sign_cmd(formats=None))
+            sign_cmd = self.query_moz_sign_cmd(formats=None)
+            sign_cmd = subprocess.list2cmdline(sign_cmd)
+            repack_env['MOZ_SIGN_CMD'] = sign_cmd
         self.repack_env = repack_env
         return self.repack_env
 
@@ -195,7 +198,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _query_make_ident_output(self):
         """Get |make ident| output from the objdir.
         Only valid after setup is run.
-        """
+       """
         if self.make_ident_output:
             return self.make_ident_output
         env = self.query_repack_env()
@@ -215,7 +218,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def query_buildid(self):
         """Get buildid from the objdir.
         Only valid after setup is run.
-        """
+       """
         if self.buildid:
             return self.buildid
         r = re.compile("buildid (\d+)")
@@ -229,7 +232,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def query_revision(self):
         """Get revision from the objdir.
         Only valid after setup is run.
-        """
+       """
         if self.revision:
             return self.revision
         r = re.compile(r"^(gecko|fx)_revision ([0-9a-f]{12}\+?)$")
@@ -271,7 +274,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def query_base_package_name(self):
         """Get the package name from the objdir.
         Only valid after setup is run.
-        """
+       """
         if self.base_package_name:
             return self.base_package_name
         self.base_package_name = self._query_make_variable(
@@ -283,7 +286,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def query_version(self):
         """Get the package name from the objdir.
         Only valid after setup is run.
-        """
+       """
         if self.version:
             return self.version
         c = self.config
@@ -391,6 +394,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         buildid = self.query_buildid()
         self._setup_configure(buildid=buildid)
 
+    def clobber_file(self):
+        c = self.config
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['abs_objdir'], c.get('clobber_file'))
+
     def copy_mozconfig(self):
         c = self.config
         dirs = self.query_abs_dirs()
@@ -403,7 +411,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True, return_type="list", silent=False):
-        """ a wrapper for make calls """
+        """a wrapper for make calls"""
         make = self.query_exe("make", return_type=return_type)
         return self.run_command(make + target,
                                 cwd=cwd,
@@ -420,6 +428,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._make(target=target, cwd=cwd, env=env)
 
     def make_dirs(self):
+        """calls make <dirs>
+           dirs is defined in configuration"""
         c = self.config
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
@@ -429,6 +439,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self._make(target=target, cwd=cwd, env=env, halt_on_failure=True)
 
     def make_export(self, buildid):
+        """calls make export <buildid>"""
+        #is it really needed ???
         if buildid is None:
             return
         dirs = self.query_abs_dirs()
@@ -463,12 +475,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           env=env, halt_on_failure=False)
 
     def generate_complete_mar(self):
+        """creates a complete mar file"""
         c = self.config
         dirs = self.query_abs_dirs()
         self.create_mar_dirs()
         mt = MarTool(c, dirs)
         mt.download()
-        package_base_dir = os.path.join(dirs['abs_objdir'], c['package_base_dir'])
+        package_basedir = os.path.join(dirs['abs_objdir'], c['package_base_dir'])
         success_count = 0
         total_count = 0
         env = {'MOZ_PKG_PRETTYNAMES': "1"}
@@ -477,7 +490,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             total_count += 1
             cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
             cmd = ['-C', cmd, 'full-update', 'AB_CD=%s' % locale,
-                   'PACKAGE_BASE_DIR=%s' % package_base_dir]
+                   'PACKAGE_BASE_DIR=%s' % package_basedir]
             if self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=env):
                 self.add_failure(locale, message="%s failed in create complete mar!" % locale)
             else:
@@ -485,12 +498,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.summarize_success_count(success_count, total_count,
                                      message="Created %d of %d complete mar sucessfully.")
 
-    def clobber_file(self):
-        c = self.config
-        dirs = self.query_abs_dirs()
-        return os.path.join(dirs['abs_objdir'], c.get('clobber_file'))
-
     def repack(self):
+        """creates the repacks and udpates"""
         # TODO per-locale logs and reporting.
         self.enable_mock()
         locales = self.query_locales()
@@ -509,6 +518,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                      message="Repacked %d of %d binaries successfully.")
 
     def upload_repacks(self):
+        """calls make upload <locale>"""
         c = self.config
         dirs = self.query_abs_dirs()
         locales = self.query_locales()
@@ -565,6 +575,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                      message="Uploaded %d of %d binaries successfully.")
 
     def create_nightly_snippets(self):
+        """create snippets for nightly"""
         c = self.config
         dirs = self.query_abs_dirs()
         locales = self.query_locales()
@@ -580,9 +591,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         for locale in locales:
             total_count += 1
             replace_dict['locale'] = locale
-            aus_base_dir = c['aus_base_dir'] % replace_dict
+            aus_basedir = c['aus_base_dir'] % replace_dict
             aus_abs_dir = os.path.join(dirs['abs_work_dir'], 'update',
-                                       aus_base_dir)
+                                       aus_basedir)
             binary_path = os.path.join(binary_dir,
                                        base_package_name % {'locale': locale})
             # for win repacks
@@ -601,6 +612,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                      message="Created %d of %d snippets successfully.")
 
     def upload_nightly_snippets(self):
+        """uploads nightly snippets"""
         c = self.config
         dirs = self.query_abs_dirs()
         update_dir = os.path.join(dirs['abs_work_dir'], 'update')
@@ -609,10 +621,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return
         if self.rsync_upload_directory(update_dir, c['aus_ssh_key'],
                                        c['aus_user'], c['aus_server'],
-                                       c['aus_upload_base_dir']):
+                                       c['aus_upload_basedir']):
             self.return_code += 1
 
     def generate_partials(self):
+        """generate partial files"""
         f = self.get_previous_mar()
         partials = [f]
         c = self.config
@@ -637,16 +650,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 to_mar.incremental_update(from_mar, archive)
 
     def delete_pgc_files(self):
+        """deletes pgc files"""
         for d in (self.previous_mar_dir(), self.current_mar_dir()):
             for f in self.pgc_files(d):
                 self.info("removing %f" % f)
                 #os.remove(f)
 
-    def previous_mar_filename(self):
-        dirs = self.query_abs_dirs()
-        return os.path.join(dirs['local_mar_dir'], 'previous.mar')
-
     def current_mar_filename(self):
+        """retruns the full path to complete.mar"""
         c = self.config
         version = self.query_version()
         update_env = self.query_env(partial_env=c.get("update_env"))
@@ -657,7 +668,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return os.path.join(self.get_objdir(), 'dist', filename)
 
     def query_latest_version(self):
-        """ find latest available version from candidates_base_url """
+        """find latest available version from candidates_base_url"""
         if self.version:
             return self.version
         c = self.config
@@ -665,11 +676,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         temp_dir = tempfile.mkdtemp()
         temp_out = os.path.join(temp_dir, 'versions')
         self.download_file(url, temp_out)
-        self.version = "27.0a1"  # TODO parse does not work; fixit html_parse.get_last_version_number(temp_out)
+        self.version = "27.0a1"  # hardcoded... too bad
         self.rmtree(temp_dir)
         return self.version
 
     def previous_mar_url(self):
+        """returns the url for previous mar"""
         c = self.config
         update_env = self.query_env(partial_env=c.get("update_env"))
         # why from env?
@@ -682,6 +694,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return "/".join((base_url, remote_filename))
 
     def get_previous_mar(self):
+        """downloads the previous mar file"""
         dirs = self.query_abs_dirs()
         self.mkdir_p(dirs['local_mar_dir'])
         self.download_file(self.previous_mar_url(),
@@ -689,50 +702,62 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._previous_mar_filename()
 
     def _previous_mar_filename(self):
+        """returns the complete path to previous.mar"""
         c = self.config
         return os.path.join(self.previous_mar_dir(), c['previous_mar_filename'])
 
     def create_mar_dirs(self):
+        """creates mar directories: previous/ current/"""
         for d in (self.previous_mar_dir(),
                   self.current_mar_dir()):
             self.info("creating: %s" % d)
             self.mkdir_p(d)
 
     def delete_mar_dirs(self):
+        """delete mar directories: previous, current"""
         for d in (self.previous_mar_dir(),
                   self.current_mar_dir(),
-                  self.get_current_work_mar_dir()):
+                  self.current_work_mar_dir()):
             self.info("deleting: %s" % d)
             if os.path.exists(d):
-                shutil.rmtree(d)
+                self.rmtree(d)
 
     def incremental_update_script(self):
+        """returns the full path to the script for creating
+           incremental updates"""
         return self._update_packaging_script('incremental_update_script')
 
     def previous_mar_dir(self):
+        """returns the full path of the previous/ directory"""
         return self._mar_dir('previous_mar_dir')
 
     def update_mar_dir(self):
+        """returns the full path of the update/ directory"""
         return self._mar_dir('update_mar_dir')
 
     def current_mar_dir(self):
+        """returns the full path of the current/ directory"""
         return self._mar_dir('current_mar_dir')
 
+    def current_work_mar_dir(self):
+        """returns the full path to current.work"""
+        return self._mar_dir('current_work_mar_dir')
+
     def _mar_dir(self, dirname):
+        """returns the full path of dirname;
+            dirname is an entry in configuration"""
         c = self.config
         return os.path.join(self.get_objdir(), c.get(dirname))
 
-    def get_current_work_mar_dir(self):
-        c = self.config
-        return os.path.join(self.get_objdir(), c.get('current_work_mar_dir'))
-
     def get_objdir(self):
+        """returns full path to objdir"""
         dirs = self.query_abs_dirs()
         return dirs['abs_objdir']
 
-    def pgc_files(self, base_dir):
+    def pgc_files(self, basedir):
+        """returns a list of .pcf files in basedir"""
         pgc_files = []
-        for dirpath, files, dirs in os.walk(base_dir):
+        for dirpath, files, dirs in os.walk(basedir):
             for f in files:
                 if f.endswith('.pgc'):
                     pgc_files.append(os.path.join(dirpath, f))
@@ -740,6 +765,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
 
 class MarTool(BaseScript):
+    """manages the mar tools executables"""
     def __init__(self, config, dirs):
         self.config = config
         self.dirs = dirs
@@ -750,11 +776,15 @@ class MarTool(BaseScript):
                        #     require_config_file=False)
 
     def local_dir(self):
+        """full path to the directory that contains
+           mar and mbsdiff executables"""
         c = self.config
         return os.path.join(self.dirs['abs_objdir'],
                             c.get("local_mar_tool_dir"))
 
     def download(self):
+        """downloads mar tools executables (mar,mbsdiff)
+           and stores them local_dir()"""
         c = self.config
         self.info("getting mar tools")
         partials_url = c["partials_url"] % {'base_url': c.get('candidates_base_url')}
@@ -771,6 +801,7 @@ class MarTool(BaseScript):
             self.chmod(full_path, 0755)
 
     def _query_bin(self, bin_name):
+        """returns the full path to bin_name"""
         if not self.binaries[bin_name]:
             c = self.config
             self.binaries[bin_name] = os.path.join(self.local_dir(),
@@ -778,6 +809,7 @@ class MarTool(BaseScript):
         return self.binaries[bin_name]
 
     def env(self):
+        """returns the env setting required to run mar and/or mbsdiff"""
         env = {}
         for binary in self.binaries:
             env[binary.upper()] = self._query_bin(binary)
@@ -785,6 +817,7 @@ class MarTool(BaseScript):
 
 
 class MarFile(BaseScript):
+    """manages the downlad/unpack and incremental updates of mar files"""
     def __init__(self, config, dirs, filename=None):
         self.config = config
         self.dirs = dirs
@@ -797,6 +830,7 @@ class MarFile(BaseScript):
         super(BaseScript, self).__init__()
 
     def unpack(self, dst_dir):
+        """unpacks a mar file into dst_dir"""
         self.download()
         # downloading mar tools
         mt = self.mt
@@ -811,18 +845,27 @@ class MarFile(BaseScript):
                          halt_on_failure=True)
 
     def download(self):
+        """downloads mar file - not implemented yet"""
         if not os.path.exists(self.filename):
             pass
         return self.filename
 
     def _update_packaging_script(self, script):
+        """returns the full path of script"""
         c = self.config
         return os.path.join(self.update_packaging_dir(), c.get(script))
 
     def incremental_update_script(self):
+        """full path to the incremental update script"""
         return self._update_packaging_script('incremental_update_script')
 
+    def unpack_script(self):
+        """returns the full path to the unpack script """
+        return self._update_packaging_script('unpack_script')
+
     def incremental_update(self, other, partial_filename):
+        """create an incremental update from the current mar to the
+          other mar object. It stores the result in partial_filename"""
         fromdir = tempfile.mkdtemp()
         todir = tempfile.mkdtemp()
         self.unpack(fromdir)
@@ -837,6 +880,7 @@ class MarFile(BaseScript):
         self.rmtree(fromdir)
 
     def buildid(self):
+        """returns the buildid of the current mar file"""
         if self.buildid is not None:
             return self.buildid
         temp_dir = tempfile.mkdtemp()
@@ -846,12 +890,14 @@ class MarFile(BaseScript):
         return self.buildid
 
     def application_ini_file(self, basedir):
+        """returns the full path of the application.ini file"""
         c = self.config
         ini_file = os.path.join(basedir, c.get('application_ini'))
         self.info("application.ini file: %s" % ini_file)
         return ini_file
 
     def get_buildid_form_ini(self, ini_file):
+        """reads an ini_file and returns the buildid"""
         c = self.config
         ini = ConfigParser.SafeConfigParser()
         ini.read(ini_file)
@@ -859,12 +905,10 @@ class MarFile(BaseScript):
                        c.get('buildid_option'))
 
     def update_packaging_dir(self):
+        """returns the full path to update packaging directory"""
         c = self.config
         dirs = self.dirs
         return os.path.join(dirs['abs_mozilla_dir'], c.get('update_packaging_dir'))
-
-    def unpack_script(self):
-        return self._update_packaging_script('unpack_script')
 
 # main {{{
 if __name__ == '__main__':
