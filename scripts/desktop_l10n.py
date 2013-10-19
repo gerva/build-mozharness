@@ -324,6 +324,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     # Actions {{{2
     def clobber(self):
+        """clobber"""
         self.read_buildbot_config()
         dirs = self.query_abs_dirs()
         c = self.config
@@ -369,7 +370,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def setup(self):
         self.enable_mock()
         dirs = self.query_abs_dirs()
-        self.copy_mozconfig()
+        self._copy_mozconfig()
         self._setup_configure()
         self.make_wget_en_US()
         self.make_unpack()
@@ -387,26 +388,26 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # if checkout updates CLOBBER file with a newer timestamp,
         # next make -f client.mk configure  will delete archives
         # downloaded with make wget_en_US, so just touch CLOBBER file
-        clobber_file = self.clobber_file()
-        if os.path.exists(clobber_file):
-            self._touch_file(clobber_file)
+        _clobber_file = self._clobber_file()
+        if os.path.exists(_clobber_file):
+            self._touch_file(_clobber_file)
         # Configure again since the hg update may have invalidated it.
         buildid = self.query_buildid()
         self._setup_configure(buildid=buildid)
 
-    def clobber_file(self):
+    def _clobber_file(self):
         c = self.config
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], c.get('clobber_file'))
 
-    def copy_mozconfig(self):
+    def _copy_mozconfig(self):
         c = self.config
         dirs = self.query_abs_dirs()
         src = os.path.join(dirs['abs_work_dir'], c['mozconfig'])
         dst = os.path.join(dirs['abs_mozilla_dir'], '.mozconfig')
         self.copyfile(src, dst)
-        with open(dst, 'r') as f:
-            for line in f:
+        with open(dst, 'r') as mozconfig:
+            for line in mozconfig:
                 self.info(line.strip())
 
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
@@ -583,23 +584,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         locales = self.query_locales()
-        base_package_name = self.query_base_package_name()
         buildid = self.query_buildid()
         version = self.query_version()
-        binary_dir = os.path.join(dirs['abs_objdir'], 'dist')
         success_count = total_count = 0
-        replace_dict = {
-            'buildid': buildid,
-            'build_target': c['build_target'],
-        }
         for locale in locales:
             total_count += 1
-            replace_dict['locale'] = locale
-            aus_basedir = c['aus_base_dir'] % replace_dict
+            aus_dir = c['aus_base_dir'] % {'buildid': buildid,
+                                           'build_target': c['build_target'],
+                                           'locale': locale}
             aus_abs_dir = os.path.join(dirs['abs_work_dir'], 'update',
-                                       aus_basedir)
-            binary_path = os.path.join(binary_dir,
-                                       base_package_name % {'locale': locale})
+                                       aus_dir)
+            binary_path = os.path.join(self._abs_dist_dir(),
+                                       self.query_base_package_name() %
+                                       {'locale': locale})
             # for win repacks
             binary_path = binary_path.replace(os.sep, "/")
             url = self.query_upload_url(locale)
@@ -678,7 +675,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         version = self.query_version()
         filename = c["complete_mar"] % {'version': version,
                                         'platform': platform}
-        return os.path.join(self.get_objdir(), 'dist', filename)
+        return os.path.join(self._abs_dist_dir(), filename)
 
     def query_latest_version(self):
         """find latest available version from candidates_base_url"""
@@ -742,6 +739,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """returns the full path of the previous/ directory"""
         return self._mar_dir('previous_mar_dir')
 
+    def _abs_dist_dir(self):
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['abs_objdir'], 'dist')
+
     def update_mar_dir(self):
         """returns the full path of the update/ directory"""
         return self._mar_dir('update_mar_dir')
@@ -775,7 +776,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return pgc_files
 
 
-class MarTool(BaseScript):
+class MarTool(BaseScript, object):
     """manages the mar tools executables"""
     def __init__(self, config, dirs):
         self.config = config
@@ -828,15 +829,12 @@ class MarTool(BaseScript):
         return env
 
 
-class MarFile(BaseScript):
+class MarFile(BaseScript, object):
     """manages the downlad/unpack and incremental updates of mar files"""
     def __init__(self, config, dirs, filename=None):
         self.config = config
         self.dirs = dirs
-        self.dst_dir = None
         self.filename = filename
-        self.url = None
-        self.version = None
         self.log_obj = None
         self.mt = MarTool(self.config, dirs)
         super(BaseScript, self).__init__()
