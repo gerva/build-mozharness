@@ -27,6 +27,7 @@ except ImportError:
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.log import OutputParser
+from mozharness.base.log import LogMixin
 from mozharness.base.transfer import TransferMixin
 from mozharness.base.errors import BaseErrorList, MakefileErrorList
 from mozharness.mozilla.release import ReleaseMixin
@@ -38,6 +39,7 @@ from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
+from mozharness.base.script import ScriptMixin
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -132,12 +134,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.buildid = None
         self.make_ident_output = None
         self.repack_env = None
-        self.complete_mar_env = None
         self.upload_env = None
         self.revision = None
         self.upload_env = None
         self.version = None
-        self.latest_version = None
         self.upload_urls = {}
         self.locales_property = {}
 
@@ -216,9 +216,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         r = re.compile(r"buildid (\d+)")
         output = self._query_make_ident_output()
         for line in output.splitlines():
-            m = r.match(line)
-            if m:
-                self.buildid = m.groups()[0]
+            match = r.match(line)
+            if match:
+                self.buildid = match.groups()[0]
         return self.buildid
 
     def query_revision(self):
@@ -230,9 +230,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         r = re.compile(r"^(gecko|fx)_revision ([0-9a-f]{12}\+?)$")
         output = self._query_make_ident_output()
         for line in output.splitlines():
-            m = r.match(line)
-            if m:
-                self.revision = m.groups()[1]
+            match = r.match(line)
+            if match:
+                self.revision = match.groups()[1]
         return self.revision
 
     def _query_make_variable(self, variable, make_args=None, exclude_lines=[]):
@@ -336,6 +336,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """pulls source code"""
         c = self.config
         dirs = self.query_abs_dirs()
+        #martool = MarTool(c, dirs, self.log_obj)
+        #martool.download()
+        #sys.exit(0)
         repos = []
         replace_dict = {}
         if c.get("user_repo_override"):
@@ -411,14 +414,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.info(line.strip())
 
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
-              halt_on_failure=True, return_type="list", silent=False):
+              halt_on_failure=True):
         """a wrapper for make calls"""
-        make = self.query_exe("make", return_type=return_type)
-        return self.run_command(make + target,
-                                cwd=cwd,
-                                env=env,
-                                error_list=error_list,
-                                halt_on_failure=halt_on_failure)
+        make = Make(self.config, self.log_obj)
+        make.execute(target, cwd, env, error_list=error_list,
+                     halt_on_failure=halt_on_failure)
 
     def make_configure(self):
         """calls make -f client.mk configure"""
@@ -480,8 +480,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         self.create_mar_dirs()
-        mt = MarTool(c, dirs)
-        mt.download()
+        martool = MarTool(c, dirs, self.log_obj)
+        martool.download()
         package_basedir = os.path.join(dirs['abs_objdir'],
                                        c['package_base_dir'])
         success_count = 0
@@ -647,10 +647,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                                   'version': version,
                                                   'locale': locale}
             localized_mar = os.path.join(update_mar_dir, localized_mar)
-            to_m = MarFile(c, dirs, localized_mar)
+            to_m = MarFile(c, dirs, log_obj=self.log_obj,
+                           filename=localized_mar)
             for partial in partials:
                 # TODO avoid unpacking the same same files multiple times
-                from_m = MarFile(c, dirs, partial)
+                from_m = MarFile(c, dirs, filename=partial,
+                                 log_obj=self.log_obj)
                 archive = c['partial_mar'] % {'version': version,
                                               'locale': locale,
                                               'from_buildid': from_m.buildid(),
@@ -730,11 +732,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if os.path.exists(directory):
                 self.rmtree(directory)
 
-    def incremental_update_script(self):
-        """returns the full path to the script for creating
-           incremental updates"""
-        return self._update_packaging_script('incremental_update_script')
-
     def previous_mar_dir(self):
         """returns the full path of the previous/ directory"""
         return self._mar_dir('previous_mar_dir')
@@ -776,16 +773,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return pgc_files
 
 
-class MarTool(BaseScript, object):
+class MarTool(BaseScript, LogMixin, object):
     """manages the mar tools executables"""
-    def __init__(self, config, dirs):
+    def __init__(self, config, dirs, log_obj):
         self.config = config
         self.dirs = dirs
-        self.log_obj = None
         self.binaries = {'mar': None,
                          'mbsdiff': None}
+        self.log_obj = log_obj
         super(BaseScript, self).__init__()
-                       #     require_config_file=False)
 
     def local_dir(self):
         """full path to the directory that contains
@@ -829,24 +825,24 @@ class MarTool(BaseScript, object):
         return env
 
 
-class MarFile(BaseScript, object):
+class MarFile(BaseScript, LogMixin, object):
     """manages the downlad/unpack and incremental updates of mar files"""
-    def __init__(self, config, dirs, filename=None):
+    def __init__(self, config, dirs, log_obj, filename=None):
         self.config = config
         self.dirs = dirs
         self.filename = filename
-        self.log_obj = None
-        self.mt = MarTool(self.config, dirs)
         super(BaseScript, self).__init__()
+        self.log_obj = log_obj
+        self.martool = MarTool(self.config, dirs, self.log_obj)
 
     def unpack(self, dst_dir):
         """unpacks a mar file into dst_dir"""
         self.download()
         # downloading mar tools
-        mt = self.mt
-        mt.download()
-        cmd = ['perl', self.unpack_script(), self.filename]
-        env = mt.env()
+        martool = self.martool
+        martool.download()
+        cmd = ['perl', self._unpack_script(), self.filename]
+        env = martool.env()
         env["MOZ_PKG_PRETTYNAMES"] = "1"
         self.mkdir_p(dst_dir)
         self.run_command(cmd,
@@ -863,13 +859,13 @@ class MarFile(BaseScript, object):
     def _update_packaging_script(self, script):
         """returns the full path of script"""
         c = self.config
-        return os.path.join(self.update_packaging_dir(), c.get(script))
+        return os.path.join(self._update_packaging_dir(), c.get(script))
 
-    def incremental_update_script(self):
+    def _incremental_update_script(self):
         """full path to the incremental update script"""
         return self._update_packaging_script('incremental_update_script')
 
-    def unpack_script(self):
+    def _unpack_script(self):
         """returns the full path to the unpack script """
         return self._update_packaging_script('unpack_script')
 
@@ -881,10 +877,10 @@ class MarFile(BaseScript, object):
         self.unpack(fromdir)
         other.unpack(todir)
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
-        cmd = [self.incremental_update_script(), partial_filename,
+        cmd = [self._incremental_update_script(), partial_filename,
                fromdir, todir]
-        mt = self.mt
-        env = mt.env()
+        martool = self.martool
+        env = martool.env()
         self.run_command(cmd, cwd=None, env=env)
         self.rmtree(todir)
         self.rmtree(fromdir)
@@ -895,18 +891,18 @@ class MarFile(BaseScript, object):
             return self.buildid
         temp_dir = tempfile.mkdtemp()
         self.unpack(temp_dir)
-        ini_file = self.application_ini_file(temp_dir)
-        self.buildid = self.get_buildid_form_ini(ini_file)
+        ini_file = self._application_ini_file(temp_dir)
+        self.buildid = self._buildid_form_ini(ini_file)
         return self.buildid
 
-    def application_ini_file(self, basedir):
+    def _application_ini_file(self, basedir):
         """returns the full path of the application.ini file"""
         c = self.config
         ini_file = os.path.join(basedir, c.get('application_ini'))
         self.info("application.ini file: %s" % ini_file)
         return ini_file
 
-    def get_buildid_form_ini(self, ini_file):
+    def _buildid_form_ini(self, ini_file):
         """reads an ini_file and returns the buildid"""
         c = self.config
         ini = ConfigParser.SafeConfigParser()
@@ -914,12 +910,44 @@ class MarFile(BaseScript, object):
         return ini.get(c.get('buildid_section'),
                        c.get('buildid_option'))
 
-    def update_packaging_dir(self):
+    def _update_packaging_dir(self):
         """returns the full path to update packaging directory"""
         c = self.config
         dirs = self.dirs
         return os.path.join(dirs['abs_mozilla_dir'],
                             c.get('update_packaging_dir'))
+
+
+class Make(ScriptMixin, LogMixin, object):
+    """a wrapper for make calls"""
+    def __init__(self, config, log_obj):
+        self.config = config
+        self.log_obj = log_obj
+
+    def execute(self, target, cwd, env, error_list=MakefileErrorList,
+                halt_on_failure=True):
+        """runs make and retrurns the exit code"""
+        make = self.query_exe("make", return_type="list")
+        return self.run_command(make + target,
+                                cwd=cwd,
+                                env=env,
+                                error_list=error_list,
+                                halt_on_failure=halt_on_failure)
+
+    def get_output(self, target, cwd, env, error_list=MakefileErrorList,
+                   halt_on_failure=True):
+        """runs make and returns the output of the command"""
+
+        make = self.query_exe("make", return_type="list")
+        output = self.get_output_from_command(make + target,
+                                              cwd=cwd,
+                                              env=env,
+                                              silent=True,
+                                              halt_on_failure=halt_on_failure)
+        parser = OutputParser(config=self.config, log_obj=self.log_obj,
+                              error_list=MakefileErrorList)
+        parser.add_lines(output)
+        return output
 
 # main {{{
 if __name__ == '__main__':
