@@ -15,7 +15,7 @@ AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
 AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "https://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
-PLATFORM = "mac64"
+PLATFORM = "macosx64"
 config = {
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
@@ -97,15 +97,15 @@ config = {
     "application_ini": "Contents/MacOS/application.ini",
     "buildid_section": 'App',
     "buildid_option": "BuildID",
-    "unpack_script": "unwrap_full_update.pl",
-    "incremental_update_script": "make_incremental_update.sh",
+    "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
+    "incremental_update_script": "tools/update-packaging/make_incremental_update.sh",
     "update_packaging_dir": "tools/update-packaging",
     "local_mar_tool_dir": "dist/host/bin",
     "mar": "mar",
     "mbsdiff": "mbsdiff",
     "candidates_base_url": CANDIDATES_URL,
     "partials_url": "%(base_url)s/latest-mozilla-central/",
-    "mar_tools_url": "%(partials_url)s/mar-tools/macosx64",
+    "mar_tools_url": "https://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/macosx64/",
     "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.%(platform)s.complete.mar",
     #../update/mac64/de/nightly-27.0a1.complete.mar
