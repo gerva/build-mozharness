@@ -124,8 +124,8 @@ class MarFile(ScriptMixin, LogMixin, object):
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
         cmd = [self._incremental_update_script(), partial_filename,
                fromdir, todir]
-        martool = self.martool
-        env = martool.environment()
+        files = self.mar_scripts
+        env = tools_environment(files.tools_dir)
         self.run_command(cmd, cwd=None, env=env)
         self.rmtree(todir)
         self.rmtree(fromdir)
@@ -136,15 +136,11 @@ class MarFile(ScriptMixin, LogMixin, object):
             return self.build_id
         temp_dir = tempfile.mkdtemp()
         self.unpack_mar(temp_dir)
-        ini_file = self._application_ini_file(temp_dir)
+        files = self.mar_scripts
+        ini_file = os.path.join(temp_dir, files.ini_file)
+        self.info("application.ini file: %s" % ini_file)
         self.build_id = self._buildid_form_ini(ini_file)
         return self.build_id
-
-    def _application_ini_file(self, basedir, application_ini):
-        """returns the full path of the application.ini file"""
-        ini_file = os.path.join(basedir, application_ini)
-        self.info("application.ini file: %s" % ini_file)
-        return ini_file
 
     def _buildid_form_ini(self, ini_file):
         """reads an ini_file and returns the buildid"""
@@ -161,7 +157,8 @@ class MarFile(ScriptMixin, LogMixin, object):
 
 
 class MarScripts(object):
-    def __init__(self, unpack, incremental_update, tools_dir):
+    def __init__(self, unpack, incremental_update, tools_dir, ini_file):
         self.unpack = unpack
         self.incremental_update = incremental_update
         self.tools_dir = tools_dir
+        self.ini_file = ini_file
