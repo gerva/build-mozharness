@@ -618,7 +618,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         incremental_update = self._incremental_update_script()
         mar_scripts = MarScripts(unpack=self._unpack_script(),
                                  incremental_update=incremental_update,
-                                 tools_dir=self._mar_tool_dir())
+                                 tools_dir=self._mar_tool_dir(),
+                                 ini_file=c['application_ini'])
         for locale in self.locales:
             localized_mar = c['localized_mar'] % {'platform': platform,
                                                   'version': version,
@@ -718,12 +719,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _incremental_update_script(self):
         c = self.config
         dirs = self.query_abs_dirs()
-        return os.path.join(dirs['abs_work_dir'], c['incremental_update_script'])
+        return os.path.join(dirs['abs_mozilla_dir'], c['incremental_update_script'])
 
     def _unpack_script(self):
         c = self.config
         dirs = self.query_abs_dirs()
-        return os.path.join(dirs['abs_work_dir'], c['unpack_script'])
+        return os.path.join(dirs['abs_mozilla_dir'], c['unpack_script'])
 
     def previous_mar_dir(self):
         """returns the full path of the previous/ directory"""
