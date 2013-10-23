@@ -17,7 +17,8 @@ config = {
         "jsreftest": "remotereftest.py",
         "robocop": "runtestsremote.py",
         "xpcshell": "remotexpcshelltests.py",
-        "jittest": "jit_test.py"
+        "jittest": "jit_test.py",
+        "cppunittest": "remotecppunittests.py"
     },
     "hostutils_url":  "http://bm-remote.build.mozilla.org/tegra/tegra-host-utils.Linux.742597.zip",
     "verify_path":  "/builds/sut_tools/verify.py",
@@ -89,6 +90,15 @@ config = {
         "--localLib=../tests/bin",
         "--tinderbox"
      ],
+     "cppunittest_options": [
+        "--symbols-path=%(symbols_path)s",
+        "--xre-path=tests/bin",
+        "--dm_trans=SUT",
+        "--deviceIP=%(device_ip)s",
+        "--localBinDir=../tests/bin",
+        "--apk=%(apk_path)s",
+        "--skip-manifest=../tests/cppunittests/android_cppunittest_manifest.txt"
+     ],
     "all_mochitest_suites": {
         "mochitest-1": ["--total-chunks=8", "--this-chunk=1"],
         "mochitest-2": ["--total-chunks=8", "--this-chunk=2"],
@@ -119,10 +129,10 @@ config = {
         "jsreftest-3": ["--total-chunks=3", "--this-chunk=3"],
     },
     "all_robocop_suites": {
-        #plain is split
-        "robocop-1": ["--total-chunks=3", "--this-chunk=1"],
-        "robocop-2": ["--total-chunks=3", "--this-chunk=2"],
-        "robocop-3": ["--total-chunks=3", "--this-chunk=3"],
+        "robocop-1": ["--total-chunks=4", "--this-chunk=1"],
+        "robocop-2": ["--total-chunks=4", "--this-chunk=2"],
+        "robocop-3": ["--total-chunks=4", "--this-chunk=3"],
+        "robocop-4": ["--total-chunks=4", "--this-chunk=4"],
     },
     "all_xpcshell_suites": {
         "xpcshell": []
@@ -130,16 +140,12 @@ config = {
     "all_jittest_suites": {
         "jittest": []
     },
+    "all_cppunittest_suites": {
+        "cppunittest": ['cppunittests']
+    },
     "find_links": [
-        "http://repos/python/packages",
-        "http://releng-puppet2.srv.releng.use1.mozilla.com/python/packages/",
-        "http://releng-puppet1.srv.releng.use1.mozilla.com/python/packages/",
-        "http://releng-puppet2.build.mtv1.mozilla.com/python/packages/",
-        "http://releng-puppet2.srv.releng.usw2.mozilla.com/python/packages/",
-        "http://releng-puppet1.srv.releng.usw2.mozilla.com/python/packages/",
-        "http://releng-puppet2.srv.releng.scl3.mozilla.com/python/packages/",
-        "http://releng-puppet2.build.scl1.mozilla.com/python/packages/",
-        "http://puppetagain.pub.build.mozilla.org/data/python/packages/",
+        "http://pypi.pvt.build.mozilla.org/pub",
+        "http://pypi.pub.build.mozilla.org/pub",
     ],
     "pip_index": False,
     "buildbot_json_path": "buildprops.json",

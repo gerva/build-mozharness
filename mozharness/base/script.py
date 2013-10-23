@@ -760,7 +760,6 @@ class ScriptMixin(object):
         shell = True
         if isinstance(command, list):
             shell = False
-            self.info("Copy/paste: %s" % subprocess.list2cmdline(command))
         p = subprocess.Popen(command, shell=shell, stdout=tmp_stdout,
                              cwd=cwd, stderr=tmp_stderr, env=env)
         #XXX: changed from self.debug to self.log due to this error:
@@ -1143,8 +1142,8 @@ class BaseScript(ScriptMixin, LogMixin, object):
 
             if not post_success:
                 self.fatal("Aborting due to failure in post-run listener.")
-
-        self.copy_logs_to_upload_dir()
+        if self.config.get("copy_logs_post_run", True):
+            self.copy_logs_to_upload_dir()
 
         return self.return_code
 
@@ -1247,11 +1246,13 @@ class BaseScript(ScriptMixin, LogMixin, object):
         # Summaries need a lot more love.
         self.log(message, level=level)
 
-    def add_failure(self, key, message="%(key)s failed.", level=ERROR):
+    def add_failure(self, key, message="%(key)s failed.", level=ERROR,
+                    increment_return_code=True):
         if key not in self.failures:
             self.failures.append(key)
-            self.return_code += 1
             self.add_summary(message % {'key': key}, level=level)
+            if increment_return_code:
+                self.return_code += 1
 
     def query_failure(self, key):
         return key in self.failures

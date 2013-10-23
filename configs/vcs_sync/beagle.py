@@ -1,3 +1,6 @@
+# This is for gecko-dev, which is a developer-oriented repo with
+# release-train and inbound branches.
+
 import os
 import socket
 hostname = socket.gethostname()
@@ -28,13 +31,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
-            "target_dest": "m-c1/.git",
-            "vcs": "git",
-            "test_push": True,
-            "force_push": True,
+            "target_dest": "gitmo-beagle",
         }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -63,17 +62,9 @@ config = {
                 "tags": {'*': '*'},
             },
         }, {
-            "target_dest": "m-b2g18/.git",
-            "vcs": "git",
-            "test_push": True,
-            "branch_config": {
-                "branches": {
-                    "b2g18": "master",
-                },
-            },
+            "target_dest": "gitmo-beagle",
         }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
             "tag_config": {
                 "tag_regexes": [
                     "^B2G_",
@@ -101,8 +92,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -125,8 +117,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -149,8 +142,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -173,8 +167,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -197,8 +192,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -225,8 +221,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -253,14 +250,40 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
         "branch_config": {
             "branches": {
                 "default": "esr17",
+            },
+        },
+        "tag_config": {
+            "tag_regexes": [
+                "^B2G_",
+            ],
+        },
+    }, {
+        "repo": "https://hg.mozilla.org/releases/mozilla-esr24",
+        "revision": "default",
+        "repo_name": "mozilla-esr24",
+        "targets": [{
+            "target_dest": "beagle/.git",
+            "vcs": "git",
+            "test_push": True,
+        }, {
+            "target_dest": "gitmo-beagle",
+        }, {
+            "target_dest": "github-beagle",
+        }],
+        "bare_checkout": True,
+        "vcs": "hg",
+        "branch_config": {
+            "branches": {
+                "default": "esr24",
             },
         },
         "tag_config": {
@@ -277,8 +300,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -297,8 +321,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -317,8 +342,9 @@ config = {
             "vcs": "git",
             "test_push": True,
         }, {
+            "target_dest": "gitmo-beagle",
+        }, {
             "target_dest": "github-beagle",
-            "vcs": "git",
         }],
         "bare_checkout": True,
         "vcs": "hg",
@@ -331,8 +357,13 @@ config = {
     }],
     "remote_targets": {
         "github-beagle": {
-            "repo": "git@github.com:escapewindow/test-beagle.git",
-            "ssh_key": "~/.ssh/github1_rsa",
+            "repo": "git@github.com:mozilla/integration-gecko-dev.git",
+            "ssh_key": "~/.ssh/releng-github-id_rsa",
+            "vcs": "git",
+        },
+        "gitmo-beagle": {
+            "repo": "gitolite3@git.mozilla.org:integration/gecko-dev.git",
+            "ssh_key": "~/.ssh/vcs-sync_rsa",
             "vcs": "git",
         },
     },
@@ -359,31 +390,30 @@ config = {
         "mozprocess==0.11",
     ],
     "find_links": [
-        "http://puppetagain.pub.build.mozilla.org/data/python/packages/",
-        "http://releng-puppet2.srv.releng.use1.mozilla.com/python/packages/",
-        "http://releng-puppet1.srv.releng.use1.mozilla.com/python/packages/",
-        "http://releng-puppet2.build.mtv1.mozilla.com/python/packages/",
-        "http://releng-puppet2.srv.releng.usw2.mozilla.com/python/packages/",
-        "http://releng-puppet1.srv.releng.usw2.mozilla.com/python/packages/",
-        "http://releng-puppet2.srv.releng.scl3.mozilla.com/python/packages/",
-        "http://releng-puppet2.build.scl1.mozilla.com/python/packages/",
+        "http://pypi.pvt.build.mozilla.org/pub",
+        "http://pypi.pub.build.mozilla.org/pub",
     ],
     "pip_index": False,
 
     "upload_config": [{
-        "ssh_key": "~/.ssh/id_rsa",
+        "ssh_key": "~/.ssh/vcs-sync_rsa",
         "ssh_user": "asasaki",
-        "remote_host": "github-sync3",
-        "remote_path": "/home/asasaki/beagle1/beagle-upload",
+        "remote_host": "people.mozilla.org",
+        "remote_path": "/home/asasaki/public_html/vcs2vcs/gecko-dev",
     }],
 
     "default_notify_from": "vcs2vcs@%s" % hostname,
     "notify_config": [{
         "to": "aki@mozilla.com",
+        "failure_only": False,
+        "skip_empty_messages": False,
+    }, {
+        "to": "release+vcs2vcs@mozilla.com",
         "failure_only": True,
+        "skip_empty_messages": True,
     }],
 
-    # Disallow sharing.  We may need a better way of doing this.
+    # Disallow sharing, since we want pristine .hg and .git directories.
     "vcs_share_base": None,
     "hg_share_base": None,
 }

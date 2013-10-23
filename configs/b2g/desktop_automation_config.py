@@ -12,15 +12,8 @@ config = {
     },
 
     "find_links": [
-        "http://repos/python/packages",
-        "http://releng-puppet2.srv.releng.use1.mozilla.com/python/packages/",
-        "http://releng-puppet1.srv.releng.use1.mozilla.com/python/packages/",
-        "http://releng-puppet2.build.mtv1.mozilla.com/python/packages/",
-        "http://releng-puppet2.srv.releng.usw2.mozilla.com/python/packages/",
-        "http://releng-puppet1.srv.releng.usw2.mozilla.com/python/packages/",
-        "http://releng-puppet2.srv.releng.scl3.mozilla.com/python/packages/",
-        "http://releng-puppet2.build.scl1.mozilla.com/python/packages/",
-        "http://puppetagain.pub.build.mozilla.org/data/python/packages/",
+        "http://pypi.pvt.build.mozilla.org/pub",
+        "http://pypi.pub.build.mozilla.org/pub",
     ],
     "pip_index": False,
 
@@ -47,5 +40,6 @@ config = {
         "--total-chunks=%(total_chunks)s", "--this-chunk=%(this_chunk)s",
         "--profile=%(gaia_profile)s", "--app=%(application)s", "--desktop",
         "--utility-path=%(utility_path)s", "--certificate-path=%(cert_path)s",
+        "--symbols-path=%(symbols_path)s",
     ],
 }
