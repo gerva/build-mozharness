@@ -23,7 +23,7 @@ from mozharness.base.script import ScriptMixin
 
 MAR_BINARIES = ('mar', 'mbsdiff')
 
-config = {
+CONFIG = {
     "buildid_section": 'App',
     "buildid_option": "BuildID",
     "unpack_script": "unwrap_full_update.pl",
@@ -37,6 +37,22 @@ config = {
 }
 
 
+def tools_environment(base_dir):
+    """returns the env setting required to run mar and/or mbsdiff"""
+    env = {}
+    for binary in MAR_BINARIES:
+        env[binary.upper()] = os.path.join(base_dir, binary)
+    return env
+
+
+def buildid_form_ini(ini_file):
+    """reads an ini_file and returns the buildid"""
+    ini = ConfigParser.SafeConfigParser()
+    ini.read(ini_file)
+    return ini.get(CONFIG.get('buildid_section'),
+                   CONFIG.get('buildid_option'))
+
+
 # MarTool {{{1
 class MarTool(ScriptMixin, LogMixin, object):
     """manages the mar tools executables"""
@@ -45,7 +61,7 @@ class MarTool(ScriptMixin, LogMixin, object):
         self.dst_dir = dst_dir
         self.binaries = ('mar', 'mbsdiff')
         self.log_obj = log_obj
-        self.config = config
+        self.config = CONFIG
         super(ScriptMixin, self).__init__()
 
     def download(self):
@@ -64,14 +80,6 @@ class MarTool(ScriptMixin, LogMixin, object):
             self.chmod(full_path, 0755)
 
 
-def tools_environment(base_dir):
-    """returns the env setting required to run mar and/or mbsdiff"""
-    env = {}
-    for binary in MAR_BINARIES:
-        env[binary.upper()] = os.path.join(base_dir, binary)
-    return env
-
-
 # MarFile {{{1
 class MarFile(ScriptMixin, LogMixin, object):
     """manages the downlad/unpack and incremental updates of mar files"""
@@ -81,7 +89,7 @@ class MarFile(ScriptMixin, LogMixin, object):
         self.log_obj = log_obj
         self.build_id = None
         self.mar_scripts = mar_scripts
-        self.config = config
+        self.config = CONFIG
 
     def unpack_mar(self, dst_dir):
         """unpacks a mar file into dst_dir"""
@@ -139,24 +147,13 @@ class MarFile(ScriptMixin, LogMixin, object):
         files = self.mar_scripts
         ini_file = os.path.join(temp_dir, files.ini_file)
         self.info("application.ini file: %s" % ini_file)
-        self.build_id = self._buildid_form_ini(ini_file)
+        self.build_id = buildid_form_ini(ini_file)
         return self.build_id
-
-    def _buildid_form_ini(self, ini_file):
-        """reads an ini_file and returns the buildid"""
-        ini = ConfigParser.SafeConfigParser()
-        ini.read(ini_file)
-        return ini.get(config.get('buildid_section'),
-                       config.get('buildid_option'))
-
-    def _update_packaging_dir(self):
-        """returns the full path to update packaging directory"""
-        dirs = self.dirs
-        return os.path.join(dirs['abs_mozilla_dir'],
-                            config.get('update_packaging_dir'))
 
 
 class MarScripts(object):
+    """holds the information on scripts and directories paths needed
+       by MarTool and MarFile"""
     def __init__(self, unpack, incremental_update, tools_dir, ini_file):
         self.unpack = unpack
         self.incremental_update = incremental_update
