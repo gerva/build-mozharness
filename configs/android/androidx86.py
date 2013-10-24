@@ -161,9 +161,20 @@ config = {
             "extra_args": ["--total-chunks", "10", "--this-chunk", "10",
                 "tests/layout/reftests/reftest.list"]
         },
-        "crashtest": {
+        "crashtest-1": {
             "category": "reftest",
-            "extra_args": ["tests/testing/crashtest/crashtests.list"]
+            "extra_args": ["--total-chunks", "3", "--this-chunk", "1",
+                "tests/testing/crashtest/crashtests.list"]
+        },
+        "crashtest-2": {
+            "category": "reftest",
+            "extra_args": ["--total-chunks", "3", "--this-chunk", "2",
+                "tests/testing/crashtest/crashtests.list"]
+        },
+        "crashtest-3": {
+            "category": "reftest",
+            "extra_args": ["--total-chunks", "3", "--this-chunk", "3",
+                "tests/testing/crashtest/crashtests.list"]
         },
         "xpcshell": {
             "category": "xpcshell",
@@ -181,19 +192,37 @@ config = {
         },
         "jsreftest-1": {
             "category": "reftest",
-            "extra_args": ["--total-chunks", "3", "--this-chunk", "1",
+            "extra_args": ["--total-chunks", "6", "--this-chunk", "1",
                 "../jsreftest/tests/jstests.list",
                 "--extra-profile-file=jsreftest/tests/user.js"]
         },
         "jsreftest-2": {
             "category": "reftest",
-            "extra_args": ["--total-chunks", "3", "--this-chunk", "2",
+            "extra_args": ["--total-chunks", "6", "--this-chunk", "2",
                 "../jsreftest/tests/jstests.list",
                 "--extra-profile-file=jsreftest/tests/user.js"]
         },
         "jsreftest-3": {
             "category": "reftest",
-            "extra_args": ["--total-chunks", "3", "--this-chunk", "3",
+            "extra_args": ["--total-chunks", "6", "--this-chunk", "3",
+                "../jsreftest/tests/jstests.list",
+                "--extra-profile-file=jsreftest/tests/user.js"]
+        },
+        "jsreftest-4": {
+            "category": "reftest",
+            "extra_args": ["--total-chunks", "6", "--this-chunk", "4",
+                "../jsreftest/tests/jstests.list",
+                "--extra-profile-file=jsreftest/tests/user.js"]
+        },
+        "jsreftest-5": {
+            "category": "reftest",
+            "extra_args": ["--total-chunks", "6", "--this-chunk", "5",
+                "../jsreftest/tests/jstests.list",
+                "--extra-profile-file=jsreftest/tests/user.js"]
+        },
+        "jsreftest-6": {
+            "category": "reftest",
+            "extra_args": ["--total-chunks", "6", "--this-chunk", "6",
                 "../jsreftest/tests/jstests.list",
                 "--extra-profile-file=jsreftest/tests/user.js"]
         },
@@ -212,17 +241,20 @@ config = {
         "reftest": {
             "run_filename": "remotereftest.py",
             "options": [ "--app=%(app)s", "--ignore-window-size",
+                "--bootstrap", "--enable-privilege",
                 "--remote-webserver=%(remote_webserver)s", "--xre-path=%(xre_path)s",
                 "--utility-path=%(utility_path)s", "--deviceIP=%(device_ip)s",
                 "--devicePort=%(device_port)s", "--http-port=%(http_port)s",
-                "--ssl-port=%(ssl_port)s", "--httpd-path", "reftest/components"
+                "--ssl-port=%(ssl_port)s", "--httpd-path", "reftest/components",
+                "--symbols-path=%(symbols_path)s",
             ],
         },
         "xpcshell": {
             "run_filename": "remotexpcshelltests.py",
             "options": ["--deviceIP=%(device_ip)s", "--devicePort=%(device_port)s",
                 "--xre-path=%(xre_path)s", "--testing-modules-dir=%(modules_dir)s",
-                "--apk=%(installer_path)s", "--no-logfiles"
+                "--apk=%(installer_path)s", "--no-logfiles",
+                "--symbols-path=%(symbols_path)s",
             ],
         },
     }, # end of "suite_definitions"

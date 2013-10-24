@@ -26,15 +26,8 @@ config = {
     "virtualenv_path": 'venv',
     "virtualenv_python_dll": os.path.join(os.path.dirname(sys.executable), "python27.dll"),
     "find_links": [
-        "http://repos/python/packages",
-        "http://releng-puppet2.srv.releng.use1.mozilla.com/python/packages/",
-        "http://releng-puppet1.srv.releng.use1.mozilla.com/python/packages/",
-        "http://releng-puppet2.build.mtv1.mozilla.com/python/packages/",
-        "http://releng-puppet2.srv.releng.usw2.mozilla.com/python/packages/",
-        "http://releng-puppet1.srv.releng.usw2.mozilla.com/python/packages/",
-        "http://releng-puppet2.srv.releng.scl3.mozilla.com/python/packages/",
-        "http://releng-puppet2.build.scl1.mozilla.com/python/packages/",
-        "http://puppetagain.pub.build.mozilla.org/data/python/packages/",
+        "http://pypi.pvt.build.mozilla.org/pub",
+        "http://pypi.pub.build.mozilla.org/pub",
     ],
     "pip_index": False,
     "run_file_names": {
@@ -146,5 +139,7 @@ config = {
     "buildbot_max_log_size": 52428800,
     "default_blob_upload_servers": [
         "http://10.134.48.49:8080",
+         "https://blobupload.elasticbeanstalk.com",
     ],
+    "blob_uploader_auth_file" : os.path.join(os.getcwd(), "oauth.txt"),
 }

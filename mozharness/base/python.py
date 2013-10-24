@@ -8,6 +8,7 @@
 '''
 
 import os
+import sys
 import traceback
 
 from mozharness.base.script import (
@@ -341,7 +342,7 @@ class VirtualenvMixin(object):
                                    ['--no-site-packages', '--distribute'])
 
         if os.path.exists(self.query_python_path()):
-            self.info("Virtualenv %s appears to already exist; skipping virtualenv creation.")
+            self.info("Virtualenv %s appears to already exist; skipping virtualenv creation." % self.query_python_path())
         else:
             self.run_command(virtualenv + virtualenv_options + [venv_path],
                              cwd=dirs['abs_work_dir'],
@@ -428,6 +429,12 @@ class ResourceMonitoringMixin(object):
     @PostScriptAction('create-virtualenv')
     def _start_resource_monitoring(self, action, success=None):
         self.activate_virtualenv()
+
+        # Resource Monitor requires Python 2.7, however it's currently optional.
+        # Remove when all machines have had their Python version updated (bug 711299).
+        if sys.version_info[:2] < (2, 7):
+            self.warning('Resource monitoring will not be enabled! Python 2.7+ required.')
+            return
 
         try:
             from mozsystemmonitor.resourcemonitor import SystemResourceMonitor

@@ -1,11 +1,9 @@
-# This is a template config file for marionette production.
+# This is a template config file for b2g desktop unittest production.
 
 config = {
-    # marionette options
-    "test_type": "b2g",
-    "emulator": "arm",
+    # mozharness options
+    "application": "b2g",
     "tooltool_servers": ["http://runtime-binaries.pvt.build.mozilla.org/tooltool/"],
-    "test_manifest": "unit-tests.ini",
 
     "exes": {
         'python': '/tools/buildbot/bin/python',
@@ -27,8 +25,21 @@ config = {
         'download-and-extract',
         'create-virtualenv',
         'install',
-        'run-marionette',
+        'run-tests',
     ],
     "download_symbols": "ondemand",
     "download_minidump_stackwalk": True,
+
+    # test harness options
+    "run_file_names": {
+        "mochitest": "runtestsb2g.py",
+    },
+
+    "mochitest_options": [
+        "--console-level=INFO", "--test-manifest=%(test_manifest)s",
+        "--total-chunks=%(total_chunks)s", "--this-chunk=%(this_chunk)s",
+        "--profile=%(gaia_profile)s", "--app=%(application)s", "--desktop",
+        "--utility-path=%(utility_path)s", "--certificate-path=%(cert_path)s",
+        "--symbols-path=%(symbols_path)s",
+    ],
 }

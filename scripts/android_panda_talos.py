@@ -94,16 +94,14 @@ class PandaTalosTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixi
             all_actions=['clobber',
                          'read-buildbot-config',
                          'download-and-extract',
-                         'clone-talos',
                          'create-virtualenv',
                          'request-device',
                          'run-test',
                          'close-request'],
             default_actions=['clobber',
                              'read-buildbot-config',
-                             'create-virtualenv',
                              'download-and-extract',
-                             'clone-talos',
+                             'create-virtualenv',
                              'request-device',
                              'run-test',
                              'close-request'],
@@ -119,6 +117,14 @@ class PandaTalosTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixi
     def postflight_read_buildbot_config(self):
         super(PandaTalosTest, self).postflight_read_buildbot_config()
         self.mozpool_device = self.config.get('mozpool_device', self.buildbot_config.get('properties')["slavename"])
+        dirs = self.query_abs_dirs()
+        #touch the shutdown file
+        shutdown_file = os.path.join(dirs['shutdown_dir'], 'shutdown.stamp')
+        try:
+           self.info("*** Touching the shutdown file **")
+           open(shutdown_file, 'w').close()
+        except Exception, e:
+           self.warning("We failed to create the shutdown file: str(%s)" % str(e))
 
     def request_device(self):
         self.retrieve_android_device(b2gbase="")
@@ -165,13 +171,6 @@ class PandaTalosTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixi
             self.info('#### Running %s suites' % suite_category)
             for suite in suites:
                 dirs = self.query_abs_dirs()
-                #touch the shutdown file
-                shutdown_file = os.path.join(dirs['shutdown_dir'], 'shutdown.stamp')
-                try:
-                    self.info("*** Touching the shutdown file **")
-                    open(shutdown_file, 'w').close()
-                except Exception, e:
-                    self.warning("We failed to create the shutdown file: str(%s)" % str(e))
                 abs_base_cmd = self._query_abs_base_cmd(suite_category)
                 cmd = abs_base_cmd[:]
                 tbpl_status, log_level = None, None
@@ -298,13 +297,13 @@ class PandaTalosTest(TestingMixin, MercurialScript, VirtualenvMixin, MozpoolMixi
         self._download_unzip(self.config['retry_url'],
                              dirs['abs_talosdata_dir'])
 
-        branch = self.config.get('branch', self.buildbot_config.get('properties')["branch"])
         revision = self.config.get('revision', self.buildbot_config.get('properties')["revision"])
+        repo_path = self.config.get('repo_path', self.buildbot_config.get('properties')["repo_path"])
         taloscode = self.config.get("talos_from_code_url")
         talosjson = self.config.get("talos_json_url")
 
-        talos_from_code_url = (taloscode % (branch, revision))
-        talos_json_url = (talosjson % (branch, revision))
+        talos_from_code_url = (taloscode % (repo_path, revision))
+        talos_json_url = (talosjson % (repo_path, revision))
 
         self.download_file(talos_from_code_url, file_name='talos_from_code.py',
                            parent_dir=dirs['abs_talosdata_dir'],

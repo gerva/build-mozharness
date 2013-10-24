@@ -491,6 +491,7 @@ class ScriptMixin(object):
                         sleeptime = max_sleeptime
 
     def query_env(self, partial_env=None, replace_dict=None,
+                  purge_env=(),
                   set_self_env=None, log_level=DEBUG):
         """Environment query/generation method.
 
@@ -522,6 +523,9 @@ class ScriptMixin(object):
         for key in partial_env.keys():
             env[key] = partial_env[key] % replace_dict
             self.log("ENV: %s is now %s" % (key, env[key]), level=log_level)
+        for k in purge_env:
+            if k in env:
+                del env[k]
         if set_self_env:
             self.env = env
         return env
@@ -644,6 +648,7 @@ class ScriptMixin(object):
             if output_timeout:
                 def processOutput(line):
                     parser.add_lines(line)
+
                 def onTimeout():
                     self.info("mozprocess timed out")
 
@@ -755,7 +760,6 @@ class ScriptMixin(object):
         shell = True
         if isinstance(command, list):
             shell = False
-            self.info("Copy/paste: %s" % subprocess.list2cmdline(command))
         p = subprocess.Popen(command, shell=shell, stdout=tmp_stdout,
                              cwd=cwd, stderr=tmp_stderr, env=env)
         #XXX: changed from self.debug to self.log due to this error:
@@ -809,7 +813,7 @@ class ScriptMixin(object):
 
     def unpack(self, filename, extract_to):
         '''
-        This method allows us to extract a file regardless of its extension 
+        This method allows us to extract a file regardless of its extension
         '''
         # XXX: Make sure that filename has a extension of one of our supported file formats
         m = re.search('\.tar\.(bz2|gz)$', filename)
@@ -823,6 +827,7 @@ class ScriptMixin(object):
         else:
             # XXX implement
             pass
+
 
 def PreScriptRun(func):
     """Decorator for methods that will be called before script execution.
@@ -1121,8 +1126,8 @@ class BaseScript(ScriptMixin, LogMixin, object):
 
             if not post_success:
                 self.fatal("Aborting due to failure in post-run listener.")
-
-        self.copy_logs_to_upload_dir()
+        if self.config.get("copy_logs_post_run", True):
+            self.copy_logs_to_upload_dir()
 
         return self.return_code
 
@@ -1225,11 +1230,13 @@ class BaseScript(ScriptMixin, LogMixin, object):
         # Summaries need a lot more love.
         self.log(message, level=level)
 
-    def add_failure(self, key, message="%(key)s failed.", level=ERROR):
+    def add_failure(self, key, message="%(key)s failed.", level=ERROR,
+                    increment_return_code=True):
         if key not in self.failures:
             self.failures.append(key)
-            self.return_code += 1
             self.add_summary(message % {'key': key}, level=level)
+            if increment_return_code:
+                self.return_code += 1
 
     def query_failure(self, key):
         return key in self.failures
