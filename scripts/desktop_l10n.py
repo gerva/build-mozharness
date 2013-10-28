@@ -391,6 +391,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         src = os.path.join(dirs['abs_work_dir'], c['mozconfig'])
         dst = os.path.join(dirs['abs_mozilla_dir'], '.mozconfig')
         self.copyfile(src, dst)
+
+        # STUPID HACK HERE
+        with open(src, 'r') as in_mozconfig:
+            with open(dst, 'w') as out_mozconfig:
+                for line in in_mozconfig:
+                    if 'with-l10n-base' in line:
+                        line = 'ac_add_options --with-l10n-base=../../l10n\n'
+                    out_mozconfig.write(line)
+        # now log
         with open(dst, 'r') as mozconfig:
             for line in mozconfig:
                 self.info(line.strip())
