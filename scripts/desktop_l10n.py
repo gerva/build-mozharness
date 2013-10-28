@@ -195,9 +195,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return self.make_ident_output
         dirs = self.query_abs_dirs()
         make = Make(self.config, self.log_obj)
-        self.make_ident_output = make.output(target=["ident"],
-                                             cwd=dirs['abs_locales_dir'],
-                                             env=self.query_repack_env())
+        self.make_ident_output = make.raw_output(target=["ident"],
+                                                 cwd=dirs['abs_locales_dir'],
+                                                 env=self.query_repack_env())
         return self.make_ident_output
 
     def query_buildid(self):
@@ -228,13 +228,18 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.revision = match.groups()[1]
         return self.revision
 
-    def _query_make_variable(self, variable, make_args=None, exclude_lines=[]):
+    def _query_make_variable(self, variable, make_args=None, exclude_lines=None):
+        """returns the value of make echo-variable-<variable>
+           it accepts extra make arguements (make_args)
+           it also has an exclude_lines from the output filer
+        """
         make = Make(self.config, self.log_obj)
         dirs = self.query_abs_dirs()
         make_args = make_args or []
+        exclude_lines = exclude_lines or []
         target = ["echo-variable-%s" % variable] + make_args
         cwd = dirs['abs_locales_dir']
-        raw_output = make.output(target, cwd=cwd, env=self.query_repack_env())
+        raw_output = make.raw_output(target, cwd=cwd, env=self.query_repack_env())
         # we want to log all the messages from make/pymake and
         # exlcude some messages from the output ("Entering directory...")
         output = []
@@ -353,6 +358,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.info("%s  -> %s" % (i, dirs[i]))
 
     def setup(self):
+        """setup step"""
         self.enable_mock()
         dirs = self.query_abs_dirs()
         self._copy_mozconfig()
@@ -381,11 +387,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self._setup_configure(buildid=buildid)
 
     def _clobber_file(self):
+        """returns the full path of the clobber file"""
         c = self.config
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], c.get('clobber_file'))
 
     def _copy_mozconfig(self):
+        """copies the mozconfig file into abs_mozilla_dir/.mozconfig
+           and logs the content
+        """
         c = self.config
         dirs = self.query_abs_dirs()
         src = os.path.join(dirs['abs_work_dir'], c['mozconfig'])
@@ -393,6 +403,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.copyfile(src, dst)
 
         # STUPID HACK HERE
+        # should we update the mozconfig so it has the right value?
         with open(src, 'r') as in_mozconfig:
             with open(dst, 'w') as out_mozconfig:
                 for line in in_mozconfig:
@@ -536,7 +547,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                                           'locale': locale}
                 upload_env['POST_UPLOAD_CMD'] = upload_cmd
             target = ["upload", "AB_CD=%s" % locale]
-            output = make.output(target, cwd=cwd, env=upload_env)
+            output = make.raw_output(target, cwd=cwd, env=upload_env)
             parser = OutputParser(config=self.config, log_obj=self.log_obj,
                                   error_list=MakefileErrorList)
             parser.add_lines(output)
@@ -721,16 +732,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.rmtree(directory)
 
     def _mar_tool_dir(self):
+        """full path to the tools/ directory"""
         c = self.config
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], c["local_mar_tool_dir"])
 
     def _incremental_update_script(self):
+        """incremental update script"""
         c = self.config
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_mozilla_dir'], c['incremental_update_script'])
 
     def _unpack_script(self):
+        """unpack script full path"""
         c = self.config
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_mozilla_dir'], c['unpack_script'])
@@ -740,6 +754,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._mar_dir('previous_mar_dir')
 
     def _abs_dist_dir(self):
+        """returns the full path to abs_objdir/dst"""
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], 'dist')
 
@@ -801,15 +816,16 @@ class Make(ScriptMixin, LogMixin, object):
                                             silent=True,
                                             halt_on_failure=halt_on_failure)
 
-    def output(self, target, cwd, env, error_list=MakefileErrorList,
-               halt_on_failure=True):
-        """runs make and returns the output of the command"""
-        output = self.raw_output(target, cwd=cwd, env=env,
-                                 halt_on_failure=halt_on_failure)
-        parser = OutputParser(config=self.config, log_obj=self.log_obj,
-                              error_list=MakefileErrorList)
-        parser.add_lines(output)
-        return output
+# not sure we need this
+#    def output(self, target, cwd, env, error_list=MakefileErrorList,
+#               halt_on_failure=True):
+#        """runs make and returns the output of the command"""
+#        output = self.raw_output(target, cwd=cwd, env=env,
+#                                 halt_on_failure=halt_on_failure)
+#        parser = OutputParser(config=self.config, log_obj=self.log_obj,
+#                              error_list=MakefileErrorList)
+#        parser.add_lines(output)
+#        return output
 
 # main {{{
 if __name__ == '__main__':
