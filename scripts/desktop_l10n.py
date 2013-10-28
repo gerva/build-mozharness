@@ -816,17 +816,6 @@ class Make(ScriptMixin, LogMixin, object):
                                             silent=True,
                                             halt_on_failure=halt_on_failure)
 
-# not sure we need this
-#    def output(self, target, cwd, env, error_list=MakefileErrorList,
-#               halt_on_failure=True):
-#        """runs make and returns the output of the command"""
-#        output = self.raw_output(target, cwd=cwd, env=env,
-#                                 halt_on_failure=halt_on_failure)
-#        parser = OutputParser(config=self.config, log_obj=self.log_obj,
-#                              error_list=MakefileErrorList)
-#        parser.add_lines(output)
-#        return output
-
 # main {{{
 if __name__ == '__main__':
     single_locale = DesktopSingleLocale()
