@@ -29,11 +29,6 @@ config = {
         "dest": MOZILLA_DIR,
     }, {
         "vcs": "hg",
-        "repo": "http://hg.mozilla.org/build/buildbot-configs",
-        "revision": "default",
-        "dest": "buildbot-configs"
-    }, {
-        "vcs": "hg",
         "repo": "http://hg.mozilla.org/build/tools",
         "revision": "default",
         "dest": "tools",
