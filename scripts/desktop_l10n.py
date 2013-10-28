@@ -350,13 +350,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.make_dirs()
         self.make_export(buildid)
 
-    def print_dirs(self):
-        """prints the content of query_abs_dirs()"""
-        #REMOVE ME
-        dirs = self.query_abs_dirs()
-        for i in dirs:
-            self.info("%s  -> %s" % (i, dirs[i]))
-
     def setup(self):
         """setup step"""
         self.enable_mock()
