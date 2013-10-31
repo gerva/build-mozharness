@@ -411,7 +411,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True):
         """a wrapper for make calls"""
-        self.enable_mock()
         make = Make(self.config, self.log_obj)
         make.execute(target, cwd, env, error_list=error_list,
                      halt_on_failure=halt_on_failure)
@@ -785,7 +784,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return pgc_files
 
 
-class Make(ScriptMixin, LogMixin, object):
+class Make(MockMixin, ScriptMixin, LogMixin, object):
     """a wrapper for make calls"""
     def __init__(self, config, log_obj):
         self.config = config
@@ -794,6 +793,7 @@ class Make(ScriptMixin, LogMixin, object):
     def execute(self, target, cwd, env, error_list=MakefileErrorList,
                 halt_on_failure=True):
         """runs make and retrurns the exit code"""
+        self.enable_mock()
         make = self.query_exe("make", return_type="list")
         return self.run_command(make + target,
                                 cwd=cwd,
@@ -803,6 +803,7 @@ class Make(ScriptMixin, LogMixin, object):
 
     def raw_output(self, target, cwd, env, halt_on_failure=True):
         """runs make and returns the output of the command"""
+        self.enable_mock()
         make = self.query_exe("make", return_type="list")
         return self.get_output_from_command(make + target,
                                             cwd=cwd,
