@@ -411,6 +411,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True):
         """a wrapper for make calls"""
+        self.enable_mock()
         make = Make(self.config, self.log_obj)
         make.execute(target, cwd, env, error_list=error_list,
                      halt_on_failure=halt_on_failure)
