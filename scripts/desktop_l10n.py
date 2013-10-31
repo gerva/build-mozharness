@@ -194,10 +194,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if self.make_ident_output:
             return self.make_ident_output
         dirs = self.query_abs_dirs()
-        make = Make(self.config, self.log_obj)
-        self.make_ident_output = make.raw_output(target=["ident"],
-                                                 cwd=dirs['abs_locales_dir'],
-                                                 env=self.query_repack_env())
+        self.make_ident_output = self._get_output_from_make(target=["ident"],
+                                                            cwd=dirs['abs_locales_dir'],
+                                                            env=self.query_repack_env())
         return self.make_ident_output
 
     def query_buildid(self):
@@ -233,13 +232,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
            it accepts extra make arguements (make_args)
            it also has an exclude_lines from the output filer
         """
-        make = Make(self.config, self.log_obj)
         dirs = self.query_abs_dirs()
         make_args = make_args or []
         exclude_lines = exclude_lines or []
         target = ["echo-variable-%s" % variable] + make_args
         cwd = dirs['abs_locales_dir']
-        raw_output = make.raw_output(target, cwd=cwd, env=self.query_repack_env())
+        raw_output = self._get_output_from_make(target, cwd=cwd,
+                                                env=self.query_repack_env())
         # we want to log all the messages from make/pymake and
         # exlcude some messages from the output ("Entering directory...")
         output = []
@@ -410,10 +409,24 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True):
-        """a wrapper for make calls"""
-        make = Make(self.config, self.log_obj)
-        make.execute(target, cwd, env, error_list=error_list,
-                     halt_on_failure=halt_on_failure)
+        """runs make and retrurns the exit code"""
+        self.enable_mock()
+        make = self.query_exe("make", return_type="list")
+        return self.run_command(make + target,
+                                cwd=cwd,
+                                env=env,
+                                error_list=error_list,
+                                halt_on_failure=halt_on_failure)
+
+    def _get_output_from_make(self, target, cwd, env, halt_on_failure=True):
+        """runs make and returns the output of the command"""
+        self.enable_mock()
+        make = self.query_exe("make", return_type="list")
+        return self.get_output_from_command(make + target,
+                                            cwd=cwd,
+                                            env=env,
+                                            silent=True,
+                                            halt_on_failure=halt_on_failure)
 
     def make_configure(self):
         """calls make -f client.mk configure"""
@@ -523,12 +536,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         locales = self.query_locales()
-        make = self.query_exe("make", return_type="list")
         base_package_name = self.query_base_package_name()
         version = self.query_version()
         upload_env = self.query_upload_env()
         success_count = total_count = 0
-        make = Make(self.config, self.log_obj)
         cwd = dirs['abs_locales_dir']
         for locale in locales:
             if self.query_failure(locale):
@@ -540,7 +551,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                                           'locale': locale}
                 upload_env['POST_UPLOAD_CMD'] = upload_cmd
             target = ["upload", "AB_CD=%s" % locale]
-            output = make.raw_output(target, cwd=cwd, env=upload_env)
+            output = self._get_output_from_make(target, cwd=cwd, env=upload_env)
             parser = OutputParser(config=self.config, log_obj=self.log_obj,
                                   error_list=MakefileErrorList)
             parser.add_lines(output)
@@ -786,31 +797,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
 class Make(MockMixin, ScriptMixin, LogMixin, object):
     """a wrapper for make calls"""
-    def __init__(self, config, log_obj):
-        self.config = config
-        self.log_obj = log_obj
-
-    def execute(self, target, cwd, env, error_list=MakefileErrorList,
-                halt_on_failure=True):
-        """runs make and retrurns the exit code"""
-        self.enable_mock()
-        make = self.query_exe("make", return_type="list")
-        return self.run_command(make + target,
-                                cwd=cwd,
-                                env=env,
-                                error_list=error_list,
-                                halt_on_failure=halt_on_failure)
-
-    def raw_output(self, target, cwd, env, halt_on_failure=True):
-        """runs make and returns the output of the command"""
-        self.enable_mock()
-        make = self.query_exe("make", return_type="list")
-        return self.get_output_from_command(make + target,
-                                            cwd=cwd,
-                                            env=env,
-                                            silent=True,
-                                            halt_on_failure=halt_on_failure)
-
 # main {{{
 if __name__ == '__main__':
     single_locale = DesktopSingleLocale()
