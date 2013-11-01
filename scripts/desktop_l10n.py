@@ -698,10 +698,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def previous_mar_url(self):
         """returns the url for previous mar"""
         c = self.config
-        update_env = self.query_env(partial_env=c.get("update_env"))
+        #update_env = self.query_env(partial_env=c.get("update_env"))
         # why from env?
-        base_url = update_env['EN_US_BINARY_URL']
-        platform = update_env['MOZ_PKG_PLATFORM']
+        base_url = c['binary_url']
+        platform = c['platform']
         version = self.query_version()
         remote_filename = c["complete_mar"] % {'version': version,
                                                'platform': platform}
