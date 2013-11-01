@@ -1,6 +1,6 @@
 # This is a template config file for panda android tests on production.
 import socket
-
+import os
 
 MINIDUMP_STACKWALK_PATH = "/builds/minidump_stackwalk"
 
@@ -85,6 +85,7 @@ config = {
     "jittest_options": [
         "bin/js",
         "--remote",
+        "-j", "1",
         "--deviceTransport=sut",
         "--deviceIP=%(device_ip)s",
         "--localLib=../tests/bin",
@@ -162,4 +163,8 @@ config = {
     ],
     "minidump_stackwalk_path": MINIDUMP_STACKWALK_PATH,
     "minidump_save_path": "%(abs_work_dir)s/../minidumps",
+    "default_blob_upload_servers": [
+         "https://blobupload.elasticbeanstalk.com",
+    ],
+    "blob_uploader_auth_file" : os.path.join(os.getcwd(), "oauth.txt"),
 }
