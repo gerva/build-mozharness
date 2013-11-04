@@ -669,7 +669,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           self.current_mar_dir()):
             for pcg_file in self.pgc_files(directory):
                 self.info("removing %s" % pcg_file)
-                #os.remove(f)
+                self.rmtree(pcg_file)
 
     def current_mar_filename(self):
         """retruns the full path to complete.mar"""
@@ -800,4 +800,4 @@ class Make(MockMixin, ScriptMixin, LogMixin, object):
 # main {{{
 if __name__ == '__main__':
     single_locale = DesktopSingleLocale()
-    single_locale.run()
+    single_locale.run_and_exit()
