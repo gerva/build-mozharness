@@ -825,7 +825,6 @@ class ScriptMixin(object):
                 self.fatal("I/O error({0}): {1}".format(e.errno, e.strerror))
 
         os.utime(file_name, times)
-        self.info("Touching %s" % file_name)
 
     def unpack(self, filename, extract_to):
         '''
