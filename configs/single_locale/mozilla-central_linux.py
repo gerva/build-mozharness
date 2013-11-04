@@ -81,7 +81,7 @@ config = {
     #MAR
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
-    "update_mar_dir": "dist",  # sure?
+    "update_mar_dir": "dist/update",  # sure?
     "previous_mar_filename": "previous.mar",
     "current_work_mar_dir": "current.work",
     "package_base_dir": "dist/l10n-stage",
