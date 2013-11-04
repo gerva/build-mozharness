@@ -146,6 +146,12 @@ class MarFile(ScriptMixin, LogMixin, object):
         self.unpack_mar(temp_dir)
         files = self.mar_scripts
         ini_file = os.path.join(temp_dir, files.ini_file)
+        for dirpath, dirnames, filenames in os.walk(temp_dir):
+            for f in filenames:
+                if f == 'application.ini':
+                    self.log("found application.ini file: %s" % os.path.join(dirpath, f))
+                    with open(os.path.join(dirpath, f), 'r') as ini:
+                        self.log(ini.read())
         self.info("application.ini file: %s" % ini_file)
         self.build_id = buildid_form_ini(ini_file)
         return self.build_id
