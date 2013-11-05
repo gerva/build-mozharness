@@ -15,25 +15,20 @@ AUS_USER = "ffxbld"
 AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
 AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
-
-
+CANDIDATES_URL = "https://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
+PLATFORM = "win32"
 config = {
     "mozilla_dir": MOZILLA_DIR,
-    "unittest_platform": "win64-opt",
-    "app_name": "browser",
-    "brand_name": "Minefield",
-    "snippet_base_url": "http://example.com",
-    "mozconfig": "%s/browser/config/mozconfigs/win32/l10n-mozconfig" % MOZILLA_DIR,
+    "snippet_base_url": "http://example.com",  # fix it
+    "mozconfig": "%s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig" % MOZILLA_DIR,
+    #"src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
+    "platform": PLATFORM,
+    "binary_url": EN_US_BINARY_URL,
     "repos": [{
         "vcs": "hg",
         "repo": "http://hg.mozilla.org/mozilla-central",
         "revision": "default",
         "dest": MOZILLA_DIR,
-    }, {
-        "vcs": "hg",
-        "repo": "http://hg.mozilla.org/build/buildbot-configs",
-        "revision": "default",
-        "dest": "buildbot-configs"
     }, {
         "vcs": "hg",
         "repo": "http://hg.mozilla.org/build/tools",
@@ -50,9 +45,21 @@ config = {
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
     },
+    "update_env": {
+        # just a copy of repack env
+        "MOZ_OBJDIR": OBJDIR,
+        "EN_US_BINARY_URL": EN_US_BINARY_URL,
+        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
+        "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
+        "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
+        "MOZ_PKG_PLATFORM": "mac",
+        "CANDIDATES_URL": CANDIDATES_URL,
+        "IS_NIGHTLY": "yes",
+    },
     "log_name": "single_locale",
     "objdir": OBJDIR,
-    "make_dirs": ["config"],
+    "js_src_dir": "js/src",
+    "make_dirs": ['config'],
     "vcs_share_base": HG_SHARE_BASE_DIR,
 
     "upload_env": {
@@ -66,11 +73,42 @@ config = {
     #l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
+    "l10n_stage_dir": "dist/firefox/l10n-stage",
     "locales_file": "%s/browser/locales/all-locales" % MOZILLA_DIR,
     "locales_dir": "browser/locales",
     "hg_l10n_base": "http://hg.mozilla.org/l10n-central",
     "hg_l10n_tag": "default",
     "merge_locales": True,
+    "clobber_file": 'CLOBBER',
+
+    #MAR
+    "previous_mar_dir": "previous",
+    "current_mar_dir": "current",
+    "update_mar_dir": "dist/update",  # sure?
+    "previous_mar_filename": "previous.mar",
+    "current_work_mar_dir": "current.work",
+    "package_base_dir": "dist/l10n-stage",
+    "application_ini": "Contents/MacOS/application.ini",
+    "buildid_section": 'App',
+    "buildid_option": "BuildID",
+    "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
+    "incremental_update_script": "tools/update-packaging/make_incremental_update.sh",
+    "update_packaging_dir": "tools/update-packaging",
+    "local_mar_tool_dir": "dist/host/bin",
+    "mar": "mar",
+    "mbsdiff": "mbsdiff",
+    "candidates_base_url": CANDIDATES_URL,
+    "partials_url": "%(base_url)s/latest-mozilla-central/",
+    "mar_tools_url": "https://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/win32/",
+    "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
+    "localized_mar": "firefox-%(version)s.%(locale)s.win32.complete.mar",
+    #../update/mac64/de/nightly-27.0a1.complete.mar
+    "generated_mar": "%(platform)s/%(locale)s/firefox-%(version)s.complete.mar",
+    #"partial_mar": "%(platform)s/%(locale)s/firefox-%(version)s.partial.mar",
+    #firefox-27.0a1.en-US.mac.partial.20130917030214-20130918030202.mar"
+    "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
+
+
 
     # AUS
     "build_target": "Linux_x86-gcc3",
