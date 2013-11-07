@@ -20,7 +20,7 @@ PLATFORM = "win32"
 config = {
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
-    "mozconfig": "%s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig" % MOZILLA_DIR,
+    "mozconfig": "%s/browser/config/mozconfigs/win32/l10n-mozconfig" % MOZILLA_DIR,
     #"src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
     "platform": PLATFORM,
     "binary_url": EN_US_BINARY_URL,
