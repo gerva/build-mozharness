@@ -21,8 +21,6 @@ from mozharness.base.log import LogMixin
 from mozharness.base.script import ScriptMixin
 
 
-MAR_BINARIES = ('mar', 'mbsdiff')
-
 CONFIG = {
     "buildid_section": 'App',
     "buildid_option": "BuildID",
@@ -37,10 +35,10 @@ CONFIG = {
 }
 
 
-def tools_environment(base_dir):
+def tools_environment(base_dir, binaries):
     """returns the env setting required to run mar and/or mbsdiff"""
     env = {}
-    for binary in MAR_BINARIES:
+    for binary in binaries:
         env[binary.upper()] = os.path.join(base_dir, binary)
     return env
 
@@ -56,10 +54,10 @@ def buildid_form_ini(ini_file):
 # MarTool {{{1
 class MarTool(ScriptMixin, LogMixin, object):
     """manages the mar tools executables"""
-    def __init__(self, url, dst_dir, log_obj):
+    def __init__(self, url, dst_dir, log_obj, binaries):
         self.url = url
         self.dst_dir = dst_dir
-        self.binaries = ('mar', 'mbsdiff')
+        self.binaries = binaries
         self.log_obj = log_obj
         self.config = CONFIG
         super(MarTool, self).__init__()
@@ -98,7 +96,7 @@ class MarFile(ScriptMixin, LogMixin, object):
         cmd = ['perl', self._unpack_script(), self.filename]
         mar_scripts = self.mar_scripts
         tools_dir = mar_scripts.tools_dir
-        env = tools_environment(tools_dir)
+        env = tools_environment(tools_dir, mar_scripts.mar_binaries)
         env["MOZ_PKG_PRETTYNAMES"] = "1"
         self.mkdir_p(dst_dir)
         self.run_command(cmd,
@@ -132,8 +130,9 @@ class MarFile(ScriptMixin, LogMixin, object):
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
         cmd = [self._incremental_update_script(), partial_filename,
                fromdir, todir]
-        files = self.mar_scripts
-        env = tools_environment(files.tools_dir)
+        mar_scripts = self.mar_scripts
+        tools_dir = mar_scripts.tools_dir
+        env = tools_environment(tools_dir, mar_scripts.mar_binaries)
         self.run_command(cmd, cwd=None, env=env)
         self.rmtree(todir)
         self.rmtree(fromdir)
@@ -170,8 +169,10 @@ class MarFile(ScriptMixin, LogMixin, object):
 class MarScripts(object):
     """holds the information on scripts and directories paths needed
        by MarTool and MarFile"""
-    def __init__(self, unpack, incremental_update, tools_dir, ini_file):
+    def __init__(self, unpack, incremental_update,
+                 tools_dir, ini_file, mar_binaries):
         self.unpack = unpack
         self.incremental_update = incremental_update
         self.tools_dir = tools_dir
         self.ini_file = ini_file
+        self.mar_binaries = mar_binaries

@@ -489,7 +489,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         self.create_mar_dirs()
         martool = MarTool(c['mar_tools_url'], self._mar_tool_dir(),
-                          self.log_obj)
+                          self.log_obj, self._mar_binaries())
         martool.download()
         package_basedir = os.path.join(dirs['abs_objdir'],
                                        c['package_base_dir'])
@@ -643,7 +643,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         mar_scripts = MarScripts(unpack=self._unpack_script(),
                                  incremental_update=incremental_update,
                                  tools_dir=self._mar_tool_dir(),
-                                 ini_file=c['application_ini'])
+                                 ini_file=c['application_ini'],
+                                 mar_binaries=self._mar_binaries())
         for locale in self.locales:
             localized_mar = c['localized_mar'] % {'platform': platform,
                                                   'version': version,
@@ -773,6 +774,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def current_work_mar_dir(self):
         """returns the full path to current.work"""
         return self._mar_dir('current_work_mar_dir')
+
+    def _mar_binaries(self):
+        c = self.config
+        return (c['mar'], c['mbsdiff'])
 
     def _mar_dir(self, dirname):
         """returns the full path of dirname;
