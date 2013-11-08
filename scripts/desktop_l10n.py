@@ -496,7 +496,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         success_count = 0
         total_count = 0
         env = {'MOZ_PKG_PRETTYNAMES': "1"}
-        env = {'DIST': dirs['abs_objdir']}
+        env['DIST'] = dirs['abs_objdir']
+        # http://bugs.python.org/issue13524
+        try:
+            env['SystemRoot'] = os.environ['SystemRoot']
+        except KeyError:
+            # nothing to do here - SystemRoot exists only under windows
+            pass
         for locale in self.locales:
             total_count += 1
             cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
