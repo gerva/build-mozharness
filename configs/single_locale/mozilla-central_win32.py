@@ -84,17 +84,17 @@ config = {
     #MAR
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
-    "update_mar_dir": "dist/update",  # sure?
+    "update_mar_dir": "dist\\update",  # sure?
     "previous_mar_filename": "previous.mar",
     "current_work_mar_dir": "current.work",
-    "package_base_dir": "dist/l10n-stage",
-    "application_ini": "Contents/MacOS/application.ini",
+    "package_base_dir": "dist\\l10n-stage",
+    "application_ini": "application.ini",
     "buildid_section": 'App',
     "buildid_option": "BuildID",
-    "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
-    "incremental_update_script": "tools/update-packaging/make_incremental_update.sh",
-    "update_packaging_dir": "tools/update-packaging",
-    "local_mar_tool_dir": "dist/host/bin",
+    "unpack_script": "tools\\update-packaging\\unwrap_full_update.pl",
+    "incremental_update_script": "tools\\update-packaging\\make_incremental_update.sh",
+    "update_packaging_dir": "tools\\update-packaging",
+    "local_mar_tool_dir": "dist\\host\\bin",
     "mar": "mar.exe",
     "mbsdiff": "mbsdiff.exe",
     "candidates_base_url": CANDIDATES_URL,
@@ -118,6 +118,6 @@ config = {
     "aus_upload_base_dir": AUS_UPLOAD_BASE_DIR,
     "aus_base_dir": AUS_BASE_DIR,
     "exes": {
-        "make": [sys.executable, "%(abs_work_dir)s/mozilla-central/build/pymake/make.py"],
+        "make": [sys.executable, "%(abs_work_dir)s\\mozilla-central\\build\\pymake\\make.py"],
     }
 }
