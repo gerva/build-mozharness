@@ -18,7 +18,6 @@ AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "https://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 PLATFORM = "win64-x86_64"
 config = {
-    "shell": "C:\\mozilla-build\\msys\\bin\\sh",
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/win32/l10n-mozconfig" % MOZILLA_DIR,
@@ -43,19 +42,9 @@ config = {
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
         "EN_US_BINARY_URL": EN_US_BINARY_URL,
-        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
-    },
-    "update_env": {
-        # just a copy of repack env
-        "MOZ_OBJDIR": OBJDIR,
-        "EN_US_BINARY_URL": EN_US_BINARY_URL,
+        "DIST": "%(abs_objdir)s",
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
-        "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
-        "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
-        "MOZ_PKG_PLATFORM": "mac",
-        "CANDIDATES_URL": CANDIDATES_URL,
-        "IS_NIGHTLY": "yes",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,

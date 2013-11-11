@@ -21,7 +21,6 @@ config = {
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/win32/l10n-mozconfig" % MOZILLA_DIR,
-    #"src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
     "platform": PLATFORM,
     "binary_url": EN_US_BINARY_URL,
     "repos": [{
@@ -42,8 +41,9 @@ config = {
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
         "EN_US_BINARY_URL": EN_US_BINARY_URL,
-        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
+        "DIST": "%(abs_objdir)s",
+        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,

@@ -41,12 +41,12 @@ config = {
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
         "EN_US_BINARY_URL": EN_US_BINARY_URL,
-        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
         "MOZ_PKG_PLATFORM": "mac",
         "IS_NIGHTLY": "yes",
         "DIST": "%(abs_objdir)s",
+        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
@@ -60,7 +60,7 @@ config = {
         "UPLOAD_HOST": STAGE_SERVER,
         #"POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-android-l10n -p mobile -i %(buildid)s --release-to-latest --release-to-dated",
         "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
-        "UPLOAD_TO_TEMP": "1"
+        "UPLOAD_TO_TEMP": "1",
     },
     #l10n
     "ignore_locales": ["en-US"],
@@ -72,6 +72,7 @@ config = {
     "hg_l10n_tag": "default",
     "merge_locales": True,
     "clobber_file": 'CLOBBER',
+
 
     #MAR
     "previous_mar_dir": "previous",
