@@ -27,11 +27,6 @@ CONFIG = {
     "unpack_script": "unwrap_full_update.pl",
     "incremental_update_script": "make_incremental_update.sh",
     "update_packaging_dir": "tools/update-packaging",
-    "mar_tools_url": "https://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/%(platform)s",
-    "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
-    "localized_mar": "firefox-%(version)s.%(locale)s.%(platform)s.complete.mar",
-    "generated_mar": "%(platform)s/%(locale)s/firefox-%(version)s.complete.mar",
-    "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
 }
 
 
