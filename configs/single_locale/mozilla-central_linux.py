@@ -44,15 +44,6 @@ config = {
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "IS_NIGHTLY": "yes",
     },
-    "update_env": {
-        # just a copy of repack env
-        "MOZ_OBJDIR": OBJDIR,
-        "EN_US_BINARY_URL": EN_US_BINARY_URL,
-        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
-        "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
-        "CANDIDATES_URL": CANDIDATES_URL,
-        "IS_NIGHTLY": "yes",
-    },
     "log_name": "single_locale",
     "objdir": OBJDIR,
     "js_src_dir": "js/src",
@@ -99,7 +90,6 @@ config = {
     "mar_tools_url": "https://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/linux/",
     "complete_mar": "firefox-%(version)s.en-US.linux-i686.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-i686.complete.mar",
-    "generated_mar": "%(platform)s/%(locale)s/firefox-%(version)s.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
 
 

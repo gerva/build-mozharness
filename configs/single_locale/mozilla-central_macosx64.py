@@ -46,17 +46,7 @@ config = {
         "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
         "MOZ_PKG_PLATFORM": "mac",
         "IS_NIGHTLY": "yes",
-    },
-    "update_env": {
-        # just a copy of repack env
-        "MOZ_OBJDIR": OBJDIR,
-        "EN_US_BINARY_URL": EN_US_BINARY_URL,
-        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
-        "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
-        "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
-        "MOZ_PKG_PLATFORM": "mac",
-        "CANDIDATES_URL": CANDIDATES_URL,
-        "IS_NIGHTLY": "yes",
+        "DIST": "%(abs_objdir)s",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
@@ -102,15 +92,12 @@ config = {
     "candidates_base_url": CANDIDATES_URL,
     "partials_url": "%(base_url)s/latest-mozilla-central/",
     "mar_tools_url": "https://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/macosx64/",
-    "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
-    "localized_mar": "firefox-%(version)s.%(locale)s.mac64.complete.mar",
+    "complete_mar": "firefox-%(version)s.en-US.mac.complete.mar",
+    "localized_mar": "firefox-%(version)s.%(locale)s.mac.complete.mar",
     #../update/mac64/de/nightly-27.0a1.complete.mar
-    "generated_mar": "%(platform)s/%(locale)s/firefox-%(version)s.complete.mar",
     #"partial_mar": "%(platform)s/%(locale)s/firefox-%(version)s.partial.mar",
     #firefox-27.0a1.en-US.mac.partial.20130917030214-20130918030202.mar"
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
-
-
 
     # AUS
     "build_target": "Linux_x86-gcc3",

@@ -18,6 +18,7 @@ AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "https://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 PLATFORM = "win64-x86_64"
 config = {
+    "shell": "C:\\mozilla-build\\msys\\bin\\sh",
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/win32/l10n-mozconfig" % MOZILLA_DIR,
@@ -102,10 +103,6 @@ config = {
     "mar_tools_url": "https://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/win32/",
     "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.win64-x86-64.complete.mar",
-    #../update/mac64/de/nightly-27.0a1.complete.mar
-    "generated_mar": "%(platform)s/%(locale)s/firefox-%(version)s.complete.mar",
-    #"partial_mar": "%(platform)s/%(locale)s/firefox-%(version)s.partial.mar",
-    #firefox-27.0a1.en-US.mac.partial.20130917030214-20130918030202.mar"
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
 
 

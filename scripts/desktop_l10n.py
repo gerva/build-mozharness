@@ -134,9 +134,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.buildid = None
         self.make_ident_output = None
         self.repack_env = None
-        self.upload_env = None
         self.revision = None
-        self.upload_env = None
         self.version = None
         self.upload_urls = {}
         self.locales_property = {}
@@ -150,13 +148,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if self.repack_env:
             return self.repack_env
         c = self.config
-        replace_dict = {}
+        replace_dict = self.query_abs_dirs()
         if c.get('release_config_file'):
             rc = self.query_release_config()
-            replace_dict = {
-                'version': rc['version'],
-                'buildnum': rc['buildnum']
-            }
+            replace_dict['version'] = rc['version']
+            replace_dict['buildnum'] = rc['buildnum']
         repack_env = self.query_env(partial_env=c.get("repack_env"),
                                     replace_dict=replace_dict)
         if c.get('base_en_us_binary_url') and c.get('release_config_file'):
@@ -169,23 +165,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             repack_env['MOZ_SIGN_CMD'] = sign_cmd
         self.repack_env = repack_env
         return self.repack_env
-
-    def query_upload_env(self):
-        """returns the upload enviroment"""
-        if self.upload_env:
-            return self.upload_env
-        c = self.config
-        buildid = self.query_buildid()
-        version = self.query_version()
-        upload_env = self.query_env(partial_env=c.get("upload_env"),
-                                    replace_dict={'buildid': buildid,
-                                                  'version': version})
-        if 'MOZ_SIGNING_SERVERS' in os.environ:
-            sign_cmd = self.query_moz_sign_cmd(formats=None)
-            sign_cmd = subprocess.list2cmdline(sign_cmd)
-            upload_env['MOZ_SIGN_CMD'] = sign_cmd
-        self.upload_env = upload_env
-        return self.upload_env
 
     def _query_make_ident_output(self):
         """Get |make ident| output from the objdir.
@@ -495,14 +474,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                        c['package_base_dir'])
         success_count = 0
         total_count = 0
-        env = {'MOZ_PKG_PRETTYNAMES': "1"}
-        env['DIST'] = dirs['abs_objdir']
-        # http://bugs.python.org/issue13524
-        try:
-            env['SystemRoot'] = os.environ['SystemRoot']
-        except KeyError:
-            # nothing to do here - SystemRoot exists only under windows
-            pass
+        env = self.query_repack_env()
         for locale in self.locales:
             total_count += 1
             cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
@@ -544,7 +516,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         locales = self.query_locales()
         base_package_name = self.query_base_package_name()
         version = self.query_version()
-        upload_env = self.query_upload_env()
+        upload_env = self.query_repack_env()
         success_count = total_count = 0
         cwd = dirs['abs_locales_dir']
         for locale in locales:
@@ -682,11 +654,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """retruns the full path to complete.mar"""
         c = self.config
         version = self.query_version()
-        update_env = self.query_env(partial_env=c.get("update_env"))
-        platform = update_env['MOZ_PKG_PLATFORM']
-        version = self.query_version()
-        filename = c["complete_mar"] % {'version': version,
-                                        'platform': platform}
+        filename = c["complete_mar"] % {'version': version}
         return os.path.join(self._abs_dist_dir(), filename)
 
     def query_latest_version(self):
