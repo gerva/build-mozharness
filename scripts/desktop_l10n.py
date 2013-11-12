@@ -138,6 +138,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.version = None
         self.upload_urls = {}
         self.locales_property = {}
+        self.l10n_dir = None
 
         if 'mock_target' in self.config:
             self.enable_mock()
@@ -380,6 +381,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 for line in in_mozconfig:
                     if 'with-l10n-base' in line:
                         line = 'ac_add_options --with-l10n-base=../../l10n\n'
+                        self.l10n_dir = line.partition('=')[2].strip()
                     out_mozconfig.write(line)
         # now log
         with open(dst, 'r') as mozconfig:
@@ -455,6 +457,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
         env = self.query_repack_env()
+        env['L10NBASEDIR'] = self.l10n_dir
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
         target = ["installers-%s" % locale,
