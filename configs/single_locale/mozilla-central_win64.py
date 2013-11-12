@@ -44,11 +44,7 @@ config = {
         "EN_US_BINARY_URL": EN_US_BINARY_URL,
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "DIST": "%(abs_objdir)s\\dist",
-        # disabling locale-mergedir becasue of:
-        # make.py: error: l10n-base required when using locale-mergedir
-        # on devmaster, l10n-base is set... so let's try to disable
-        # locale-mergedir instead
-        # "LOCALE_MERGEDIR": "%(abs_merge_dir)s\\",
+        "LOCALE_MERGEDIR": "%(abs_merge_dir)s\\",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
