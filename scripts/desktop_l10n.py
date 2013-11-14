@@ -457,7 +457,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
         env = self.query_repack_env()
-        env['L10NBASEDIR'] = self.l10n_dir
+        # make.py: error: l10n-base required when using locale-mergedir
+        # adding a replace(...) because make.py doesn't like
+        # --locale-mergedir=e:\...\...\...
+        # replacing \ with /
+        # this kind of hacks makes me sad
+        env['LOCALE_MERGEDIR'] = env['LOCALE_MERGEDIR'].replace("\\", "/")
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
         target = ["installers-%s" % locale,
