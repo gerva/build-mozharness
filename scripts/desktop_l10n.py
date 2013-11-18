@@ -458,6 +458,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """wrapper for make installers-(locale)"""
         env = self.query_repack_env()
         env['L10NBASEDIR'] = self.l10n_dir
+        self._mar_tool_download()
         # make.py: error: l10n-base required when using locale-mergedir
         # adding a replace(...) because make.py doesn't like
         # --locale-mergedir=e:\...\...\...
@@ -476,9 +477,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         self.create_mar_dirs()
-        martool = MarTool(c['mar_tools_url'], self._mar_tool_dir(),
-                          self.log_obj, self._mar_binaries())
-        martool.download()
+        self._mar_tool_download()
         package_basedir = os.path.join(dirs['abs_objdir'],
                                        c['package_base_dir'])
         success_count = 0
@@ -724,6 +723,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], c["local_mar_tool_dir"])
+
+    def _mar_tool_download(self):
+        c = self.config
+        martool = MarTool(c['mar_tools_url'], self._mar_tool_dir(),
+                          self.log_obj, self._mar_binaries())
+        martool.download()
 
     def _incremental_update_script(self):
         """incremental update script"""

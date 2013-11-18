@@ -43,6 +43,7 @@ def query_ini_file(ini_file, section, option):
     ini.read(ini_file)
     return ini.get(section, option)
 
+
 def buildid_form_ini(ini_file):
     """reads an ini_file and returns the buildid"""
     return query_ini_file(ini_file,
