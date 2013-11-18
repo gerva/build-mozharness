@@ -38,12 +38,16 @@ def tools_environment(base_dir, binaries):
     return env
 
 
-def buildid_form_ini(ini_file):
-    """reads an ini_file and returns the buildid"""
+def query_ini_file(ini_file, section, option):
     ini = ConfigParser.SafeConfigParser()
     ini.read(ini_file)
-    return ini.get(CONFIG.get('buildid_section'),
-                   CONFIG.get('buildid_option'))
+    return ini.get(section, option)
+
+def buildid_form_ini(ini_file):
+    """reads an ini_file and returns the buildid"""
+    return query_ini_file(ini_file,
+                          CONFIG.get('buildid_section'),
+                          CONFIG.get('buildid_option'))
 
 
 # MarTool {{{1
