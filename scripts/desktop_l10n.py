@@ -624,10 +624,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                               'locale': locale}
         localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
                                      localized_mar)
+
+        msg = "%s does not exist. Creating it." % localized_mar
+        with open("AAAAAAA", 'w') as out:
+            out.write(msg)
+            out.write("=======")
+            out.write(localized_mar)
         if not os.path.exists(localized_mar):
             # *.complete.mar already exist in windows but
             # it does not exist on other platforms
-            self.info("%s does not exist. Creating it." % localized_mar)
+            self.info(msg)
             self.generate_complete_mar(locale)
 
         to_m = MarFile(mar_scripts,
