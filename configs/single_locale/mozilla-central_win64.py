@@ -93,7 +93,7 @@ config = {
     "partials_url": "%(base_url)s/latest-mozilla-central/",
     "mar_tools_url": "https://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/win32/",
     "complete_mar": "firefox-%(version)s.en-US.%(platform)s.complete.mar",
-    "localized_mar": "firefox-%(version)s.%(locale)s.win64-x86-64.complete.mar",
+    "localized_mar": "firefox-%(version)s.%(locale)s.win32.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
 
 
