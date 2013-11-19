@@ -121,7 +121,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "list-locales",
                 "setup",
                 "repack",
-                "generate-complete-mar",
+                #"generate-complete-mar",
                 "generate-partials",
                 "create-nightly-snippets",
                 "upload-nightly-repacks",
@@ -348,6 +348,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                          env=self.query_repack_env(),
                          error_list=BaseErrorList,
                          halt_on_failure=True)
+        self._mar_tools_download()
         # if checkout updates CLOBBER file with a newer timestamp,
         # next make -f client.mk configure  will delete archives
         # downloaded with make wget_en_US, so just touch CLOBBER file
@@ -458,7 +459,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """wrapper for make installers-(locale)"""
         env = self.query_repack_env()
         env['L10NBASEDIR'] = self.l10n_dir
-        self._mar_tool_download()
+        self._mar_tools_download()
         # make.py: error: l10n-base required when using locale-mergedir
         # adding a replace(...) because make.py doesn't like
         # --locale-mergedir=e:\...\...\...
@@ -477,7 +478,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         self.create_mar_dirs()
-        self._mar_tool_download()
+        self._mar_tools_download()
         package_basedir = os.path.join(dirs['abs_objdir'],
                                        c['package_base_dir'])
         success_count = 0
@@ -619,10 +620,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def generate_partials(self):
         """generate partial files"""
-        f = self.get_previous_mar()
-        partials = [f]
         c = self.config
-        platform = c['platform']
         version = self.query_version()
         update_mar_dir = self.update_mar_dir()
         incremental_update = self._incremental_update_script()
@@ -632,23 +630,29 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                  ini_file=c['application_ini'],
                                  mar_binaries=self._mar_binaries())
         for locale in self.locales:
-            localized_mar = c['localized_mar'] % {'platform': platform,
-                                                  'version': version,
+            self.info(">>>>>> locale: %s" % locale)
+            localized_mar = c['localized_mar'] % {'version': version,
                                                   'locale': locale}
-            localized_mar = os.path.join(update_mar_dir, localized_mar)
+            localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
+                                         localized_mar)
+
+            if not os.path.exists(localized_mar):
+                self.info("missing complete mar files: %s" % localized_mar)
+                self.info("creating it")
+                self.generate_complete_mar()
+
             to_m = MarFile(mar_scripts,
                            log_obj=self.log_obj,
                            filename=localized_mar)
-            for partial in partials:
-                from_m = MarFile(mar_scripts,
-                                 log_obj=self.log_obj,
-                                 filename=partial)
-                archive = c['partial_mar'] % {'version': version,
-                                              'locale': locale,
-                                              'from_buildid': from_m.buildid(),
-                                              'to_buildid': to_m.buildid()}
-                archive = os.path.join(update_mar_dir, archive)
-                to_m.incremental_update(from_m, archive)
+            from_m = MarFile(mar_scripts,
+                             log_obj=self.log_obj,
+                             filename=self.get_previous_mar(locale))
+            archive = c['partial_mar'] % {'version': version,
+                                          'locale': locale,
+                                          'from_buildid': from_m.buildid(),
+                                          'to_buildid': to_m.buildid()}
+            archive = os.path.join(update_mar_dir, archive)
+            to_m.incremental_update(from_m, archive)
 
     def delete_pgc_files(self):
         """deletes pgc files"""
@@ -657,13 +661,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             for pcg_file in self.pgc_files(directory):
                 self.info("removing %s" % pcg_file)
                 self.rmtree(pcg_file)
-
-    def current_mar_filename(self):
-        """retruns the full path to complete.mar"""
-        c = self.config
-        version = self.query_version()
-        filename = c["complete_mar"] % {'version': version}
-        return os.path.join(self._abs_dist_dir(), filename)
 
     def query_latest_version(self):
         """find latest available version from candidates_base_url"""
@@ -678,24 +675,23 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.rmtree(temp_dir)
         return self.version
 
-    def previous_mar_url(self):
+    def _previous_mar_url(self, locale):
         """returns the url for previous mar"""
         c = self.config
-        #update_env = self.query_env(partial_env=c.get("update_env"))
-        # why from env?
-        base_url = c['binary_url']
-        platform = c['platform']
-        version = self.query_version()
-        remote_filename = c["complete_mar"] % {'version': version,
-                                               'platform': platform}
-        return "/".join((base_url, remote_filename))
+        base_url = c['previous_mar_url']
+        return "/".join((base_url, self._localized_mar(locale)))
 
-    def get_previous_mar(self):
+    def get_previous_mar(self, locale):
         """downloads the previous mar file"""
         self.mkdir_p(self.previous_mar_dir())
-        self.download_file(self.previous_mar_url(),
+        self.download_file(self._previous_mar_url(locale),
                            self._previous_mar_filename())
         return self._previous_mar_filename()
+
+    def _localized_mar(self, locale):
+        c = self.config
+        version = self.query_version()
+        return c["localized_mar"] % {'version': version, 'locale': locale}
 
     def _previous_mar_filename(self):
         """returns the complete path to previous.mar"""
@@ -724,7 +720,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], c["local_mar_tool_dir"])
 
-    def _mar_tool_download(self):
+    def _mar_tools_download(self):
+        """downloads mar and mbsdiff files"""
         c = self.config
         martool = MarTool(c['mar_tools_url'], self._mar_tool_dir(),
                           self.log_obj, self._mar_binaries())
