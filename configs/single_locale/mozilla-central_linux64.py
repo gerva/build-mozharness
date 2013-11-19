@@ -79,6 +79,7 @@ config = {
     "clobber_file": 'CLOBBER',
 
     #MAR
+    'previous_mar_url': 'https://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n',
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
     "update_mar_dir": "dist/update",  # sure?
