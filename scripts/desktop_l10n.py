@@ -122,7 +122,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "setup",
                 "repack",
                 #"generate-complete-mar",
-                "generate-partials",
+                #"generate-partials",
                 "create-nightly-snippets",
                 "upload-nightly-repacks",
                 "upload-snippets",
@@ -473,7 +473,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._make(target=target, cwd=cwd,
                           env=env, halt_on_failure=False)
 
-    def generate_complete_mar(self):
+    def generate_complete_mar(self, locale):
         """creates a complete mar file"""
         c = self.config
         dirs = self.query_abs_dirs()
@@ -481,42 +481,33 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self._mar_tools_download()
         package_basedir = os.path.join(dirs['abs_objdir'],
                                        c['package_base_dir'])
-        success_count = 0
-        total_count = 0
         env = self.query_repack_env()
-        for locale in self.locales:
-            total_count += 1
-            cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
-            cmd = ['-C', cmd, 'full-update', 'AB_CD=%s' % locale,
-                   'PACKAGE_BASE_DIR=%s' % package_basedir]
-            if self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=env):
-                msg = "%s failed in create complete mar!" % locale
-                self.add_failure(locale, message=msg)
-            else:
-                success_count += 1
-        msg = "Created %d of %d complete mar sucessfully."
-        self.summarize_success_count(success_count, total_count, message=msg)
+        cmd = os.path.join(dirs['abs_objdir'], c['update_packaging_dir'])
+        cmd = ['-C', cmd, 'full-update', 'AB_CD=%s' % locale,
+               'PACKAGE_BASE_DIR=%s' % package_basedir]
+        self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=env)
 
     def repack(self):
         """creates the repacks and udpates"""
         # TODO per-locale logs and reporting.
         self.enable_mock()
         locales = self.query_locales()
-        success_count = total_count = 0
+        results = {}
         for locale in locales:
-            total_count += 1
-            result = self.run_compare_locales(locale)
-            if result:
-                msg = "%s failed in compare-locales!" % locale
-                self.add_failure(locale, message=msg)
-                continue
-            if self.make_installers(locale):
-                msg = "%s failed in make installers-%s!" % (locale, locale)
-                self.add_failure(locale, message=msg)
-            else:
-                success_count += 1
-        msg = "Repacked %d of %d binaries successfully."
-        self.summarize_success_count(success_count, total_count, message=msg)
+            compare_locales = self.run_compare_locales(locale)
+            installers = self.make_installers(locale)
+            partials = self.generate_partials(locale)
+            # log results:
+            result = {}
+            result['compare_locales'] = compare_locales
+            result['installers'] = installers
+            result['partials'] = partials
+            results[locale] = result
+        for locale in results:
+            self.info(locale)
+            steps = results[locale]
+            for step in steps:
+                self.info("%s: %s" % (step, steps[step]))
 
     def upload_repacks(self):
         """calls make upload <locale>"""
@@ -618,7 +609,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                        c['aus_upload_basedir']):
             self.return_code += 1
 
-    def generate_partials(self):
+    def generate_partials(self, locale):
         """generate partial files"""
         c = self.config
         version = self.query_version()
@@ -629,30 +620,29 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                  tools_dir=self._mar_tool_dir(),
                                  ini_file=c['application_ini'],
                                  mar_binaries=self._mar_binaries())
-        for locale in self.locales:
-            self.info(">>>>>> locale: %s" % locale)
-            localized_mar = c['localized_mar'] % {'version': version,
-                                                  'locale': locale}
-            localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
-                                         localized_mar)
+        localized_mar = c['localized_mar'] % {'version': version,
+                                              'locale': locale}
+        localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
+                                     localized_mar)
+        if not os.path.exists(localized_mar):
+            # *.complete.mar already exist in windows but
+            # it does not exist on other platforms
+            self.info("%s does not exist. Creating it." % localized_mar)
+            self.generate_complete_mar(locale)
 
-            if not os.path.exists(localized_mar):
-                self.info("missing complete mar files: %s" % localized_mar)
-                self.info("creating it")
-                self.generate_complete_mar()
-
-            to_m = MarFile(mar_scripts,
-                           log_obj=self.log_obj,
-                           filename=localized_mar)
-            from_m = MarFile(mar_scripts,
-                             log_obj=self.log_obj,
-                             filename=self.get_previous_mar(locale))
-            archive = c['partial_mar'] % {'version': version,
-                                          'locale': locale,
-                                          'from_buildid': from_m.buildid(),
-                                          'to_buildid': to_m.buildid()}
-            archive = os.path.join(update_mar_dir, archive)
-            to_m.incremental_update(from_m, archive)
+        to_m = MarFile(mar_scripts,
+                       log_obj=self.log_obj,
+                       filename=localized_mar)
+        from_m = MarFile(mar_scripts,
+                         log_obj=self.log_obj,
+                         filename=self.get_previous_mar(locale))
+        archive = c['partial_mar'] % {'version': version,
+                                      'locale': locale,
+                                      'from_buildid': from_m.buildid(),
+                                      'to_buildid': to_m.buildid()}
+        archive = os.path.join(update_mar_dir, archive)
+        # let's make the incremental update
+        to_m.incremental_update(from_m, archive)
 
     def delete_pgc_files(self):
         """deletes pgc files"""
