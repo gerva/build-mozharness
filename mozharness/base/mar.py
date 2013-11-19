@@ -81,12 +81,13 @@ class MarTool(ScriptMixin, LogMixin, object):
 # MarFile {{{1
 class MarFile(ScriptMixin, LogMixin, object):
     """manages the downlad/unpack and incremental updates of mar files"""
-    def __init__(self, mar_scripts, log_obj, filename=None):
+    def __init__(self, mar_scripts, log_obj, filename=None, prettynames=0):
         self.filename = filename
         super(MarFile, self).__init__()
         self.log_obj = log_obj
         self.build_id = None
         self.mar_scripts = mar_scripts
+        self.prettynames = str(prettynames)
         self.config = CONFIG
 
     def unpack_mar(self, dst_dir):
@@ -97,7 +98,7 @@ class MarFile(ScriptMixin, LogMixin, object):
         mar_scripts = self.mar_scripts
         tools_dir = mar_scripts.tools_dir
         env = tools_environment(tools_dir, mar_scripts.mar_binaries)
-        env["MOZ_PKG_PRETTYNAMES"] = "1"
+        env["MOZ_PKG_PRETTYNAMES"] = self.prettynames
         self.mkdir_p(dst_dir)
         self.run_command(cmd,
                          cwd=dst_dir,
