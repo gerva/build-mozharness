@@ -212,6 +212,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """returns the value of make echo-variable-<variable>
            it accepts extra make arguements (make_args)
            it also has an exclude_lines from the output filer
+           exclude_lines defaults to PyMakeIgnoreList because
+           on windows, pymake write extra output lines that need
+           to be filtered out.
         """
         dirs = self.query_abs_dirs()
         make_args = make_args or []

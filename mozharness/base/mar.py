@@ -33,8 +33,10 @@ CONFIG = {
 def tools_environment(base_dir, binaries):
     """returns the env setting required to run mar and/or mbsdiff"""
     env = {}
+    # bad code here - FIXIT
     for binary in binaries:
-        env[binary.upper()] = os.path.join(base_dir, binary)
+        binary_name = binary.replace(".exe", "").upper()
+        env[binary_name] = os.path.join(base_dir, binary)
     return env
 
 
