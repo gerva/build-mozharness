@@ -236,16 +236,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 output.append(line.strip())
         return " ".join(output).strip()
 
-    def query_base_package_name(self):
+    def query_base_package_name(self, locale, prettynames=True):
         """Get the package name from the objdir.
         Only valid after setup is run.
        """
-        if self.base_package_name:
-            return self.base_package_name
-        self.base_package_name = self._query_make_variable(
-            "PACKAGE",
-            make_args=['AB_CD=%(locale)s'],)
-        return self.base_package_name
+        #if self.base_package_name:
+        #    return self.base_package_name
+        #self.base_package_name =
+        args = ['AB_CD=%s' % locale]
+        return self._query_make_variable("PACKAGE", make_args=args)
 
     def query_version(self):
         """Get the package name from the objdir.
@@ -517,7 +516,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c = self.config
         dirs = self.query_abs_dirs()
         locales = self.query_locales()
-        base_package_name = self.query_base_package_name()
         version = self.query_version()
         upload_env = self.query_repack_env()
         success_count = total_count = 0
@@ -540,7 +538,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 msg = "%s failed in make upload!" % (locale)
                 self.add_failure(locale, message=msg)
                 continue
-            package_name = base_package_name % {'locale': locale}
+            package_name = self.query_base_package_name(locale)
             r = re.compile("(http.*%s)" % package_name)
             success = False
             for line in output.splitlines():
@@ -571,11 +569,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             aus_dir = c['aus_base_dir'] % {'buildid': buildid,
                                            'build_target': c['build_target'],
                                            'locale': locale}
-            aus_abs_dir = os.path.join(dirs['abs_work_dir'], 'update',
-                                       aus_dir)
-            binary_path = os.path.join(self._abs_dist_dir(),
-                                       self.query_base_package_name() %
-                                       {'locale': locale})
+            aus_abs_dir = os.path.join(dirs['abs_work_dir'], 'update', aus_dir)
+            base_name = self.query_base_package_name(locale)
+            binary_path = os.path.join(self._abs_dist_dir(), base_name)
             # for win repacks
             binary_path = binary_path.replace(os.sep, "/")
             url = self.query_upload_url(locale)
@@ -584,11 +580,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 msg += "without an upload url."
                 self.add_failure(locale, msg)
                 continue
-            if not self.create_complete_snippet(binary_path,
-                                                version,
-                                                buildid,
-                                                url,
-                                                aus_abs_dir):
+            if not self.create_complete_snippet(binary_path, version,
+                                                buildid, url, aus_abs_dir):
                 msg = "Errors creating snippet for %s! " % locale
                 msg += "Removing snippet directory."
                 self.add_failure(locale, message=msg)
@@ -618,11 +611,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         version = self.query_version()
         update_mar_dir = self.update_mar_dir()
         incremental_update = self._incremental_update_script()
+        env = self.query_repack_env()
         mar_scripts = MarScripts(unpack=self._unpack_script(),
                                  incremental_update=incremental_update,
                                  tools_dir=self._mar_tool_dir(),
                                  ini_file=c['application_ini'],
-                                 mar_binaries=self._mar_binaries())
+                                 mar_binaries=self._mar_binaries(),
+                                 env=env)
         localized_mar = c['localized_mar'] % {'version': version,
                                               'locale': locale}
         localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
@@ -641,10 +636,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         to_m = MarFile(mar_scripts,
                        log_obj=self.log_obj,
-                       filename=localized_mar)
+                       filename=localized_mar,
+                       prettynames='1')
         from_m = MarFile(mar_scripts,
                          log_obj=self.log_obj,
-                         filename=self.get_previous_mar(locale))
+                         filename=self.get_previous_mar(locale),
+                         prettynames='1')
         archive = c['partial_mar'] % {'version': version,
                                       'locale': locale,
                                       'from_buildid': from_m.buildid(),

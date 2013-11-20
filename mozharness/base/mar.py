@@ -13,6 +13,7 @@ import os
 import sys
 import tempfile
 import ConfigParser
+import copy
 
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
@@ -30,9 +31,8 @@ CONFIG = {
 }
 
 
-def tools_environment(base_dir, binaries):
+def tools_environment(base_dir, binaries, env):
     """returns the env setting required to run mar and/or mbsdiff"""
-    env = {}
     # bad code here - FIXIT
     for binary in binaries:
         binary_name = binary.replace(".exe", "").upper()
@@ -99,7 +99,9 @@ class MarFile(ScriptMixin, LogMixin, object):
         cmd = ['perl', self._unpack_script(), self.filename]
         mar_scripts = self.mar_scripts
         tools_dir = mar_scripts.tools_dir
-        env = tools_environment(tools_dir, mar_scripts.mar_binaries)
+        env = tools_environment(tools_dir,
+                                mar_scripts.mar_binaries,
+                                mar_scripts.env)
         env["MOZ_PKG_PRETTYNAMES"] = self.prettynames
         self.mkdir_p(dst_dir)
         self.run_command(cmd,
@@ -135,7 +137,9 @@ class MarFile(ScriptMixin, LogMixin, object):
                fromdir, todir]
         mar_scripts = self.mar_scripts
         tools_dir = mar_scripts.tools_dir
-        env = tools_environment(tools_dir, mar_scripts.mar_binaries)
+        env = tools_environment(tools_dir,
+                                mar_scripts.mar_binaries,
+                                mar_scripts.env)
         self.run_command(cmd, cwd=None, env=env)
         self.rmtree(todir)
         self.rmtree(fromdir)
@@ -173,9 +177,12 @@ class MarScripts(object):
     """holds the information on scripts and directories paths needed
        by MarTool and MarFile"""
     def __init__(self, unpack, incremental_update,
-                 tools_dir, ini_file, mar_binaries):
+                 tools_dir, ini_file, mar_binaries,
+                 env):
         self.unpack = unpack
         self.incremental_update = incremental_update
         self.tools_dir = tools_dir
         self.ini_file = ini_file
         self.mar_binaries = mar_binaries
+        # what happens in mar.py stays in mar.py
+        self.env = copy.deepcopy(env)
