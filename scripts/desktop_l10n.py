@@ -207,7 +207,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.revision = match.groups()[1]
         return self.revision
 
-    def _query_make_variable(self, variable, make_args=None, exclude_lines=None):
+    def _query_make_variable(self, variable, make_args=None,
+                             exclude_lines=PyMakeIgnoreList):
         """returns the value of make echo-variable-<variable>
            it accepts extra make arguements (make_args)
            it also has an exclude_lines from the output filer
@@ -240,8 +241,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return self.base_package_name
         self.base_package_name = self._query_make_variable(
             "PACKAGE",
-            make_args=['AB_CD=%(locale)s'],
-            exclude_lines=PyMakeIgnoreList,)
+            make_args=['AB_CD=%(locale)s'],)
         return self.base_package_name
 
     def query_version(self):
