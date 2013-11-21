@@ -44,6 +44,7 @@ config = {
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "DIST": "%(abs_objdir)s\\dist",
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s\\",
+        "MOZ_MAKE_COMPLETE_MAR": "1",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
