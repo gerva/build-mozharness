@@ -160,7 +160,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if 'MOZ_SIGNING_SERVERS' in os.environ:
             sign_cmd = self.query_moz_sign_cmd(formats=None)
             sign_cmd = subprocess.list2cmdline(sign_cmd)
-            repack_env['MOZ_SIGN_CMD'] = sign_cmd
+            # windows fix
+            repack_env['MOZ_SIGN_CMD'] = sign_cmd.replace('\\', '\\\\\\\\')
         self.repack_env = repack_env
         return self.repack_env
 
