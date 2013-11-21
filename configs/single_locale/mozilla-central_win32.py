@@ -77,7 +77,7 @@ config = {
     "update_mar_dir": "dist\\update",  # sure?
     "previous_mar_filename": "previous.mar",
     "current_work_mar_dir": "current.work",
-    "package_base_dir": "dist",
+    "package_base_dir": "dist\\install\\sea",
     "application_ini": "application.ini",
     "buildid_section": 'App',
     "buildid_option": "BuildID",
