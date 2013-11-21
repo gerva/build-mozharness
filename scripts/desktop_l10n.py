@@ -26,7 +26,6 @@ except ImportError:
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.log import OutputParser
-from mozharness.base.log import LogMixin
 from mozharness.base.transfer import TransferMixin
 from mozharness.base.mar import MarTool, MarFile, MarScripts
 from mozharness.base.errors import BaseErrorList, MakefileErrorList
@@ -39,7 +38,6 @@ from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
-from mozharness.base.script import ScriptMixin
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -130,7 +128,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             ],
             require_config_file=require_config_file
         )
-        self.base_package_name = None
         self.buildid = None
         self.make_ident_output = None
         self.repack_env = None
@@ -174,9 +171,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if self.make_ident_output:
             return self.make_ident_output
         dirs = self.query_abs_dirs()
-        self.make_ident_output = self._get_output_from_make(target=["ident"],
-                                                            cwd=dirs['abs_locales_dir'],
-                                                            env=self.query_repack_env())
+        self.make_ident_output = self._get_output_from_make(
+            target=["ident"],
+            cwd=dirs['abs_locales_dir'],
+            env=self.query_repack_env())
         return self.make_ident_output
 
     def query_buildid(self):
@@ -213,7 +211,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
            it accepts extra make arguements (make_args)
            it also has an exclude_lines from the output filer
            exclude_lines defaults to PyMakeIgnoreList because
-           on windows, pymake write extra output lines that need
+           on windows, pymake writes extra output lines that need
            to be filtered out.
         """
         dirs = self.query_abs_dirs()
@@ -237,17 +235,17 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return " ".join(output).strip()
 
     def query_base_package_name(self, locale, prettynames=True):
-        """Get the package name from the objdir.
+        """Gets the package name from the objdir.
         Only valid after setup is run.
-       """
-        #if self.base_package_name:
-        #    return self.base_package_name
-        #self.base_package_name =
+        """
+        # optimization:
+        # replace locale with %(locale)s
+        # and store its values.
         args = ['AB_CD=%s' % locale]
         return self._query_make_variable("PACKAGE", make_args=args)
 
     def query_version(self):
-        """Get the package name from the objdir.
+        """Gets the version from the objdir.
         Only valid after setup is run."""
         if self.version:
             return self.version
@@ -781,8 +779,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return pgc_files
 
 
-class Make(MockMixin, ScriptMixin, LogMixin, object):
-    """a wrapper for make calls"""
 # main {{{
 if __name__ == '__main__':
     single_locale = DesktopSingleLocale()

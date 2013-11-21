@@ -37,6 +37,9 @@ def tools_environment(base_dir, binaries, env):
     for binary in binaries:
         binary_name = binary.replace(".exe", "").upper()
         env[binary_name] = os.path.join(base_dir, binary)
+        # windows -> python -> perl -> sh
+        # windows fix...
+        env[binary_name] = env[binary_name].replace("\\", "/")
     return env
 
 
