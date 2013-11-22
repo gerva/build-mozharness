@@ -14,7 +14,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 
 try:
     import simplejson as json
@@ -549,7 +548,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if not success:
                 msg = "Failed to detect %s url in make upload!" % locale
                 self.add_failure(locale, message=msg)
-                print output
+                self.debug(output)
                 continue
             success_count += 1
             msg = "Uploaded %d of %d binaries successfully."
@@ -622,15 +621,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
                                      localized_mar)
 
-        msg = "%s does not exist. Creating it." % localized_mar
-        with open("AAAAAAA", 'w') as out:
-            out.write(msg)
-            out.write("=======")
-            out.write(localized_mar)
         if not os.path.exists(localized_mar):
             # *.complete.mar already exist in windows but
             # it does not exist on other platforms
-            self.info(msg)
+            self.info("%s does not exist. Creating it." % localized_mar)
             self.generate_complete_mar(locale)
 
         to_m = MarFile(mar_scripts,
@@ -656,19 +650,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             for pcg_file in self.pgc_files(directory):
                 self.info("removing %s" % pcg_file)
                 self.rmtree(pcg_file)
-
-    def query_latest_version(self):
-        """find latest available version from candidates_base_url"""
-        if self.version:
-            return self.version
-        c = self.config
-        url = c.get('candidates_base_url')
-        temp_dir = tempfile.mkdtemp()
-        temp_out = os.path.join(temp_dir, 'versions')
-        self.download_file(url, temp_out)
-        self.version = "27.0a1"  # hardcoded... too bad
-        self.rmtree(temp_dir)
-        return self.version
 
     def _previous_mar_url(self, locale):
         """returns the url for previous mar"""
