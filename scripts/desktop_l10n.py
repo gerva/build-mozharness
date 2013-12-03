@@ -5,8 +5,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 # ***** END LICENSE BLOCK *****
 """desktop_l10n.py
-
-Firefox repacks
+Desktop repacks
 """
 
 from copy import deepcopy
