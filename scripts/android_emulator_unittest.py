@@ -28,7 +28,7 @@ from mozharness.mozilla.tooltool import TooltoolMixin
 
 from mozharness.mozilla.testing.device import ADBDeviceHandler
 
-class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, BaseScript):
+class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, BaseScript):
     config_options = [
         [["--robocop-url"],
         {"action": "store",
@@ -65,10 +65,11 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
     app_name = None
 
     def __init__(self, require_config_file=False):
-        super(Androidx86EmulatorTest, self).__init__(
+        super(AndroidEmulatorTest, self).__init__(
             config_options=self.config_options,
             all_actions=['clobber',
                          'read-buildbot-config',
+                         'download-cacheable-artifacts',
                          'setup-avds',
                          'start-emulators',
                          'download-and-extract',
@@ -77,6 +78,7 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
                          'run-tests',
                          'stop-emulators'],
             default_actions=['clobber',
+                             'download-cacheable-artifacts',
                              'start-emulators',
                              'download-and-extract',
                              'create-virtualenv',
@@ -106,7 +108,6 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
         self.host_utils_url = c.get('host_utils_url')
         self.minidump_stackwalk_path = c.get("minidump_stackwalk_path")
         self.emulators = c.get('emulators')
-        self.emulator_components = c.get('emulator_components')
         self.test_suite_definitions = c['test_suite_definitions']
         self.test_suites = c.get('test_suites')
         for suite in self.test_suites:
@@ -115,7 +116,7 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
     def query_abs_dirs(self):
         if self.abs_dirs:
             return self.abs_dirs
-        abs_dirs = super(Androidx86EmulatorTest, self).query_abs_dirs()
+        abs_dirs = super(AndroidEmulatorTest, self).query_abs_dirs()
         dirs = {}
         dirs['abs_test_install_dir'] = os.path.join(
             abs_dirs['abs_work_dir'], 'tests')
@@ -183,20 +184,26 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
         env = self.query_env()
         command = [
             "emulator", "-avd", emulator["name"],
-            "-debug", "all",
+            "-debug", "init,console,gles,memcheck,adbserver,adbclient,adb,avd_config",
             "-port", str(emulator["emulator_port"]),
-            "-kernel", self.emulator_components["kernel_path"],
-            "-system", self.emulator_components["system_image_path"],
-            "-ramdisk", self.emulator_components["ramdisk_path"],
             # Enable kvm; -qemu arguments must be at the end of the command
             "-qemu", "-m", "1024", "-enable-kvm"
         ]
+        if "emulator_cpu" in self.config:
+            command += ["-qemu", "-cpu", self.config["emulator_cpu"] ]
+        tmp_file = tempfile.NamedTemporaryFile(mode='w')
+        tmp_stdout = open(tmp_file.name, 'w')
+        self.info("Created temp file %s." % tmp_file.name)
         self.info("Trying to start the emulator with this command: %s" % ' '.join(command))
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+        proc = subprocess.Popen(command, stdout=tmp_stdout, stderr=tmp_stdout, env=env)
         self._redirectSUT(emulator["emulator_port"], emulator["sut_port1"], emulator["sut_port2"])
         self.info("%s: %s; sut port: %s/%s" % \
                 (emulator["name"], emulator["emulator_port"], emulator["sut_port1"], emulator["sut_port2"]))
-        return proc
+        return {
+            "process": proc,
+            "tmp_file": tmp_file,
+            "tmp_stdout": tmp_stdout
+            }
 
     def _kill_processes(self, process_name):
         p = subprocess.Popen(['ps', '-A'], stdout=subprocess.PIPE)
@@ -211,7 +218,7 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
     def _post_fatal(self, message=None, exit_code=None):
         """ After we call fatal(), run this method before exiting.
         """
-        self._kill_processes("emulator64-x86")
+        self._kill_processes(self.config["emulator_process_name"])
 
     # XXX: This and android_panda.py's function might make sense to take higher up
     def _download_robocop_apk(self):
@@ -255,7 +262,7 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
             'remote_webserver': c['remote_webserver'],
             'xre_path': os.path.join(dirs['abs_xre_dir'], 'xre'),
             'utility_path':  os.path.join(dirs['abs_xre_dir'], 'bin'),
-            'device_ip': self.config['device_ip'],
+            'device_ip': c['device_ip'],
             'device_port': str(emulator['sut_port1']),
             'http_port': emulator['http_port'],
             'ssl_port': emulator['ssl_port'],
@@ -276,7 +283,7 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
         return self.which('adb') or os.getenv('ADB_PATH')
 
     def preflight_run_tests(self):
-        super(Androidx86EmulatorTest, self).preflight_run_tests()
+        super(AndroidEmulatorTest, self).preflight_run_tests()
 
         if not os.path.isfile(self.adb_path):
             self.fatal("The adb binary '%s' is not a valid file!" % self.adb_path)
@@ -309,23 +316,41 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
             "process": subprocess.Popen(cmd, cwd=cwd, stdout=tmp_stdout, stderr=tmp_stdout, env=env),
             "tmp_file": tmp_file,
             "tmp_stdout": tmp_stdout,
-            "suite_name": suite_name
+            "suite_name": suite_name,
+            "emulator_index": emulator_index
             }
 
     ##########################################
-    ### Actions for Androidx86EmulatorTest ###
+    ### Actions for AndroidEmulatorTest ###
     ##########################################
+    def download_cacheable_artifacts(self):
+        '''
+        This will cache every downloadable artifact specified in
+        "tooltool_cacheable_artifacts" to "tooltool_cache_path"
+        '''
+        c = self.config
+        artifacts = c["tooltool_cacheable_artifacts"]
+        for artifact_name in artifacts.keys():
+            file_name = artifacts[artifact_name][0]
+            file_path = os.path.join(c["tooltool_cache_path"], file_name)
+            if not os.path.exists(file_path):
+                # We store files in tooltool as their shasum representation
+                file_shasum = artifacts[artifact_name][1]
+                file_url = os.path.join(c["tooltool_url"], file_shasum)
+                self.download_file(file_url, file_path, c["tooltool_cache_path"])
 
     def setup_avds(self):
         '''
-        We have deployed through Puppet tar ball with the pristine templates.
+        We have a tar ball in ToolTool with the pristine templates.
         Let's unpack them every time.
         '''
-        if os.path.exists(os.path.join(self.config[".avds_dir"], "test-x86-1.avd")):
-           self.rmtree(self.config[".avds_dir"])
-        avds_path = self.config["avds_path"]
-        self.mkdir_p(self.config[".avds_dir"])
-        self.unpack(avds_path, self.config[".avds_dir"])
+        c = self.config
+        self.rmtree(c[".avds_dir"])
+        avd_tar_ball_path = os.path.join(
+                c["tooltool_cache_path"],
+                c["tooltool_cacheable_artifacts"]["avd_tar_ball"][0])
+        self.mkdir_p(c[".avds_dir"])
+        self.unpack(avd_tar_ball_path, c[".avds_dir"])
 
     def start_emulators(self):
         '''
@@ -335,18 +360,18 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
             "We can't run more tests that the number of emulators we start"
         # We kill compiz because it sometimes prevents us from starting the emulators
         self._kill_processes("compiz")
-        self.procs = []
+        self.emulator_procs = []
         emulator_index = 0
         for test in self.test_suites:
             emulator = self.emulators[emulator_index]
             emulator_index+=1
 
-            proc = self._launch_emulator(emulator)
-            self.procs.append(proc)
+            emulator_proc = self._launch_emulator(emulator)
+            self.emulator_procs.append(emulator_proc)
 
     def download_and_extract(self):
         # This will download and extract the fennec.apk and tests.zip
-        super(Androidx86EmulatorTest, self).download_and_extract()
+        super(AndroidEmulatorTest, self).download_and_extract()
         dirs = self.query_abs_dirs()
         # XXX: Why is it called "download" since we don't download it?
         if self.config.get('download_minidump_stackwalk'):
@@ -408,6 +433,7 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
         start_time = int(time.time())
         while True:
             for p in procs:
+                emulator_index = p["emulator_index"]
                 return_code = p["process"].poll()
                 if return_code!=None:
                     suite_name = p["suite_name"]
@@ -418,9 +444,8 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
                     p["tmp_stdout"].close()
                     # Let's read the file that now has the output
                     output = self.read_from_file(p["tmp_file"].name, verbose=False)
-                    # Let's output all the log
-                    self.info(output)
-                    # Let's parse the output and determine what the results should be
+                    # Let's parse the output (which also prints it)
+                    # and determine what the results should be
                     parser = DesktopUnittestOutputParser(
                                  suite_category=self.test_suite_definitions[p["suite_name"]]["category"],
                                  config=self.config,
@@ -437,6 +462,11 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
                     joint_log_level = self.worst_level(log_level, joint_log_level)
 
                     self.info("##### %s log ends" % p["suite_name"])
+                    self.info("##### %s emulator log begins" % p["suite_name"])
+                    output = self.read_from_file(self.emulator_procs[emulator_index]["tmp_file"].name, verbose=False)
+                    if output:
+                        self.info(output)
+                    self.info("##### %s emulator log ends" % p["suite_name"])
                     procs.remove(p)
             if procs == []:
                 break
@@ -454,8 +484,8 @@ class Androidx86EmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixi
         '''
         Let's make sure that every emulator has been stopped
         '''
-        self._kill_processes('emulator64-x86')
+        self._kill_processes(self.config["emulator_process_name"])
 
 if __name__ == '__main__':
-    emulatorTest = Androidx86EmulatorTest()
+    emulatorTest = AndroidEmulatorTest()
     emulatorTest.run_and_exit()
