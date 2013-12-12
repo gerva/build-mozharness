@@ -524,10 +524,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 continue
             total_count += 1
             if config.get('base_post_upload_cmd'):
-                upload_cmd = config['base_post_upload_cmd'] % {'version':
-                                                               version,
-                                                               'locale':
-                                                               locale}
+                upload_cmd = {'version': version, 'locale': locale}
+                upload_cmd = config['base_post_upload_cmd'] % upload_cmd
                 upload_env['POST_UPLOAD_CMD'] = upload_cmd
             target = ["upload", "AB_CD=%s" % locale]
             output = self._get_output_from_make(target, cwd=cwd, env=upload_env)
