@@ -5,7 +5,8 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 # ***** END LICENSE BLOCK *****
 """desktop_l10n.py
-Desktop repacks
+
+This script manages Desktop repacks for nightly builds
 """
 
 from copy import deepcopy
@@ -234,7 +235,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 output.append(line.strip())
         return " ".join(output).strip()
 
-    def query_base_package_name(self, locale, prettynames=True):
+    def query_base_package_name(self, locale):
         """Gets the package name from the objdir.
         Only valid after setup is run.
         """
@@ -242,7 +243,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # replace locale with %(locale)s
         # and store its values.
         args = ['AB_CD=%s' % locale]
-        return self._query_make_variable("PACKAGE", make_args=args)
+        return self._query_make_variable('PACKAGE', make_args=args)
 
     def query_version(self):
         """Gets the version from the objdir.
@@ -516,7 +517,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         locales = self.query_locales()
         version = self.query_version()
         upload_env = self.query_repack_env()
-        success_count = total_count = 0
+        success_count = 0
+        total_count = 0
         cwd = dirs['abs_locales_dir']
         for locale in locales:
             if self.query_failure(locale):
@@ -551,7 +553,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.debug(output)
                 continue
             success_count += 1
-            msg = "Uploaded %d of %d binaries successfully."
+            msg = "Uploaded %d of %d binaries successfully." % (success_count,
+                                                                total_count)
         self.summarize_success_count(success_count, total_count, message=msg)
 
     def create_nightly_snippets(self):
@@ -561,7 +564,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         locales = self.query_locales()
         buildid = self.query_buildid()
         version = self.query_version()
-        success_count = total_count = 0
+        success_count = 0
+        total_count = 0
+        final_msg = "Created %d of %d snippets successfully."
         for locale in locales:
             total_count += 1
             aus_dict = {'buildid': buildid,
@@ -588,8 +593,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 continue
             self._touch_file(os.path.join(aus_abs_dir, "partial.txt"))
             success_count += 1
-            msg = "Created %d of %d snippets successfully."
-        self.summarize_success_count(success_count, total_count, message=msg)
+        self.summarize_success_count(success_count,
+                                     total_count,
+                                     message=final_msg)
 
     def upload_nightly_snippets(self):
         """uploads nightly snippets"""
@@ -633,11 +639,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         to_m = MarFile(mar_scripts,
                        log_obj=self.log_obj,
                        filename=localized_mar,
-                       prettynames='1')
+                       prettynames=1)
         from_m = MarFile(mar_scripts,
                          log_obj=self.log_obj,
                          filename=self.get_previous_mar(locale),
-                         prettynames='1')
+                         prettynames=1)
         archive = config['partial_mar'] % {'version': version,
                                            'locale': locale,
                                            'from_buildid': from_m.buildid(),
