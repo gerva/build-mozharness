@@ -175,13 +175,21 @@ class ScriptMixin(object):
         """ Helper script for download_file()
             """
         try:
+            f_length = None
             f = urllib2.urlopen(url, timeout=30)
+            if f.info().get('content-length') is not None:
+                f_length = int(f.info()['content-length'])
+                got_length = 0
             local_file = open(file_name, 'wb')
             while True:
                 block = f.read(1024 ** 2)
                 if not block:
+                    if f_length is not None and got_length != f_length:
+                        raise urllib2.URLError("Download incomplete; content-length was %d, but only received %d" % (f_length, got_length))
                     break
                 local_file.write(block)
+                if f_length is not None:
+                    got_length += len(block)
             local_file.close()
             return file_name
         except urllib2.HTTPError, e:
@@ -646,10 +654,10 @@ class ScriptMixin(object):
             self.info("Running command: %s in %s" % (command, cwd))
         else:
             self.info("Running command: %s" % command)
-        if isinstance(command, list):
+        if isinstance(command, list) or isinstance(command, tuple):
             self.info("Copy/paste: %s" % subprocess.list2cmdline(command))
         shell = True
-        if isinstance(command, list):
+        if isinstance(command, list) or isinstance(command, tuple):
             shell = False
         if env is None:
             if partial_env:
