@@ -378,15 +378,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         # STUPID HACK HERE
         # should we update the mozconfig so it has the right value?
-        with open(src, 'r') as in_mozconfig:
-            with open(dst, 'w') as out_mozconfig:
+        with self.opened(src, 'r') as in_mozconfig:
+            with self.opened(dst, 'w') as out_mozconfig:
                 for line in in_mozconfig:
                     if 'with-l10n-base' in line:
                         line = 'ac_add_options --with-l10n-base=../../l10n\n'
                         self.l10n_dir = line.partition('=')[2].strip()
                     out_mozconfig.write(line)
         # now log
-        with open(dst, 'r') as mozconfig:
+        with self.opened(dst, 'r') as mozconfig:
             for line in mozconfig:
                 self.info(line.strip())
 

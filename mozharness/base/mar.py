@@ -168,7 +168,7 @@ class MarFile(ScriptMixin, LogMixin, object):
             for f in filenames:
                 if f == 'application.ini':
                     self.log("found application.ini file: %s" % os.path.join(dirpath, f))
-                    with open(os.path.join(dirpath, f), 'r') as ini:
+                    with self.opened(os.path.join(dirpath, f), 'r') as ini:
                         self.log(ini.read())
         #
         self.info("application.ini file: %s" % ini_file)
