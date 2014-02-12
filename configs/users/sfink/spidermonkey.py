@@ -6,9 +6,9 @@ HOME = "/home/sfink"
 REPO = HOME + "/src/MI-GC"
 
 config = {
-    "hgurl": "http://hg.mozilla.org/",
+    "hgurl": "https://hg.mozilla.org/",
     "hgtool_base_bundle_urls": [
-        "http://ftp.mozilla.org/pub/mozilla.org/firefox/bundles"
+        "https://ftp-ssl.mozilla.org/pub/mozilla.org/firefox/bundles"
     ],
 
     "python": "python",
@@ -21,19 +21,21 @@ config = {
         "revision": "default",
         "dest": BRANCH,
     }, {
-        "repo": "http://hg.mozilla.org/build/tools",
+        "repo": "https://hg.mozilla.org/build/tools",
         "revision": "default",
         "dest": "tools"
     }],
 
+    "tools_dir": "/tools",
+    "tooltool_servers": [ "http://localhost/tooltool" ],
+
     "mock_target": "mozilla-centos6-x86_64",
-    "build_command": "build.shell",
 
     "upload_remote_basepath": "/tmp/upload-base",
     "upload_ssh_server": "localhost",
     "upload_ssh_key": "/home/sfink/.ssh/id_rsa",
     "upload_ssh_user": "sfink",
-    "target": "linux64-haz",
+    "target": "linux64-br-haz",
 
     # For testing tryserver uploads (directory structure is different)
     #"branch": "try",

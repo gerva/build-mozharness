@@ -23,6 +23,7 @@ config = {
     "hostutils_url":  "http://bm-remote.build.mozilla.org/tegra/tegra-host-utils.Linux.742597.zip",
     "verify_path":  "/builds/sut_tools/verify.py",
     "install_app_path":  "/builds/sut_tools/installApp.py",
+    "logcat_path":  "/builds/sut_tools/logcat.py",
     "mochitest_options": [
         "--deviceIP=%(device_ip)s",
         "--xre-path=../hostutils/xre",
@@ -89,6 +90,8 @@ config = {
         "--deviceTransport=sut",
         "--deviceIP=%(device_ip)s",
         "--localLib=../tests/bin",
+        "--no-slow",
+        "--no-progress",
         "--tinderbox",
         "--tbpl"
      ],
@@ -110,7 +113,7 @@ config = {
         "mochitest-6": ["--total-chunks=8", "--this-chunk=6"],
         "mochitest-7": ["--total-chunks=8", "--this-chunk=7"],
         "mochitest-8": ["--total-chunks=8", "--this-chunk=8"],
-        "mochitest-gl": ["--test-path", "content/canvas/test/webgl"],
+        "mochitest-gl": ["--test-manifest", "gl.json"],
     },
     "all_reftest_suites": {
         "reftest-1": ["--total-chunks=8", "--this-chunk=1"],
@@ -131,10 +134,11 @@ config = {
         "jsreftest-3": ["--total-chunks=3", "--this-chunk=3"],
     },
     "all_robocop_suites": {
-        "robocop-1": ["--total-chunks=4", "--this-chunk=1"],
-        "robocop-2": ["--total-chunks=4", "--this-chunk=2"],
-        "robocop-3": ["--total-chunks=4", "--this-chunk=3"],
-        "robocop-4": ["--total-chunks=4", "--this-chunk=4"],
+        "robocop-1": ["--total-chunks=5", "--this-chunk=1"],
+        "robocop-2": ["--total-chunks=5", "--this-chunk=2"],
+        "robocop-3": ["--total-chunks=5", "--this-chunk=3"],
+        "robocop-4": ["--total-chunks=5", "--this-chunk=4"],
+        "robocop-5": ["--total-chunks=5", "--this-chunk=5"],
     },
     "all_xpcshell_suites": {
         "xpcshell": []

@@ -23,7 +23,7 @@ from mozharness.mozilla.buildbot import TBPL_SUCCESS, TBPL_WARNING, TBPL_FAILURE
 from mozharness.mozilla.gaia import GaiaMixin
 from mozharness.mozilla.testing.errors import LogcatErrorList
 from mozharness.mozilla.testing.testbase import TestingMixin, testing_config_options
-from mozharness.mozilla.testing.unittest import EmulatorMixin, TestSummaryOutputParserHelper
+from mozharness.mozilla.testing.unittest import TestSummaryOutputParserHelper
 from mozharness.mozilla.tooltool import TooltoolMixin
 
 
@@ -44,86 +44,99 @@ class MarionetteOutputParser(TestSummaryOutputParserHelper):
             self.install_gecko_failed = True
         super(MarionetteOutputParser, self).parse_single_line(line)
 
-class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
+
+class MarionetteTest(TestingMixin, TooltoolMixin,
                      MercurialScript, BlobUploadMixin, TransferMixin, GaiaMixin):
-    config_options = [
-        [["--application"],
-         {"action": "store",
-          "dest": "application",
-          "default": None,
-          "help": "application name of binary"
-         }],
-        [["--gaia-dir"],
-         {"action": "store",
-          "dest": "gaia_dir",
-          "default": None,
-          "help": "directory where gaia repo should be cloned"
-         }],
-        [["--gaia-repo"],
-         {"action": "store",
-          "dest": "gaia_repo",
-          "default": "http://hg.mozilla.org/integration/gaia-central",
-          "help": "url of gaia repo to clone"
-         }],
-        [["--gaia-branch"],
-         {"action": "store",
-          "dest": "gaia_branch",
-          "default": "default",
-          "help": "branch of gaia repo to clone"
-         }],
-        [["--test-type"],
+    config_options = [[
+        ["--application"],
+        {"action": "store",
+         "dest": "application",
+         "default": None,
+         "help": "application name of binary"
+         }
+    ], [
+        ["--gaia-dir"],
+        {"action": "store",
+         "dest": "gaia_dir",
+         "default": None,
+         "help": "directory where gaia repo should be cloned"
+         }
+    ], [
+        ["--gaia-repo"],
+        {"action": "store",
+         "dest": "gaia_repo",
+         "default": "https://hg.mozilla.org/integration/gaia-central",
+         "help": "url of gaia repo to clone"
+         }
+    ], [
+        ["--gaia-branch"],
+        {"action": "store",
+         "dest": "gaia_branch",
+         "default": "default",
+         "help": "branch of gaia repo to clone"
+         }
+    ], [
+        ["--test-type"],
         {"action": "store",
          "dest": "test_type",
          "default": "browser",
          "help": "The type of tests to run",
-        }],
-        [["--marionette-address"],
+         }
+    ], [
+        ["--marionette-address"],
         {"action": "store",
          "dest": "marionette_address",
          "default": None,
          "help": "The host:port of the Marionette server running inside Gecko.  Unused for emulator testing",
-        }],
-        [["--emulator"],
+         }
+    ], [
+        ["--emulator"],
         {"action": "store",
          "type": "choice",
          "choices": ['arm'],
          "dest": "emulator",
          "default": None,
          "help": "Use an emulator for testing",
-        }],
-        [["--gaiatest"],
+         }
+    ], [
+        ["--gaiatest"],
         {"action": "store_true",
          "dest": "gaiatest",
          "default": False,
          "help": "Runs gaia-ui-tests by pulling down the test repo and invoking "
                  "gaiatest's runtests.py rather than Marionette's."
-        }],
-        [["--no-update"],
+         }
+    ], [
+        ["--no-update"],
         {"action": "store_false",
          "dest": "update_files",
          "default": True,
          "help": "Don't update emulator and gecko before running tests"
-        }],
-        [["--test-manifest"],
+         }
+    ], [
+        ["--test-manifest"],
         {"action": "store",
          "dest": "test_manifest",
          "default": "unit-tests.ini",
          "help": "Path to test manifest to run relative to the Marionette "
                  "tests directory",
-         }],
-        [["--xre-path"],
-         {"action": "store",
-          "dest": "xre_path",
-          "default": "xulrunner-sdk",
-          "help": "directory (relative to gaia repo) of xulrunner-sdk"
-         }],
-        [["--xre-url"],
-         {"action": "store",
-          "dest": "xre_url",
-          "default": None,
-          "help": "url of desktop xre archive"
-         }]] + copy.deepcopy(testing_config_options) + \
-               copy.deepcopy(blobupload_config_options)
+         }
+    ], [
+        ["--xre-path"],
+        {"action": "store",
+         "dest": "xre_path",
+         "default": "xulrunner-sdk",
+         "help": "directory (relative to gaia repo) of xulrunner-sdk"
+         }
+    ], [
+        ["--xre-url"],
+        {"action": "store",
+         "dest": "xre_url",
+         "default": None,
+         "help": "url of desktop xre archive"
+         }
+    ]] + copy.deepcopy(testing_config_options) \
+       + copy.deepcopy(blobupload_config_options)
 
     error_list = [
         {'substr': 'FAILED (errors=', 'level': WARNING},
@@ -151,7 +164,7 @@ class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
                              'install',
                              'run-marionette'],
             require_config_file=require_config_file,
-            config={'require_test_zip': True,})
+            config={'require_test_zip': True})
 
         # these are necessary since self.config is read only
         c = self.config
@@ -199,8 +212,8 @@ class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
     def _configure_marionette_virtualenv(self, action):
         if self.tree_config.get('use_puppetagain_packages'):
             self.register_virtualenv_module('mozinstall')
-            self.register_virtualenv_module('marionette', os.path.join('tests',
-                'marionette'))
+            self.register_virtualenv_module(
+                'marionette', os.path.join('tests', 'marionette'))
 
             return
 
@@ -217,21 +230,22 @@ class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
             # XXX Bug 908356: This block can be removed as soon as the
             # in-tree requirements files propagate to all active trees.
             mozbase_dir = os.path.join('tests', 'mozbase')
-            self.register_virtualenv_module('manifestparser',
-                    os.path.join(mozbase_dir, 'manifestdestiny'))
+            self.register_virtualenv_module(
+                'manifestparser', os.path.join(mozbase_dir, 'manifestdestiny'))
             for m in ('mozfile', 'mozlog', 'mozinfo', 'moznetwork', 'mozhttpd',
-                    'mozcrash', 'mozinstall', 'mozdevice', 'mozprofile',
-                    'mozprocess', 'mozrunner'):
-                self.register_virtualenv_module(m, os.path.join(mozbase_dir,
-                    m))
+                      'mozcrash', 'mozinstall', 'mozdevice', 'mozprofile',
+                      'mozprocess', 'mozrunner'):
+                self.register_virtualenv_module(
+                    m, os.path.join(mozbase_dir, m))
 
-            self.register_virtualenv_module('marionette', os.path.join('tests',
-                'marionette'))
+            self.register_virtualenv_module(
+                'marionette', os.path.join('tests', 'marionette'))
 
         if self.config.get('gaiatest'):
             requirements = os.path.join(self.query_abs_dirs()['abs_gaiatest_dir'],
-                                    'tbpl_requirements.txt')
-            self.register_virtualenv_module('gaia-ui-tests',
+                                        'tbpl_requirements.txt')
+            self.register_virtualenv_module(
+                'gaia-ui-tests',
                 url=self.query_abs_dirs()['abs_gaiatest_dir'],
                 method='pip',
                 requirements=[requirements],
@@ -244,16 +258,16 @@ class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
             dest = dirs['abs_gaia_dir']
 
             repo = {
-              'repo_path': self.config.get('gaia_repo'),
-              'revision': 'default',
-              'branch': self.config.get('gaia_branch')
+                'repo_path': self.config.get('gaia_repo'),
+                'revision': 'default',
+                'branch': self.config.get('gaia_branch')
             }
 
             if self.buildbot_config is not None:
                 # get gaia commit via hgweb
                 repo.update({
-                  'revision': self.buildbot_config['properties']['revision'],
-                  'repo_path': 'https://hg.mozilla.org/%s' % self.buildbot_config['properties']['repo_path']
+                    'revision': self.buildbot_config['properties']['revision'],
+                    'repo_path': 'https://hg.mozilla.org/%s' % self.buildbot_config['properties']['repo_path']
                 })
 
             self.clone_gaia(dest, repo,
@@ -314,22 +328,14 @@ class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
 
         if self.config.get('emulator'):
             dirs = self.query_abs_dirs()
-            if self.config.get('update_files'):
-                self.workdir = dirs['abs_work_dir']
-                self.install_emulator()
-                self.mkdir_p(dirs['abs_gecko_dir'])
-                tar = self.query_exe('tar', return_type='list')
-                self.run_command(tar + ['zxf', self.installer_path],
-                                 cwd=dirs['abs_gecko_dir'],
-                                 error_list=TarErrorList,
-                                 halt_on_failure=True)
-            else:
-                self.mkdir_p(dirs['abs_emulator_dir'])
-                tar = self.query_exe('tar', return_type='list')
-                self.run_command(tar + ['zxf', self.installer_path],
-                                 cwd=dirs['abs_emulator_dir'],
-                                 error_list=TarErrorList,
-                                 halt_on_failure=True)
+
+            self.mkdir_p(dirs['abs_emulator_dir'])
+            tar = self.query_exe('tar', return_type='list')
+            self.run_command(tar + ['zxf', self.installer_path],
+                             cwd=dirs['abs_emulator_dir'],
+                             error_list=TarErrorList,
+                             halt_on_failure=True)
+
             if self.config.get('download_minidump_stackwalk'):
                 self.install_minidump_stackwalk()
 
@@ -344,6 +350,8 @@ class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
         Run the Marionette tests
         """
         dirs = self.query_abs_dirs()
+        binary = self.binary_path
+        manifest = None
 
         if self.config.get('gaiatest'):
             # make the gaia profile
@@ -372,26 +380,25 @@ class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
                                               'gaiatest',
                                               'cli.py')]
 
-            # support desktop builds with and without a built-in profile
-            binary_path = os.path.dirname(self.binary_path)
-            binary = os.path.join(binary_path, 'b2g-bin')
-            if not os.access(binary, os.F_OK):
-                binary = os.path.join(binary_path, 'b2g')
-            cmd.extend(self._build_arg('--binary', binary))
+            if not self.config.get('emulator'):
+                # support desktop builds with and without a built-in profile
+                binary_path = os.path.dirname(self.binary_path)
+                binary = os.path.join(binary_path, 'b2g-bin')
+                if not os.access(binary, os.F_OK):
+                    binary = os.path.join(binary_path, 'b2g')
 
             cmd.append('--restart')
-            cmd.extend(self._build_arg('--address', self.config['marionette_address']))
             cmd.extend(self._build_arg('--type', self.config['test_type']))
             cmd.extend(self._build_arg('--testvars', testvars))
             cmd.extend(self._build_arg('--profile', os.path.join(dirs['abs_gaia_dir'],
                                                                  'profile')))
+            cmd.extend(self._build_arg('--symbols-path', self.symbols_path))
             cmd.extend(self._build_arg('--xml-output',
                                        os.path.join(dirs['abs_work_dir'], 'output.xml')))
             cmd.extend(self._build_arg('--html-output',
-                                       os.path.join(dirs['abs_work_dir'], 'output.html')))
+                                       os.path.join(dirs['abs_blob_upload_dir'], 'output.html')))
             manifest = os.path.join(dirs['abs_gaiatest_dir'], 'gaiatest', 'tests',
                                     'tbpl-manifest.ini')
-            cmd.append(manifest)
         else:
             # Marionette or Marionette-webapi tests
             cmd = [python, '-u', os.path.join(dirs['abs_marionette_dir'],
@@ -399,25 +406,25 @@ class MarionetteTest(TestingMixin, TooltoolMixin, EmulatorMixin,
 
             if self.config.get('emulator'):
                 # emulator Marionette-webapi tests
-                cmd.extend(self._build_arg('--logcat-dir', dirs['abs_work_dir']))
-                cmd.extend(self._build_arg('--emulator', self.config['emulator']))
-                if self.config.get('update_files'):
-                    cmd.extend(self._build_arg('--gecko-path',
-                                               os.path.join(dirs['abs_gecko_dir'],
-                                                            'b2g')))
-                cmd.extend(self._build_arg('--homedir',
-                                           os.path.join(dirs['abs_emulator_dir'],
-                                                        'b2g-distro')))
                 cmd.extend(self._build_arg('--symbols-path', self.symbols_path))
-            else:
-                # desktop Marionette tests
-                cmd.extend(self._build_arg('--binary', self.binary_path))
-                cmd.extend(self._build_arg('--address', self.config['marionette_address']))
 
             cmd.extend(self._build_arg('--type', self.config['test_type']))
             manifest = os.path.join(dirs['abs_marionette_tests_dir'],
                                     self.config['test_manifest'])
-            cmd.append(manifest)
+
+        if self.config.get('emulator'):
+            cmd.extend(self._build_arg('--logcat-dir', dirs['abs_work_dir']))
+            cmd.extend(self._build_arg('--emulator', self.config['emulator']))
+            cmd.extend(self._build_arg('--homedir',
+                                       os.path.join(dirs['abs_emulator_dir'],
+                                                    'b2g-distro')))
+        else:
+            # tests for Firefox or b2g desktop
+            cmd.extend(self._build_arg('--binary', binary))
+            cmd.extend(self._build_arg('--address',
+                                       self.config['marionette_address']))
+
+        cmd.append(manifest)
 
         env = {}
         if self.query_minidump_stackwalk():

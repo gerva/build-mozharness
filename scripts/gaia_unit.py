@@ -17,7 +17,7 @@ from mozharness.mozilla.testing.unittest import TestSummaryOutputParserHelper
 
 class GaiaUnitTest(GaiaTest):
     def __init__(self, require_config_file=False):
-      GaiaTest.__init__(self, require_config_file)
+        GaiaTest.__init__(self, require_config_file)
 
     def run_tests(self):
         """
@@ -39,12 +39,15 @@ class GaiaUnitTest(GaiaTest):
                                                             'b2g', 'b2g-bin')))
         cmd.extend(self._build_arg('--profile', os.path.join(dirs['abs_gaia_dir'],
                                                              'profile-debug')))
+        cmd.extend(self._build_arg('--symbols-path', self.symbols_path))
 
         output_parser = TestSummaryOutputParserHelper(config=self.config,
                                                       log_obj=self.log_obj,
                                                       error_list=self.error_list)
+        # I don't like this output_timeout hardcode, but bug 920153
         code = self.run_command(cmd,
-                                output_parser=output_parser)
+                                output_parser=output_parser,
+                                output_timeout=1760)
 
         output_parser.print_summary('gaia-unit-tests')
         self.publish(code)

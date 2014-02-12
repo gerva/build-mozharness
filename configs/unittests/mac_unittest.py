@@ -56,6 +56,8 @@ config = {
     ],
     "jittest_options": [
         "tests/bin/js",
+        "--no-slow",
+        "--no-progress",
         "--tinderbox",
         "--tbpl"
     ],
@@ -82,8 +84,10 @@ config = {
         "crashtest": ["tests/reftest/tests/testing/crashtest/crashtests.list"],
         "jsreftest": ["--extra-profile-file=tests/jsreftest/tests/user.js", "tests/jsreftest/tests/jstests.list"],
         "reftest-ipc": ['--setpref=browser.tabs.remote=true',
+                        '--setpref=browser.tabs.remote.autostart=true',
                         'tests/reftest/tests/layout/reftests/reftest-sanity/reftest.list'],
         "crashtest-ipc": ['--setpref=browser.tabs.remote=true',
+                          '--setpref=browser.tabs.remote.autostart=true',
                           'tests/reftest/tests/testing/crashtest/crashtests.list'],
     },
     "all_xpcshell_suites": {
@@ -113,20 +117,20 @@ config = {
                 # for windows.
                 "python", "../scripts/external_tools/mouse_and_screen_resolution.py",
                 "--configuration-url",
-                "http://hg.mozilla.org/%(branch)s/raw-file/%(revision)s/" +
+                "https://hg.mozilla.org/%(branch)s/raw-file/%(revision)s/" +
                     "testing/machine-configuration.json"],
             "architectures": ["32bit"],
             "halt_on_failure": True,
             "enabled": ADJUST_MOUSE_AND_SCREEN
         },
     ],
-    "repos": [{"repo": "http://hg.mozilla.org/build/tools",}],
+    "repos": [{"repo": "https://hg.mozilla.org/build/tools"}],
     "vcs_output_timeout": 1000,
     "minidump_stackwalk_path": "%(abs_work_dir)s/tools/breakpad/osx64/minidump_stackwalk",
     "minidump_save_path": "%(abs_work_dir)s/../minidumps",
     "buildbot_max_log_size": 52428800,
     "default_blob_upload_servers": [
-         "https://blobupload.elasticbeanstalk.com",
+        "https://blobupload.elasticbeanstalk.com",
     ],
-    "blob_uploader_auth_file" : os.path.join(os.getcwd(), "oauth.txt"),
+    "blob_uploader_auth_file": os.path.join(os.getcwd(), "oauth.txt"),
 }

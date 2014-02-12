@@ -84,9 +84,10 @@ class MozpoolMixin(object):
                 error_message="INFRA-ERROR: Could not request device '%s'" % self.mozpool_device,
                 tbpl_status=TBPL_RETRY):
             try:
-                image = 'panda-android-4.0.4_v3.1'
+                image = 'panda-android-4.0.4_v3.3'
+                duration = 4 * 60 * 60 # request valid for 14400 seconds == 4 hours
                 response = mph.request_device(self.mozpool_device, image, assignee=self.mozpool_assignee, \
-                               b2gbase=b2gbase, pxe_config=None)
+                               b2gbase=b2gbase, pxe_config=None, duration=duration)
                 break
             except self.MozpoolConflictException:
                 self.warning("Device unavailable. Retry#%i.." % retry)

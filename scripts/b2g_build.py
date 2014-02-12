@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-# Mozilla licence shtuff
+# ***** BEGIN LICENSE BLOCK *****
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+# ***** END LICENSE BLOCK *****
 
 import sys
 import os
@@ -7,9 +11,7 @@ import glob
 import re
 import tempfile
 from datetime import datetime
-import urllib2
 import urlparse
-import time
 import xml.dom.minidom
 import functools
 
@@ -38,6 +40,7 @@ from mozharness.mozilla.signing import SigningMixin
 from mozharness.mozilla.repo_manifest import (load_manifest, rewrite_remotes,
                                               remove_project, get_project,
                                               get_remote, map_remote)
+from mozharness.mozilla.mapper import MapperMixin
 
 # B2G builds complain about java...but it doesn't seem to be a problem
 # Let's turn those into WARNINGS instead
@@ -49,7 +52,7 @@ B2GMakefileErrorList.insert(0, {'substr': r'/bin/bash: java: command not found',
 
 class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                TooltoolMixin, TransferMixin, BuildbotMixin, GaiaLocalesMixin,
-               SigningMixin):
+               SigningMixin, MapperMixin):
     config_options = [
         [["--repo"], {
             "dest": "repo",
@@ -171,12 +174,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                                 'ccache': True,
                                 'buildbot_json_path': os.environ.get('PROPERTIES_FILE'),
                                 'tooltool_servers': None,
-                                'ssh_key': None,
-                                'ssh_user': None,
-                                'upload_remote_host': None,
-                                'upload_remote_basepath': None,
-                                'enable_try_uploads': False,
-                                'tools_repo': 'http://hg.mozilla.org/build/tools',
+                                'tools_repo': 'https://hg.mozilla.org/build/tools',
                                 'locales_dir': 'gecko/b2g/locales',
                                 'l10n_dir': 'gecko-l10n',
                                 'ignore_locales': ['en-US', 'multi'],
@@ -184,7 +182,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                                 'mozilla_dir': 'build/gecko',
                                 'objdir': 'build/objdir-gecko',
                                 'merge_locales': True,
-                                'compare_locales_repo': 'http://hg.mozilla.org/build/compare-locales',
+                                'compare_locales_repo': 'https://hg.mozilla.org/build/compare-locales',
                                 'compare_locales_rev': 'RELEASE_AUTOMATION',
                                 'compare_locales_vcs': 'hgtool',
                                 'repo_repo': "https://git.mozilla.org/external/google/gerrit/git-repo.git",
@@ -195,7 +193,14 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
 
         dirs = self.query_abs_dirs()
         self.objdir = os.path.join(dirs['work_dir'], 'objdir-gecko')
-        self.marfile = "%s/dist/b2g-update/b2g-gecko-update.mar" % self.objdir
+        if self.config.get("update_type", "ota") == "fota":
+            self.marfile = "%s/out/target/product/%s/fota-update.mar" % (dirs['abs_work_dir'], self.config['target'])
+            self.make_updates_cmd = ['./build.sh', 'gecko-update-fota']
+            self.extra_update_attrs = 'isOsUpdate="true"'
+        else:
+            self.marfile = "%s/dist/b2g-update/b2g-gecko-update.mar" % self.objdir
+            self.make_updates_cmd = ['./build.sh', 'gecko-update-full']
+            self.extra_update_attrs = None
         self.application_ini = os.path.join(
             dirs['work_dir'], 'out', 'target', 'product',
             self.config['target'], 'system', 'b2g', 'application.ini')
@@ -225,6 +230,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
             'testdata_dir': os.path.join(abs_dirs['abs_work_dir'], 'testdata'),
             'gaia_l10n_base_dir': os.path.join(abs_dirs['abs_work_dir'], 'gaia-l10n'),
             'compare_locales_dir': os.path.join(abs_dirs['abs_work_dir'], 'compare-locales'),
+            'abs_public_upload_dir': os.path.join(abs_dirs['abs_work_dir'], 'upload-public'),
         }
 
         abs_dirs.update(dirs)
@@ -267,7 +273,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
 
     def query_repo(self):
         if self.buildbot_config and 'properties' in self.buildbot_config:
-            return 'http://hg.mozilla.org/%s' % self.buildbot_config['properties']['repo_path']
+            return 'https://hg.mozilla.org/%s' % self.buildbot_config['properties']['repo_path']
         else:
             return self.config['repo']
 
@@ -321,35 +327,6 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
 
         return None
 
-    def query_translated_revision(self, url, project, rev, attempts=30, sleeptime=30,
-                                  project_name=None):
-        if project_name is None:
-            project_name = project
-        url = '%s/%s/git/%s' % (url, project, rev)
-        self.info('Mapping %s revision from hg to git using %s' % (project_name, url))
-        n = 1
-        while n <= attempts:
-            try:
-                r = urllib2.urlopen(url, timeout=10)
-                j = json.loads(r.readline())
-                if j['git_rev'] is None:
-                    # allow for user repos in staging
-                    if self.config.get("require_git_rev", True):
-                        raise Exception("Mapper returned a git revision of None; maybe it needs more time.")
-                    else:
-                        self.warning("Mapper returned a git revision of None.  Accepting because require_git_rev is False.")
-                return j['git_rev']
-            except Exception, err:
-                self.warning('Error: %s' % str(err))
-                if n == attempts:
-                    self.fatal('Giving up on %s git revision for %s.' % (project_name, rev))
-                if sleeptime > 0:
-                    self.info('Sleeping %i seconds before retrying' % sleeptime)
-                    time.sleep(sleeptime)
-                continue
-            finally:
-                n += 1
-
     def get_hg_commit_time(self, repo_dir, rev):
         """Returns the commit time for given `rev` in unix epoch time"""
         hg = self.query_exe('hg')
@@ -380,7 +357,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
         # always upload nightlies, but not dep builds for some platforms
         if self.query_is_nightly():
             return True
-        if self.config['target'] in self.config.get('upload_dep_target_exclusions', []):
+        if self.config['target'] in self.config['upload']['default'].get('upload_dep_target_exclusions', []):
             return False
         return True
 
@@ -462,6 +439,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
             self,
             always_clobber_dirs=[
                 dirs['abs_upload_dir'],
+                dirs['abs_public_upload_dir'],
                 dirs['testdata_dir'],
             ],
         )
@@ -669,7 +647,9 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                 config_dir = os.path.join(dirs['src'], 'b2g', 'config',
                                           self.config.get('b2g_config_dir', self.config['target']))
                 manifest = os.path.abspath(os.path.join(config_dir, gecko_config['tooltool_manifest']))
-                self.tooltool_fetch(manifest, output_dir=dirs['work_dir'])
+                self.tooltool_fetch(manifest=manifest,
+                                    bootstrap_cmd=gecko_config.get('tooltool_bootstrap_cmd'),
+                                    output_dir=dirs['work_dir'])
                 return
             gonk_url = gecko_config['gonk_snapshot_url']
 
@@ -786,7 +766,8 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
 
     def _generate_git_locale_manifest(self, locale, url, git_repo,
                                       revision, git_base_url, local_path):
-        l10n_git_sha = self.query_translated_revision(url, 'l10n', revision, project_name="l10n %s" % locale)
+        l10n_git_sha = self.query_mapper_git_revision(url, 'l10n', revision, project_name="l10n %s" % locale,
+                                                      require_answer=self.config.get('require_git_rev', True))
         return '  <project name="%s" path="%s" remote="mozillaorg" revision="%s"/>' % (git_repo.replace(git_base_url, ''), local_path, l10n_git_sha)
 
     def _generate_locale_manifest(self, git_base_url="https://git.mozilla.org/release/"):
@@ -802,7 +783,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                 repo = self.gaia_locale_revisions[locale]['repo']
                 revision = self.gaia_locale_revisions[locale]['revision']
                 locale_manifest.append('  <!-- Mercurial-Information: <project name="%s" path="gaia-l10n/%s" remote="hgmozillaorg" revision="%s"/> -->' %
-                                       (repo.replace('http://hg.mozilla.org/', ''), locale, revision))
+                                       (repo.replace('https://hg.mozilla.org/', ''), locale, revision))
                 if gaia_l10n_git_root:
                     locale_manifest.append(
                         self._generate_git_locale_manifest(
@@ -822,7 +803,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                 repo = self.gecko_locale_revisions[locale]['repo']
                 revision = self.gecko_locale_revisions[locale]['revision']
                 locale_manifest.append('  <!-- Mercurial-Information: <project name="%s" path="gecko-l10n/%s" remote="hgmozillaorg" revision="%s"/> -->' %
-                                       (repo.replace('http://hg.mozilla.org/', ''), locale, revision))
+                                       (repo.replace('https://hg.mozilla.org/', ''), locale, revision))
                 if gecko_l10n_git_root:
                     locale_manifest.append(
                         self._generate_git_locale_manifest(
@@ -865,23 +846,25 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
             # XXX Bug here. We shouldn't look for a specific comment, and
             # instead put these new nodes at the beginning / end.
             if 'Gonk specific things' in line:
-                new_sources.append('  <!-- Mercurial-Information: <remote fetch="http://hg.mozilla.org/" name="hgmozillaorg"> -->')
+                new_sources.append('  <!-- Mercurial-Information: <remote fetch="https://hg.mozilla.org/" name="hgmozillaorg"> -->')
                 new_sources.append('  <!-- Mercurial-Information: <project name="%s" path="gecko" remote="hgmozillaorg" revision="%s"/> -->' %
                                    (self.buildbot_config['properties']['repo_path'], self.buildbot_properties['gecko_revision']))
                 if gecko_config.get('config_version', 0) < 2 and 'gaia_revision' in self.buildbot_properties:
                     new_sources.append('  <!-- Mercurial-Information: <project name="%s" path="gaia" remote="hgmozillaorg" revision="%s"/> -->' %
-                                       (gaia_config['repo'].replace('http://hg.mozilla.org/', ''), self.buildbot_properties['gaia_revision']))
+                                       (gaia_config['repo'].replace('https://hg.mozilla.org/', ''), self.buildbot_properties['gaia_revision']))
 
                 if self.query_do_translate_hg_to_git():
                     url = manifest_config['translate_base_url']
-                    gecko_git = self.query_translated_revision(url, 'gecko', self.buildbot_properties['gecko_revision'])
+                    gecko_git = self.query_mapper_git_revision(url, 'gecko', self.buildbot_properties['gecko_revision'],
+                                                               require_answer=self.config.get('require_git_rev', True))
                     new_sources.append('  <project name="%s" path="gecko" remote="mozillaorg" revision="%s"/>' % ("https://git.mozilla.org/releases/gecko.git".replace(git_base_url, ''), gecko_git))
                     # We don't need to use mapper for gaia after config version
                     # 2, since that's when we switched to pulling gaia directly
                     # from git
                     if gecko_config.get('config_version', 0) < 2:
                         if 'gaia_revision' in self.buildbot_properties:
-                            gaia_git = self.query_translated_revision(url, 'gaia', self.buildbot_properties['gaia_revision'])
+                            gaia_git = self.query_mapper_git_revision(url, 'gaia', self.buildbot_properties['gaia_revision'],
+                                                                      require_answer=self.config.get('require_git_rev', True))
                             new_sources.append('  <project name="%s" path="gaia" remote="mozillaorg" revision="%s"/>' %
                                                ("https://git.mozilla.org/releases/gaia.git".replace(git_base_url, ''), gaia_git))
 
@@ -908,7 +891,8 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
         if self.config.get('locales_file'):
             env['L10NBASEDIR'] = dirs['abs_l10n_dir']
             env['MOZ_CHROME_MULTILOCALE'] = " ".join(self.locales)
-            env['PATH'] = os.environ.get('PATH')
+            if 'PATH' not in env:
+                env['PATH'] = os.environ.get('PATH')
             env['PATH'] += ':%s' % os.path.join(dirs['compare_locales_dir'], 'scripts')
             env['PYTHONPATH'] = os.environ.get('PYTHONPATH', '')
             env['PYTHONPATH'] += ':%s' % os.path.join(dirs['compare_locales_dir'], 'lib')
@@ -977,7 +961,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
             return
         dirs = self.query_abs_dirs()
         gecko_config = self.load_gecko_config()
-        cmd = ['./build.sh', 'gecko-update-full']
+        cmd = self.make_updates_cmd[:]
         env = self.query_build_env()
 
         self.write_b2g_config()
@@ -1115,6 +1099,9 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                 self.debug("removing %s" % tmpdir)
                 self.rmtree(tmpdir)
 
+        public_files = []
+        public_upload_patterns = []
+        public_upload_patterns = gecko_config.get('public_upload_files', [])
         # Copy gaia profile
         if gecko_config.get('package_gaia', True):
             zip_name = os.path.join(dirs['work_dir'], "gaia.zip")
@@ -1123,32 +1110,132 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
             if self.run_command(cmd, cwd=dirs['work_dir']) != 0:
                 self.fatal("problem zipping up gaia")
             self.copy_to_upload_dir(zip_name)
+            if public_upload_patterns:
+                public_files.append(zip_name)
 
         self.info("copying files to upload directory")
         files = []
 
         files.append(os.path.join(output_dir, 'system', 'build.prop'))
 
-        for pattern in gecko_config.get('upload_files', []):
-            pattern = pattern.format(objdir=self.objdir, workdir=dirs['work_dir'], srcdir=dirs['src'])
+        upload_patterns = gecko_config.get('upload_files', [])
+        for base_pattern in upload_patterns + public_upload_patterns:
+            pattern = base_pattern.format(objdir=self.objdir, workdir=dirs['work_dir'], srcdir=dirs['src'])
             for f in glob.glob(pattern):
-                files.append(f)
+                if base_pattern in upload_patterns:
+                    files.append(f)
+                if base_pattern in public_upload_patterns:
+                    public_files.append(f)
 
-        for f in files:
+        for base_f in files + public_files:
+            f = base_f
             if f.endswith(".img"):
                 if self.query_is_nightly():
                     # Compress it
-                    self.info("compressing %s" % f)
-                    self.run_command(["bzip2", f])
-                    f += ".bz2"
+                    if os.path.exists(f):
+                        self.info("compressing %s" % f)
+                        self.run_command(["bzip2", "-f", f])
+                    elif not os.path.exists("%s.bz2" % f):
+                        self.error("%s doesn't exist to bzip2!" % f)
+                        self.return_code = 2
+                        continue
+                    f = "%s.bz2" % base_f
                 else:
                     # Skip it
                     self.info("not uploading %s for non-nightly build" % f)
                     continue
-            self.info("copying %s to upload directory" % f)
-            self.copy_to_upload_dir(f)
+            if base_f in files:
+                self.info("copying %s to upload directory" % f)
+                self.copy_to_upload_dir(f)
+            if base_f in public_files:
+                self.info("copying %s to public upload directory" % f)
+                self.copy_to_upload_dir(base_f, upload_dir=dirs['abs_public_upload_dir'])
 
         self.copy_logs_to_upload_dir()
+
+    def _do_rsync_upload(self, upload_dir, ssh_key, ssh_user, remote_host,
+                         remote_path, remote_symlink_path):
+        retval = self.rsync_upload_directory(upload_dir, ssh_key, ssh_user,
+                                             remote_host, remote_path)
+        if retval is not None:
+            self.error("Failed to upload %s to %s@%s:%s!" % (upload_dir, ssh_user, remote_host, remote_path))
+            self.return_code = 2
+            return -1
+        upload_url = "http://%(remote_host)s/%(remote_path)s" % dict(
+            remote_host=remote_host,
+            remote_path=remote_path,
+        )
+        self.info("Upload successful: %s" % upload_url)
+
+        if remote_symlink_path:
+            ssh = self.query_exe('ssh')
+            # First delete the symlink if it exists
+            cmd = [ssh,
+                   '-l', ssh_user,
+                   '-i', ssh_key,
+                   remote_host,
+                   'rm -f %s' % remote_symlink_path,
+                   ]
+            retval = self.run_command(cmd)
+            if retval != 0:
+                self.error("failed to delete latest symlink")
+                self.return_code = 2
+            # Now create the symlink
+            rel_path = os.path.relpath(remote_path, os.path.dirname(remote_symlink_path))
+            cmd = [ssh,
+                   '-l', ssh_user,
+                   '-i', ssh_key,
+                   remote_host,
+                   'ln -sf %s %s' % (rel_path, remote_symlink_path),
+                   ]
+            retval = self.run_command(cmd)
+            if retval != 0:
+                self.error("failed to create latest symlink")
+                self.return_code = 2
+
+    def _do_postupload_upload(self, upload_dir, ssh_key, ssh_user, remote_host,
+                              postupload_cmd):
+        ssh = self.query_exe('ssh')
+        remote_path = self.get_output_from_command(
+            [ssh, '-l', ssh_user, '-i', ssh_key, remote_host, 'mktemp -d']
+        )
+        if not remote_path.endswith('/'):
+            remote_path += '/'
+        retval = self.rsync_upload_directory(upload_dir, ssh_key, ssh_user,
+                                             remote_host, remote_path)
+        if retval is not None:
+            self.error("Failed to upload %s to %s@%s:%s!" % (upload_dir, ssh_user, remote_host, remote_path))
+            self.return_code = 2
+        else:  # post_upload.py
+            # build filelist
+            filelist = []
+            for dirpath, dirname, filenames in os.walk(upload_dir):
+                for f in filenames:
+                    # use / instead of os.path.join() because this is part of
+                    # a post_upload.py call on a fileserver, which is probably
+                    # not windows
+                    path = '%s/%s' % (dirpath, f)
+                    path = path.replace(upload_dir, remote_path)
+                    filelist.append(path)
+            cmd = [ssh,
+                   '-l', ssh_user,
+                   '-i', ssh_key,
+                   remote_host,
+                   '%s %s %s' % (postupload_cmd, remote_path, ' '.join(filelist))
+                   ]
+            retval = self.run_command(cmd)
+            if retval != 0:
+                self.error("failed to run %s!" % postupload_cmd)
+                self.return_code = 2
+            else:
+                self.info("Upload successful.")
+        # cleanup, whether we ran postupload or not
+        cmd = [ssh,
+               '-l', ssh_user,
+               '-i', ssh_key,
+               remote_host,
+               'rm -f %s' % remote_path
+               ]
 
     def upload(self):
         if not self.query_do_upload():
@@ -1162,104 +1249,57 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
             target += c["target_suffix"]
         if self.config.get('debug_build'):
             target += "-debug"
-        if c['enable_try_uploads']:
-            try:
-                user = self.buildbot_config['sourcestamp']['changes'][0]['who']
-            except KeyError:
-                user = "unknown"
-            upload_path = "%(basepath)s/%(user)s-%(rev)s/%(branch)s-%(target)s" % dict(
-                basepath=self.config['upload_remote_basepath'],
-                branch=self.query_branch(),
-                target=target,
-                user=user,
-                rev=self.query_revision(),
-            )
-        elif self.query_is_nightly():
-            # Dates should be based on buildid
-            buildid = self.query_buildid()
-            if buildid:
-                try:
-                    buildid = datetime.strptime(buildid, "%Y%m%d%H%M%S")
-                except ValueError:
-                    buildid = None
+        try:
+            # for Try
+            user = self.buildbot_config['sourcestamp']['changes'][0]['who']
+        except (KeyError, IndexError):
+            user = "unknown"
 
-            if buildid is None:
-                # Default to now
-                buildid = datetime.now()
-
-            upload_path = "%(basepath)s/%(branch)s-%(target)s/%(year)04i/%(month)02i/%(year)04i-%(month)02i-%(day)02i-%(hour)02i-%(minute)02i-%(second)02i" % dict(
-                basepath=self.config['upload_remote_nightly_basepath'],
-                branch=self.query_branch(),
-                target=target,
-                year=buildid.year,
-                month=buildid.month,
-                day=buildid.day,
-                hour=buildid.hour,
-                minute=buildid.minute,
-                second=buildid.second,
-            )
-        else:
-            upload_path = "%(basepath)s/%(branch)s-%(target)s/%(buildid)s" % dict(
-                basepath=self.config['upload_remote_basepath'],
-                branch=self.query_branch(),
-                buildid=self.query_buildid(),
-                target=target,
-            )
-
-        retval = self.rsync_upload_directory(
-            dirs['abs_upload_dir'],
-            self.config['ssh_key'],
-            self.config['ssh_user'],
-            self.config['upload_remote_host'],
-            upload_path,
+        replace_dict = dict(
+            branch=self.query_branch(),
+            target=target,
+            user=user,
+            revision=self.query_revision(),
+            buildid=self.query_buildid(),
         )
+        upload_path_key = 'upload_remote_path'
+        upload_symlink_key = 'upload_remote_symlink'
+        postupload_key = 'post_upload_cmd'
+        if self.query_is_nightly():
+            # Dates should be based on buildid
+            build_date = self.query_buildid()
+            if build_date:
+                try:
+                    build_date = datetime.strptime(build_date, "%Y%m%d%H%M%S")
+                except ValueError:
+                    build_date = None
+            if build_date is None:
+                # Default to now
+                build_date = datetime.now()
+            replace_dict.update(dict(
+                year=build_date.year,
+                month=build_date.month,
+                day=build_date.day,
+                hour=build_date.hour,
+                minute=build_date.minute,
+                second=build_date.second,
+            ))
+            upload_path_key = 'upload_remote_nightly_path'
+            upload_symlink_key = 'upload_remote_nightly_symlink'
+            postupload_key = 'post_upload_nightly_cmd'
 
-        if retval is not None:
-            self.error("failed to upload")
-            self.return_code = 2
-        else:
-            upload_url = "http://%(upload_remote_host)s/%(upload_path)s" % dict(
-                upload_remote_host=self.config['upload_remote_host'],
-                upload_path=upload_path,
-            )
-            download_url = "http://pvtbuilds.pvt.build.mozilla.org/%(upload_path)s" % dict(
-                upload_path=upload_path,
-            )
-
-            self.info("Upload successful: %s" % upload_url)
-
-            if self.query_is_nightly():
-                # Create a symlink to the latest nightly
-                symlink_path = "%(basepath)s/%(branch)s-%(target)s/latest" % dict(
-                    basepath=self.config['upload_remote_nightly_basepath'],
-                    branch=self.query_branch(),
-                    target=target,
-                )
-
-                ssh = self.query_exe('ssh')
-                # First delete the symlink if it exists
-                cmd = [ssh,
-                       '-l', self.config['ssh_user'],
-                       '-i', self.config['ssh_key'],
-                       self.config['upload_remote_host'],
-                       'rm -f %s' % symlink_path,
-                       ]
-                retval = self.run_command(cmd)
-                if retval != 0:
-                    self.error("failed to delete latest symlink")
-                    self.return_code = 2
-                # Now create the symlink
-                rel_path = os.path.relpath(upload_path, os.path.dirname(symlink_path))
-                cmd = [ssh,
-                       '-l', self.config['ssh_user'],
-                       '-i', self.config['ssh_key'],
-                       self.config['upload_remote_host'],
-                       'ln -sf %s %s' % (rel_path, symlink_path),
-                       ]
-                retval = self.run_command(cmd)
-                if retval != 0:
-                    self.error("failed to create latest symlink")
-                    self.return_code = 2
+        # default upload
+        upload_path = self.config['upload']['default'][upload_path_key] % replace_dict
+        if not self._do_rsync_upload(
+            dirs['abs_upload_dir'],
+            self.config['upload']['default']['ssh_key'],
+            self.config['upload']['default']['ssh_user'],
+            self.config['upload']['default']['upload_remote_host'],
+            upload_path,
+            self.config['upload']['default'].get(upload_symlink_key, '') % replace_dict,
+        ):  # successful; sendchange
+            # TODO unhardcode
+            download_url = "http://pvtbuilds.pvt.build.mozilla.org%s" % upload_path
 
             if self.config["target"] == "panda" and self.config.get('sendchange_masters'):
                 self.sendchange(downloadables=[download_url, "%s/%s" % (download_url, "gaia-tests.zip")])
@@ -1275,6 +1315,16 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                 if matches:
                     downloadables.append("%s/%s" % (download_url, os.path.basename(matches[0])))
                     self.sendchange(downloadables=downloadables)
+
+        if self.query_is_nightly() and os.path.exists(dirs['abs_public_upload_dir']) and self.config['upload'].get('public'):
+            self.info("Uploading public bits...")
+            self._do_postupload_upload(
+                dirs['abs_public_upload_dir'],
+                self.config['upload']['public']['ssh_key'],
+                self.config['upload']['public']['ssh_user'],
+                self.config['upload']['public']['upload_remote_host'],
+                self.config['upload']['public'][postupload_key] % replace_dict,
+            )
 
     def make_socorro_json(self):
         self.info("Creating socorro.json...")
@@ -1428,7 +1478,8 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
         if not self.create_update_xml(self.marfile, self.query_version(),
                                       self.query_buildid(),
                                       mar_url,
-                                      upload_dir):
+                                      upload_dir,
+                                      extra_update_attrs=self.extra_update_attrs):
             self.fatal("Failed to generate update.xml")
 
         self.copy_to_upload_dir(

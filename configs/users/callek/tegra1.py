@@ -2,16 +2,16 @@ config = {
     "log_name": "talos",
     #"base_work_dir": "",
 
-    "installer_url": "http://ftp.mozilla.org/pub/mozilla.org/mobile/nightly/latest-mozilla-central-android/en-US/fennec-16.0a1.en-US.android-arm.apk",
-    "repository": "http://hg.mozilla.org/mozilla-central",
+    "installer_url": "https://ftp-ssl.mozilla.org/pub/mozilla.org/mobile/nightly/latest-mozilla-central-android/en-US/fennec-16.0a1.en-US.android-arm.apk",
+    "repository": "https://hg.mozilla.org/mozilla-central",
     "pypi_url": "http://people.mozilla.com/~jwood/pypi/",
     "pywin32_url": "http://people.mozilla.org/~jwood/pypi/pywin32-216.win32-py2.6.exe",
     "device_name": "tegra-224",
     "device_package_name": "org.mozilla.fennec",
     "talos_device_name": "tegra-224",
     "virtualenv_modules": ["pywin32", "talos"],
-    "exes": { "easy_install": ['d:\\Sources\\mozharness\\build\\venv\\Scripts\\python.exe',
-                               'd:\\Sources\\mozharness\\build\\venv\\scripts\\easy_install-2.6-script.py'], },
+    "exes": {"easy_install": ['d:\\Sources\\mozharness\\build\\venv\\Scripts\\python.exe',
+                              'd:\\Sources\\mozharness\\build\\venv\\scripts\\easy_install-2.6-script.py'], },
 
     # set graph_server to a real graph server if you want to publish your
     # results (the device needs to be in the database already or you'll

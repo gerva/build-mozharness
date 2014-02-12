@@ -40,6 +40,7 @@ try:
 except ImportError:
     import json
 
+from mozprocess import ProcessHandler
 from mozharness.base.config import BaseConfig
 from mozharness.base.log import SimpleFileLogger, MultiFileLogger, \
     LogMixin, OutputParser, DEBUG, INFO, ERROR, FATAL
@@ -601,7 +602,7 @@ class ScriptMixin(object):
                     halt_on_failure=False, success_codes=None,
                     env=None, partial_env=None, return_type='status',
                     throw_exception=False, output_parser=None,
-                    output_timeout=None):
+                    output_timeout=None, **kwargs):
         """Run a command, with logging and error parsing.
 
         output_timeout is the number of seconds without output before the process
@@ -621,26 +622,6 @@ class ScriptMixin(object):
         ]
         (context_lines isn't written yet)
         """
-        if output_timeout:
-            site_packages_path = self.query_python_site_packages_path()
-            sys_path = ''.join(sys.path)
-            if 'mozprocess' not in sys_path:
-                if site_packages_path not in sys_path:
-                    # check for mozprocess
-                    mozprocess_path = os.path.join(site_packages_path, 'mozprocess')
-                    if not os.access(mozprocess_path, os.F_OK):
-                        self.fatal('mozprocess required for output_timeout, but not present at %s' % mozprocess_path)
-                    # Assume if mozprocess is installed, all it's pre-req's
-                    # are present also, and add the top-level site-packages
-                    # dir to sys.path.
-                    sys.path.append(site_packages_path)
-
-            try:
-                from mozprocess import ProcessHandler
-            except ImportError:
-                self.exception("There was an error importing mozprocess!",
-                               level=FATAL)
-
         if success_codes is None:
             success_codes = [0]
         if cwd is not None:
@@ -678,7 +659,7 @@ class ScriptMixin(object):
                     parser.add_lines(line)
 
                 def onTimeout():
-                    self.info("mozprocess timed out")
+                    self.info("Automation Error: mozprocess timed out after %s seconds running %s" % (str(output_timeout), str(command)))
 
                 p = ProcessHandler(command,
                                    env=env,
@@ -1297,7 +1278,7 @@ class BaseScript(ScriptMixin, LogMixin, object):
     def copy_to_upload_dir(self, target, dest=None, short_desc="unknown",
                            long_desc="unknown", log_level=DEBUG,
                            error_level=ERROR, max_backups=None,
-                           compress=False):
+                           compress=False, upload_dir=None):
         """Copy target file to upload_dir/dest.
 
         Potentially update a manifest in the future if we go that route.
@@ -1309,17 +1290,18 @@ class BaseScript(ScriptMixin, LogMixin, object):
         short_desc and long_desc are placeholders for if/when we add
         upload_dir manifests.
         """
-        dirs = self.query_abs_dirs()
         dest_filename_given = dest is not None
+        if upload_dir is None:
+            upload_dir = self.query_abs_dirs()['abs_upload_dir']
         if dest is None:
             dest = os.path.basename(target)
         if dest.endswith('/'):
             dest_file = os.path.basename(target)
-            dest_dir = os.path.join(dirs['abs_upload_dir'], dest)
+            dest_dir = os.path.join(upload_dir, dest)
             dest_filename_given = False
         else:
             dest_file = os.path.basename(dest)
-            dest_dir = os.path.join(dirs['abs_upload_dir'], os.path.dirname(dest))
+            dest_dir = os.path.join(upload_dir, os.path.dirname(dest))
         if compress and not dest_filename_given:
             dest_file += ".gz"
         dest = os.path.join(dest_dir, dest_file)

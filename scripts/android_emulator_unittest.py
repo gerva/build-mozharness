@@ -21,6 +21,7 @@ sys.path.insert(1, os.path.dirname(sys.path[0]))
 from mozharness.base.log import FATAL
 from mozharness.base.script import BaseScript
 from mozharness.base.vcs.vcsbase import VCSMixin
+from mozharness.mozilla.blob_upload import BlobUploadMixin, blobupload_config_options
 from mozharness.mozilla.buildbot import TBPL_WORST_LEVEL_TUPLE
 from mozharness.mozilla.testing.testbase import TestingMixin, testing_config_options
 from mozharness.mozilla.testing.unittest import DesktopUnittestOutputParser, EmulatorMixin
@@ -28,30 +29,36 @@ from mozharness.mozilla.tooltool import TooltoolMixin
 
 from mozharness.mozilla.testing.device import ADBDeviceHandler
 
-class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, BaseScript):
-    config_options = [
-        [["--robocop-url"],
+
+class AndroidEmulatorTest(BlobUploadMixin, TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, BaseScript):
+    config_options = [[
+        ["--robocop-url"],
         {"action": "store",
          "dest": "robocop_url",
          "default": None,
          "help": "URL to the robocop apk",
-        }],
-        [["--host-utils-url"],
+         }
+    ], [
+        ["--host-utils-url"],
         {"action": "store",
          "dest": "xre_url",
          "default": None,
          "help": "URL to the host utils zip",
-        }],
-        [["--test-suite"],
+         }
+    ], [
+        ["--test-suite"],
         {"action": "append",
          "dest": "test_suites",
-        }],
-        [["--adb-path"],
+         }
+    ], [
+        ["--adb-path"],
         {"action": "store",
          "dest": "adb_path",
          "default": None,
          "help": "Path to adb",
-        }]] + copy.deepcopy(testing_config_options)
+         }
+    ]] + copy.deepcopy(testing_config_options) + \
+        copy.deepcopy(blobupload_config_options)
 
     error_list = [
     ]
@@ -130,6 +137,8 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
             dirs['abs_test_install_dir'], 'reftest')
         dirs['abs_xpcshell_dir'] = os.path.join(
             dirs['abs_test_install_dir'], 'xpcshell')
+        dirs['abs_blob_upload_dir'] = os.path.join(
+            abs_dirs['abs_work_dir'], 'blobber_upload_dir')
         for key in dirs.keys():
             if key not in abs_dirs:
                 abs_dirs[key] = dirs[key]
@@ -158,14 +167,14 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         redirect_completed = False
         while attempts < 5:
             if attempts == 0:
-               self.info("Sleeping 10 seconds")
-               time.sleep(10)
+                self.info("Sleeping 10 seconds")
+                time.sleep(10)
             else:
-               self.info("Sleeping 30 seconds")
-               time.sleep(30)
+                self.info("Sleeping 30 seconds")
+                time.sleep(30)
             attempts += 1
-            self.info("  Attempt #%d to redirect ports: (%d, %d, %d)" % \
-                    (attempts, emuport, sutport1, sutport2))
+            self.info("  Attempt #%d to redirect ports: (%d, %d, %d)" %
+                      (attempts, emuport, sutport1, sutport2))
             try:
                 tn = telnetlib.Telnet('localhost', emuport, 300)
                 break
@@ -173,16 +182,16 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
                 self.info("Trying again after exception: %s" % str(e))
                 pass
 
-        if tn != None:
+        if tn is not None:
             res = tn.read_until('OK')
             if res.find('OK') == -1:
-                self.warning('initial OK prompt not received from emulator: '+str(res))
+                self.warning('initial OK prompt not received from emulator: ' + str(res))
             tn.write('redir add tcp:' + str(sutport1) + ':' + str(self.config["default_sut_port1"]) + '\n')
             tn.write('redir add tcp:' + str(sutport2) + ':' + str(self.config["default_sut_port2"]) + '\n')
             tn.write('quit\n')
             res = tn.read_all()
             if res.find('OK') == -1:
-                self.warning('error adding redirect: '+str(res))
+                self.warning('error adding redirect: ' + str(res))
             else:
                 redirect_completed = True
         else:
@@ -192,15 +201,23 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
     def _launch_emulator(self, emulator_index):
         emulator = self.emulators[emulator_index]
         env = self.query_env()
+
+        # Set $LD_LIBRARY_PATH to self.dirs['abs_work_dir'] so that
+        # the emulator picks up the symlink to libGL.so.1 that we
+        # constructed in start_emulators.
+        env['LD_LIBRARY_PATH'] = self.abs_dirs['abs_work_dir']
+
         command = [
             "emulator", "-avd", emulator["name"],
             "-debug", "init,console,gles,memcheck,adbserver,adbclient,adb,avd_config,socket",
             "-port", str(emulator["emulator_port"]),
             # Enable kvm; -qemu arguments must be at the end of the command
-            "-qemu", "-m", "1024", "-enable-kvm"
+            "-qemu", "-m", "1024"
         ]
         if "emulator_cpu" in self.config:
-            command += ["-qemu", "-cpu", self.config["emulator_cpu"] ]
+            command += ["-cpu", self.config["emulator_cpu"]]
+        else:
+            command += ["-enable-kvm"]
         tmp_file = tempfile.NamedTemporaryFile(mode='w')
         tmp_stdout = open(tmp_file.name, 'w')
         self.info("Created temp file %s." % tmp_file.name)
@@ -210,7 +227,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
             "process": proc,
             "tmp_file": tmp_file,
             "tmp_stdout": tmp_stdout
-            }
+        }
 
     def _check_emulator(self, emulator):
         self.info('Checking emulator %s' % emulator["name"])
@@ -220,14 +237,14 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         contacted_sut = False
         while attempts < 4 and not contacted_sut:
             if attempts != 0:
-               self.info("Sleeping 30 seconds")
-               time.sleep(30)
+                self.info("Sleeping 30 seconds")
+                time.sleep(30)
             attempts += 1
-            self.info("  Attempt #%d to connect to SUT on port %d" % \
-                    (attempts, emulator["sut_port1"]))
+            self.info("  Attempt #%d to connect to SUT on port %d" %
+                      (attempts, emulator["sut_port1"]))
             try:
                 tn = telnetlib.Telnet('localhost', emulator["sut_port1"], 10)
-                if tn != None:
+                if tn is not None:
                     self.info('Connected to port %d' % emulator["sut_port1"])
                     res = tn.read_until('$>', 10)
                     tn.write('quit\n')
@@ -249,7 +266,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
                 self.info('Trying again after unexpected exception')
                 pass
             finally:
-                if tn != None:
+                if tn is not None:
                     tn.close()
         if not contacted_sut:
             self.warning('Unable to communicate with SUT agent on port %d' % emulator["sut_port1"])
@@ -259,14 +276,14 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         contacted_emu = False
         while attempts < 4:
             if attempts != 0:
-               self.info("Sleeping 30 seconds")
-               time.sleep(30)
+                self.info("Sleeping 30 seconds")
+                time.sleep(30)
             attempts += 1
-            self.info("  Attempt #%d to connect to emulator on port %d" % \
-                    (attempts, emulator["emulator_port"]))
+            self.info("  Attempt #%d to connect to emulator on port %d" %
+                      (attempts, emulator["emulator_port"]))
             try:
                 tn = telnetlib.Telnet('localhost', emulator["emulator_port"], 10)
-                if tn != None:
+                if tn is not None:
                     self.info('Connected to port %d' % emulator["emulator_port"])
                     res = tn.read_until('OK', 10)
                     self.info(res)
@@ -296,7 +313,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
                 self.info('Trying again after unexpected exception')
                 pass
             finally:
-                if tn != None:
+                if tn is not None:
                     tn.close()
         if not contacted_emu:
             self.warning('Unable to communicate with emulator on port %d' % emulator["emulator_port"])
@@ -338,7 +355,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         self.download_file(robocop_url, 'robocop.apk', dirs['abs_work_dir'], error_level=FATAL)
 
     def _query_package_name(self):
-        if self.app_name == None:
+        if self.app_name is None:
             #find appname from package-name.txt - assumes download-and-extract has completed successfully
             apk_dir = self.abs_dirs['abs_work_dir']
             self.apk_path = os.path.join(apk_dir, self.installer_path)
@@ -348,7 +365,6 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
             self.run_command(unzip_cmd, cwd=apk_dir, halt_on_failure=True)
             self.app_name = str(self.read_from_file(package_path, verbose=True)).rstrip()
         return self.app_name
-
 
     def preflight_install(self):
         # in the base class, this checks for mozinstall, but we don't use it
@@ -360,6 +376,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         suite_category = self.test_suite_definitions[suite_name]["category"]
         cmd = [
             self.query_python_path('python'),
+            '-u',
             os.path.join(
                 dirs["abs_%s_dir" % suite_category],
                 c["suite_definitions"][suite_category]["run_filename"]
@@ -383,7 +400,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
             'installer_path': self.installer_path,
         }
         for option in c["suite_definitions"][suite_category]["options"]:
-           cmd.extend([option % str_format_values])
+            cmd.extend([option % str_format_values])
         cmd.extend(self.test_suite_definitions[suite_name]["extra_args"])
 
         return cmd
@@ -416,6 +433,8 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
 
         env = self.query_env()
         self.query_minidump_stackwalk()
+        env['MOZ_UPLOAD_DIR'] = self.query_abs_dirs()['abs_blob_upload_dir']
+        env['MINIDUMP_SAVE_PATH'] = self.query_abs_dirs()['abs_blob_upload_dir']
 
         self.info("Running on %s the command %s" % (self.emulators[emulator_index]["name"], subprocess.list2cmdline(cmd)))
         tmp_file = tempfile.NamedTemporaryFile(mode='w')
@@ -427,7 +446,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
             "tmp_stdout": tmp_stdout,
             "suite_name": suite_name,
             "emulator_index": emulator_index
-            }
+        }
 
     ##########################################
     ### Actions for AndroidEmulatorTest ###
@@ -456,8 +475,8 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         c = self.config
         self.rmtree(c[".avds_dir"])
         avd_tar_ball_path = os.path.join(
-                c["tooltool_cache_path"],
-                c["tooltool_cacheable_artifacts"]["avd_tar_ball"][0])
+            c["tooltool_cache_path"],
+            c["tooltool_cacheable_artifacts"]["avd_tar_ball"][0])
         self.mkdir_p(c[".avds_dir"])
         self.unpack(avd_tar_ball_path, c[".avds_dir"])
 
@@ -469,6 +488,25 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
             "We can't run more tests that the number of emulators we start"
         # We kill compiz because it sometimes prevents us from starting the emulators
         self._kill_processes("compiz")
+
+        # We add a symlink for libGL.so because the emulator dlopen()s it by that name
+        # even though the installed library on most systems without dev packages is
+        # libGL.so.1
+        linkfile = os.path.join(self.abs_dirs['abs_work_dir'], "libGL.so")
+        self.info("Attempting to establish symlink for %s" % linkfile)
+        try:
+            os.unlink(linkfile)
+        except OSError:
+            pass
+        for libdir in ["/usr/lib/x86_64-linux-gnu/mesa",
+                       "/usr/lib/i386-linux-gnu/mesa",
+                       "/usr/lib/mesa"]:
+            libfile = os.path.join(libdir, "libGL.so.1")
+            if os.path.exists(libfile):
+                self.info("Symlinking %s -> %s" % (linkfile, libfile))
+                self.mkdir_p(self.abs_dirs['abs_work_dir'])
+                os.symlink(libfile, linkfile)
+                break
 
         attempts = 0
         redirect_failed = True
@@ -483,7 +521,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
             if attempts > 0:
                 self.info("Sleeping 30 seconds before retry")
                 time.sleep(30)
-            attempts+=1
+            attempts += 1
             self.info('Attempt #%d to launch emulators...' % attempts)
             self.emulator_procs = []
             emulator_index = 0
@@ -493,9 +531,9 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
                 self.emulator_procs.append(emulator_proc)
                 if self._redirectSUT(emulator_index):
                     emulator = self.emulators[emulator_index]
-                    self.info("%s: %s; sut port: %s/%s" % \
-                        (emulator["name"], emulator["emulator_port"], emulator["sut_port1"], emulator["sut_port2"]))
-                    emulator_index+=1
+                    self.info("%s: %s; sut port: %s/%s" %
+                              (emulator["name"], emulator["emulator_port"], emulator["sut_port1"], emulator["sut_port2"]))
+                    emulator_index += 1
                 else:
                     self._dump_emulator_log(emulator_index)
                     self._kill_processes(self.config["emulator_process_name"])
@@ -508,8 +546,23 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         emulator_index = 0
         for test in self.test_suites:
             emulator = self.emulators[emulator_index]
-            emulator_index+=1
+            emulator_index += 1
             self._check_emulator(emulator)
+        # Start logcat for each emulator. Each adb process runs until the
+        # corresponding emulator is killed. Output is written directly to
+        # the blobber upload directory so that it is uploaded automatically
+        # at the end of the job.
+        self.mkdir_p(self.abs_dirs['abs_blob_upload_dir'])
+        emulator_index = 0
+        for test in self.test_suites:
+            emulator = self.emulators[emulator_index]
+            emulator_index += 1
+            logcat_filename = 'logcat-%s.log' % emulator["device_id"]
+            logcat_path = os.path.join(self.abs_dirs['abs_blob_upload_dir'], logcat_filename)
+            logcat_cmd = '%s -s %s logcat -v time Trace:S StrictMode:S ExchangeService:S > %s &' % \
+                (self.adb_path, emulator["device_id"], logcat_path)
+            self.info(logcat_cmd)
+            os.system(logcat_cmd)
 
     def download_and_extract(self):
         # This will download and extract the fennec.apk and tests.zip
@@ -534,7 +587,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         emulator_index = 0
         for suite_name in self.test_suites:
             emulator = self.emulators[emulator_index]
-            emulator_index+=1
+            emulator_index += 1
 
             config = {
                 'device-id': emulator["device_id"],
@@ -568,7 +621,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         emulator_index = 0
         for suite_name in self.test_suites:
             procs.append(self._trigger_test(suite_name, emulator_index))
-            emulator_index+=1
+            emulator_index += 1
 
         joint_tbpl_status = None
         joint_log_level = None
@@ -577,7 +630,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
             for p in procs:
                 emulator_index = p["emulator_index"]
                 return_code = p["process"].poll()
-                if return_code!=None:
+                if return_code is not None:
                     suite_name = p["suite_name"]
                     # To make reading the log of the suite not mix with the previous line
                     sys.stdout.write('\n')
@@ -589,10 +642,10 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
                     # Let's parse the output (which also prints it)
                     # and determine what the results should be
                     parser = DesktopUnittestOutputParser(
-                                 suite_category=self.test_suite_definitions[p["suite_name"]]["category"],
-                                 config=self.config,
-                                 log_obj=self.log_obj,
-                                 error_list=self.error_list)
+                        suite_category=self.test_suite_definitions[p["suite_name"]]["category"],
+                        config=self.config,
+                        log_obj=self.log_obj,
+                        error_list=self.error_list)
                     for line in output.splitlines():
                         parser.parse_single_line(line)
 
@@ -625,7 +678,7 @@ class AndroidEmulatorTest(TestingMixin, TooltoolMixin, EmulatorMixin, VCSMixin, 
         emulator_index = 0
         for test in self.test_suites:
             emulator = self.emulators[emulator_index]
-            emulator_index+=1
+            emulator_index += 1
             self._check_emulator(emulator)
         self._kill_processes(self.config["emulator_process_name"])
 
