@@ -381,7 +381,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         with self.opened(src, 'r') as (in_mozconfig, in_error):
             if in_error:
                 self.fatal('cannot open {0}'.format(src))
-            with self.opened(dst, 'w') as (out_mozconfig, out_error):
+            with self.opened(dst, open_mode='w') as (out_mozconfig, out_error):
                 if out_error:
                     self.fatal('cannot write {0}'.format(dst))
                 for line in in_mozconfig:
