@@ -159,10 +159,15 @@ class SpidermonkeyBuild(MockMixin,
         else:
             self.config['is_automation'] = False
 
-        self.mock_env = self.query_env(replace_dict=self.config['env_replacements'],
+        dirs = self.query_abs_dirs()
+        replacements = self.config['env_replacements'].copy()
+        for k,v in replacements.items():
+            replacements[k] = v % dirs
+
+        self.mock_env = self.query_env(replace_dict=replacements,
                                        partial_env=self.config['partial_env'],
                                        purge_env=nuisance_env_vars)
-        self.nonmock_env = self.query_env(replace_dict=self.config['env_replacements'],
+        self.nonmock_env = self.query_env(replace_dict=replacements,
                                           partial_env=self.config['partial_env'],
                                           purge_env=nuisance_env_vars)
 
@@ -180,7 +185,7 @@ class SpidermonkeyBuild(MockMixin,
             'abs_analysis_dir':
                 os.path.join(abs_work_dir, self.config['analysis-dir']),
             'abs_analyzed_objdir':
-                os.path.join(abs_work_dir, self.config['source-objdir']),
+                os.path.join(abs_work_dir, self.config['srcdir'], self.config['analysis-objdir']),
         }
 
         abs_dirs.update(dirs)
@@ -214,17 +219,11 @@ class SpidermonkeyBuild(MockMixin,
 
     def query_compiler_manifest(self):
         dirs = self.query_abs_dirs()
-        return self.config['compiler_manifest'] % {
-            'rootAnalysisDir': os.path.join(dirs['abs_work_dir'], 'source',
-                                            'js', 'src', 'devtools', 'rootAnalysis')
-        }
+        return os.path.join(dirs['abs_work_dir'], self.config['compiler_manifest'])
 
     def query_sixgill_manifest(self):
         dirs = self.query_abs_dirs()
-        return self.config['sixgill_manifest'] % {
-            'rootAnalysisDir': os.path.join(dirs['abs_work_dir'], 'source',
-                                            'js', 'src', 'devtools', 'rootAnalysis')
-        }
+        return os.path.join(dirs['abs_work_dir'], self.config['sixgill_manifest'])
 
     def query_buildtime(self):
         if self.buildtime:
@@ -374,10 +373,12 @@ class SpidermonkeyBuild(MockMixin,
             self.fatal("checkout failed: " + str(e), exit_code=RETRY)
 
     def checkout_tooltool(self):
+        dirs = self.query_abs_dirs()
+        source_dir = os.path.join(dirs['abs_work_dir'], 'source')
         self.tooltool_fetch(self.query_compiler_manifest(), "sh " + self.config['compiler_setup'],
-                            self.config['tools_dir'], privileged=True)
+                            source_dir)
         self.tooltool_fetch(self.query_sixgill_manifest(), "sh " + self.config['sixgill_setup'],
-                            self.config['tools_dir'], privileged=True)
+                            source_dir)
 
     def clobber_shell(self):
         dirs = self.query_abs_dirs()
@@ -434,8 +435,8 @@ class SpidermonkeyBuild(MockMixin,
                   'analysis_scriptdir': os.path.join(dirs['abs_work_dir'], 'source/js/src/devtools/rootAnalysis'),
                   'source_objdir': dirs['abs_analyzed_objdir'],
                   'source': os.path.join(dirs['abs_work_dir'], 'source'),
-                  'sixgill': self.config['sixgill'],
-                  'sixgill_bin': self.config['sixgill_bin'],
+                  'sixgill': os.path.join(dirs['abs_work_dir'], self.config['sixgill']),
+                  'sixgill_bin': os.path.join(dirs['abs_work_dir'], self.config['sixgill_bin']),
                   }
         defaults = """
 js = '%(js)s'

@@ -35,7 +35,8 @@ config = {
         "reftest": "runreftest.py",
         "xpcshell": "runxpcshelltests.py",
         "cppunittest": "runcppunittests.py",
-        "jittest": "jit_test.py"
+        "jittest": "jit_test.py",
+        "mozbase": "test.py"
     },
     "minimum_tests_zip_dirs": ["bin/*", "certs/*", "modules/*", "mozbase/*", "config/*"],
     "specific_tests_zip_dirs": {
@@ -43,7 +44,8 @@ config = {
         "reftest": ["reftest/*", "jsreftest/*"],
         "xpcshell": ["xpcshell/*"],
         "cppunittest": ["cppunittests/*"],
-        "jittest": ["jit-test/*"]
+        "jittest": ["jit-test/*"],
+        "mozbase": ["mozbase/*"]
     },
     "reftest_options": [
         "--appname=%(binary_path)s", "--utility-path=tests/bin",
@@ -69,6 +71,9 @@ config = {
         "--no-progress",
         "--tinderbox",
         "--tbpl"
+    ],
+    "mozbase_options": [
+        "-b", "%(binary_path)s"
     ],
     #local mochi suites
     "all_mochitest_suites": {
@@ -115,7 +120,12 @@ config = {
         "cppunittest": ['tests/cppunittests']
     },
     "all_jittest_suites": {
-        "jittest": []
+        "jittest": [],
+        "jittest1": ["--total-chunks=2", "--this-chunk=1"],
+        "jittest2": ["--total-chunks=2", "--this-chunk=2"],
+    },
+    "all_mozbase_suites": {
+        "mozbase": []
     },
     "run_cmd_checks_enabled": True,
     "preflight_run_cmd_suites": [
