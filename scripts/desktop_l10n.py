@@ -324,7 +324,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _setup_configure(self, buildid=None):
         """configuration setup"""
-        self.enable_mock()
         if self.make_configure():
             self.fatal("Configure failed!")
         self.make_dirs()
@@ -332,7 +331,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def setup(self):
         """setup step"""
-        self.enable_mock()
         dirs = self.query_abs_dirs()
         self._copy_mozconfig()
         self._setup_configure()
@@ -399,7 +397,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True):
         """Runs make. Returns the exit code"""
-        self.enable_mock()
         make = self.query_exe("make", return_type="list")
         return self.run_command(make + target,
                                 cwd=cwd,
@@ -409,7 +406,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _get_output_from_make(self, target, cwd, env, halt_on_failure=True):
         """runs make and returns the output of the command"""
-        self.enable_mock()
         make = self.query_exe("make", return_type="list")
         return self.get_output_from_command(make + target,
                                             cwd=cwd,
@@ -497,7 +493,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def repack(self):
         """creates the repacks and udpates"""
         # TODO per-locale logs and reporting.
-        self.enable_mock()
         locales = self.query_locales()
         results = {}
         for locale in locales:
