@@ -24,7 +24,6 @@ config = {
     "env": {
         "DISPLAY": ":0.0",
         "PATH": "%(PATH)s:/tools/android-sdk18/tools:/tools/android-sdk18/platform-tools",
-        "MINIDUMP_STACKWALK": "/home/cltbld/talos-slave/test/build/venv/lib/python2.7/site-packages/talos/breakpad/linux64/minidump_stackwalk",
         "MINIDUMP_SAVEPATH": "%(abs_work_dir)s/../minidumps"
     },
     "default_actions": [
@@ -85,43 +84,43 @@ config = {
         },
         "mochitest-1": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "1", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "1", "--run-only-tests", "android23.json"],
         },
         "mochitest-2": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "2", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "2", "--run-only-tests", "android23.json"],
         },
         "mochitest-3": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "3", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "3", "--run-only-tests", "android23.json"],
         },
         "mochitest-4": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "4", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "4", "--run-only-tests", "android23.json"],
         },
         "mochitest-5": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "5", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "5", "--run-only-tests", "android23.json"],
         },
         "mochitest-6": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "6", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "6", "--run-only-tests", "android23.json"],
         },
         "mochitest-7": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "7", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "7", "--run-only-tests", "android23.json"],
         },
         "mochitest-8": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "8", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "8", "--run-only-tests", "android23.json"],
         },
         "mochitest-9": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "9", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "9", "--run-only-tests", "android23.json"],
         },
         "mochitest-10": {
             "category": "mochitest",
-            "extra_args": ["--total-chunks", "10", "--this-chunk", "10", "--run-only-tests", "android.json"],
+            "extra_args": ["--total-chunks", "10", "--this-chunk", "10", "--run-only-tests", "android23.json"],
         },
         "mochitest-gl": {
             "category": "mochitest",
@@ -229,6 +228,7 @@ config = {
             ],
         },
     }, # end of "suite_definitions"
+    "download_minidump_stackwalk": True,
     "default_blob_upload_servers": [
          "https://blobupload.elasticbeanstalk.com",
     ],

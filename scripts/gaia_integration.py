@@ -35,7 +35,7 @@ class GaiaIntegrationTest(GaiaTest):
         # Copy the b2g desktop we built to the gaia directory so that it
         # gets used by the marionette-js-runner.
         self.copytree(
-            os.path.join(dirs['abs_work_dir'], 'b2g'),
+            os.path.join(os.path.dirname(self.binary_path)),
             os.path.join(dirs['abs_gaia_dir'], 'b2g'),
             overwrite='clobber'
         )
@@ -44,7 +44,9 @@ class GaiaIntegrationTest(GaiaTest):
 
         # run 'make node_modules' first, so we can separately handle
         # errors that occur here
-        cmd = ['make', 'node_modules']
+        cmd = ['make',
+               'node_modules',
+               'NODE_MODULES_GIT_URL=https://git.mozilla.org/b2g/gaia-node-modules.git']
         kwargs = {
             'cwd': dirs['abs_gaia_dir'],
             'output_timeout': 300,
