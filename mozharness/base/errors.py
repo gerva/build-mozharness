@@ -114,6 +114,7 @@ GitErrorList = BaseErrorList + [
 ]
 
 PythonErrorList = BaseErrorList + [
+    {'regex': re.compile(r'''Warning:.*Error: '''), 'level': WARNING},
     {'substr': r'''Traceback (most recent call last)''', 'level': ERROR},
     {'substr': r'''SyntaxError: ''', 'level': ERROR},
     {'substr': r'''TypeError: ''', 'level': ERROR},
@@ -155,7 +156,7 @@ TarErrorList = BaseErrorList + [
 ]
 
 ADBErrorList = BaseErrorList + [
-    {'substr': r'''INSTALL_FAILED_INSUFFICIENT_STORAGE''', 'level': ERROR},
+    {'substr': r'''INSTALL_FAILED_''', 'level': ERROR},
     {'substr': r'''Android Debug Bridge version''', 'level': ERROR},
     {'substr': r'''error: protocol fault''', 'level': ERROR},
     {'substr': r'''unable to connect to ''', 'level': ERROR},

@@ -9,7 +9,7 @@ config = {
         'generate-build-props',
         # 'generate-build-stats', debug skips this action
         'symbols',
-        # 'packages',  non-unified skips this action
+        'packages',
         # 'upload',  non-unified skips this action
         # 'sendchanges',  non-unified skips this action
         # 'pretty-names', debug skips this action
@@ -17,7 +17,8 @@ config = {
         'check-test',
         'update',  # decided by query_is_nightly()
         'enable-ccache',
-        ],
+    ],
+    'debug_build': True,
     'platform': 'linux64-debug-nonunified',
     'mock_files': [
         ('/home/cltbld/.ssh', '/home/mock_mozilla/.ssh'),

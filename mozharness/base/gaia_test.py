@@ -54,6 +54,13 @@ class GaiaTest(TestingMixin, TooltoolMixin, MercurialScript, TransferMixin,
          "help": "application binary name"
          }
     ], [
+        ["--browser-arg"],
+        {"action": "store",
+         "dest": "browser_arg",
+         "default": None,
+         "help": "optional command-line argument to pass to the browser"
+         }
+    ], [
         ["--xre-path"],
         {"action": "store",
          "dest": "xre_path",
@@ -103,13 +110,14 @@ class GaiaTest(TestingMixin, TooltoolMixin, MercurialScript, TransferMixin,
             require_config_file=require_config_file,
             config={'virtualenv_modules': self.virtualenv_modules,
                     'repos': self.repos,
-                    'require_test_zip': False})
+                    'require_test_zip': True})
 
         # these are necessary since self.config is read only
         c = self.config
         self.installer_url = c.get('installer_url')
         self.installer_path = c.get('installer_path')
         self.binary_path = c.get('binary_path')
+        self.test_url = c.get('test_url')
 
     def pull(self, **kwargs):
         dirs = self.query_abs_dirs()
@@ -189,7 +197,8 @@ class GaiaTest(TestingMixin, TooltoolMixin, MercurialScript, TransferMixin,
             self.run_command(command,
                              cwd=parent_dir,
                              error_list=TarErrorList,
-                             halt_on_failure=True)
+                             halt_on_failure=True,
+                             fatal_exit_code=3)
         else:
             # a tooltool xre.zip
             command = self.query_exe('unzip', return_type='list')
@@ -204,7 +213,8 @@ class GaiaTest(TestingMixin, TooltoolMixin, MercurialScript, TransferMixin,
             self.run_command(command,
                              cwd=parent_dir,
                              error_list=ZipErrorList,
-                             halt_on_failure=True)
+                             halt_on_failure=True,
+                             fatal_exit_code=3)
 
     def download_and_extract(self):
         super(GaiaTest, self).download_and_extract()

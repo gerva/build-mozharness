@@ -15,6 +15,7 @@ import urlparse
 import xml.dom.minidom
 import functools
 import time
+import random
 
 try:
     import simplejson as json
@@ -31,7 +32,7 @@ from mozharness.base.script import BaseScript
 from mozharness.base.vcs.vcsbase import VCSMixin
 from mozharness.base.transfer import TransferMixin
 from mozharness.base.errors import MakefileErrorList
-from mozharness.base.log import WARNING, ERROR, INFO, FATAL
+from mozharness.base.log import WARNING, ERROR, FATAL
 from mozharness.mozilla.l10n.locales import GaiaLocalesMixin, LocalesMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.mozilla.tooltool import TooltoolMixin
@@ -40,7 +41,7 @@ from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.signing import SigningMixin
 from mozharness.mozilla.repo_manifest import (load_manifest, rewrite_remotes,
                                               remove_project, get_project,
-                                              get_remote, map_remote)
+                                              get_remote, map_remote, add_project)
 from mozharness.mozilla.mapper import MapperMixin
 
 # B2G builds complain about java...but it doesn't seem to be a problem
@@ -58,10 +59,6 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
         [["--repo"], {
             "dest": "repo",
             "help": "which gecko repo to check out",
-        }],
-        [["--gonk-snapshot"], {
-            "dest": "gonk_snapshot_url",
-            "help": "override the gonk snapshot specified in the build config",
         }],
         [["--target"], {
             "dest": "target",
@@ -336,7 +333,12 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
         if self.buildbot_config and 'sourcestamp' in self.buildbot_config:
             return self.buildbot_config['sourcestamp']['revision']
 
-        return None
+        # Look at what we have checked out
+        dirs = self.query_abs_dirs()
+        hg = self.query_exe('hg', return_type='list')
+        return self.get_output_from_command(
+            hg + ['parent', '--template', '{node|short}'], cwd=dirs['src']
+        )
 
     def get_hg_commit_time(self, repo_dir, rev):
         """Returns the commit time for given `rev` in unix epoch time"""
@@ -396,6 +398,9 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                 channel=self.query_update_channel(),
                 version=self.query_b2g_version(),
             )
+        # Force B2G_UPDATER so that eng builds (like the emulator) will get
+        # the updater included. Otherwise the xpcshell updater tests won't run.
+        env['B2G_UPDATER'] = '1'
         if self.config.get('debug_build'):
             env['B2G_DEBUG'] = '1'
         return env
@@ -450,14 +455,21 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
         dotconfig_file = os.path.join(dirs['abs_work_dir'], '.config')
         self.dotconfig = {}
         for line in open(dotconfig_file):
-            key, value = line.split("=", 1)
-            self.dotconfig[key.strip()] = value.strip()
+            if "=" in line:
+                key, value = line.split("=", 1)
+                self.dotconfig[key.strip()] = value.strip()
         return self.dotconfig
 
     def query_device_outputdir(self):
         dirs = self.query_abs_dirs()
         dotconfig = self.query_dotconfig()
-        output_dir = os.path.join(dirs['work_dir'], 'out', 'target', 'product', dotconfig['DEVICE'])
+        if 'DEVICE' in dotconfig:
+            devicedir = dotconfig['DEVICE']
+        elif 'PRODUCT_NAME' in dotconfig:
+            devicedir = dotconfig['PRODUCT_NAME']
+        else:
+            self.fatal("Couldn't determine device directory")
+        output_dir = os.path.join(dirs['work_dir'], 'out', 'target', 'product', devicedir)
         return output_dir
 
     def query_application_ini(self):
@@ -507,7 +519,10 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                 # Checkout B2G and b2g-manifests. We'll do gecko later
                 b2g_manifest_branch = gecko_config.get('b2g_manifest_branch', 'master')
                 repos.append(
-                    {'vcs': 'gittool', 'repo': 'https://git.mozilla.org/b2g/b2g-manifest.git', 'dest': os.path.join(dirs['work_dir'], 'b2g-manifest'), 'branch': b2g_manifest_branch},
+                    {'vcs': 'gittool',
+                     'repo': 'https://git.mozilla.org/b2g/b2g-manifest.git',
+                     'dest': os.path.join(dirs['work_dir'], 'b2g-manifest'),
+                     'branch': b2g_manifest_branch},
                 )
                 manifest_filename = gecko_config.get('b2g_manifest', self.config['target'] + '.xml')
                 manifest_filename = os.path.join(dirs['work_dir'], 'b2g-manifest', manifest_filename)
@@ -550,6 +565,8 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                     os.symlink(repo_mirror_dir, repo_link)
 
             max_tries = 5
+            sleep_time = 60
+            max_sleep_time = 300
             for _ in range(max_tries):
                 # If .repo points somewhere, then try and reset our state
                 # before running config.sh
@@ -561,7 +578,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
 
                 config_result = self.run_command([
                     './config.sh', '-q', self.config['target'], manifest_filename,
-                ], cwd=dirs['work_dir'])
+                ], cwd=dirs['work_dir'], output_timeout=45 * 60)  # timeout after 45 minutes of no output
 
                 # TODO: Check return code from these? retry?
                 # Run git reset --hard to make sure we're in a clean state
@@ -578,15 +595,27 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
                 else:
                     # Try again in a bit. Broken clones should be deleted and
                     # re-tried above
-                    self.info("config.sh failed; sleeping and retrying")
-                    time.sleep(30)
+                    self.info("config.sh failed; sleeping %i and retrying" % sleep_time)
+                    time.sleep(sleep_time)
+                    # Exponential backoff with random jitter
+                    sleep_time = min(sleep_time * 1.5, max_sleep_time) + random.randint(1, 60)
             else:
                 self.fatal("failed to run config.sh")
 
+            # Workaround bug 985837
+            if self.config['target'] == 'emulator-kk':
+                self.info("Forcing -j4 for emulator-kk")
+                dotconfig_file = os.path.join(dirs['abs_work_dir'], '.config')
+                with open(dotconfig_file, "a+") as f:
+                    f.write("\nMAKE_FLAGS=-j1\n")
+
             # output our sources.xml, make a copy for update_sources_xml()
-            self.run_command(["./gonk-misc/add-revision.py", "-o", "sources.xml", "--force", ".repo/manifest.xml"], cwd=dirs["work_dir"], halt_on_failure=True)
-            self.run_command(["cat", "sources.xml"], cwd=dirs['work_dir'], halt_on_failure=True)
-            self.run_command(["cp", "-p", "sources.xml", "sources.xml.original"], cwd=dirs['work_dir'], halt_on_failure=True)
+            self.run_command(
+                ["./gonk-misc/add-revision.py", "-o", "sources.xml", "--force",
+                 ".repo/manifest.xml"], cwd=dirs["work_dir"],
+                halt_on_failure=True, fatal_exit_code=3)
+            self.run_command(["cat", "sources.xml"], cwd=dirs['work_dir'], halt_on_failure=True, fatal_exit_code=3)
+            self.run_command(["cp", "-p", "sources.xml", "sources.xml.original"], cwd=dirs['work_dir'], halt_on_failure=True, fatal_exit_code=3)
 
             manifest = load_manifest(os.path.join(dirs['work_dir'], 'sources.xml'))
             gaia_node = get_project(manifest, path="gaia")
@@ -641,67 +670,20 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
         self.set_buildbot_property('gecko_revision', rev, write_to_file=True)
 
     def download_blobs(self):
-        c = self.config
         dirs = self.query_abs_dirs()
-        gonk_url = None
-        if 'gonk_snapshot_url' in c:
-            # We've overridden which gonk to use
-            gonk_url = c['gonk_snapshot_url']
-        else:
-            gecko_config = self.load_gecko_config()
-            if 'tooltool_manifest' in gecko_config:
-                # The manifest is relative to the gecko config
-                config_dir = os.path.join(dirs['src'], 'b2g', 'config',
-                                          self.config.get('b2g_config_dir', self.config['target']))
-                manifest = os.path.abspath(os.path.join(config_dir, gecko_config['tooltool_manifest']))
-                self.tooltool_fetch(manifest=manifest,
-                                    bootstrap_cmd=gecko_config.get('tooltool_bootstrap_cmd'),
-                                    output_dir=dirs['work_dir'])
-                return
-            gonk_url = gecko_config['gonk_snapshot_url']
-
-        if gonk_url:
-            if os.path.exists("gonk.tar.xz"):
-                self.info("Skipping download of %s because we have a local copy already" % gonk_url)
-            else:
-                retval = self.download_file(gonk_url, os.path.join(dirs['work_dir'], 'gonk.tar.xz'))
-                if retval is None:
-                    self.fatal("failed to download gonk", exit_code=2)
+        gecko_config = self.load_gecko_config()
+        if 'tooltool_manifest' in gecko_config:
+            # The manifest is relative to the gecko config
+            config_dir = os.path.join(dirs['src'], 'b2g', 'config',
+                                      self.config.get('b2g_config_dir', self.config['target']))
+            manifest = os.path.abspath(os.path.join(config_dir, gecko_config['tooltool_manifest']))
+            self.tooltool_fetch(manifest=manifest,
+                                bootstrap_cmd=gecko_config.get('tooltool_bootstrap_cmd'),
+                                output_dir=dirs['work_dir'])
 
     def unpack_blobs(self):
         dirs = self.query_abs_dirs()
         tar = self.query_exe('tar', return_type="list")
-        gonk_snapshot = os.path.join(dirs['abs_work_dir'], 'gonk.tar.xz')
-        if os.path.exists(gonk_snapshot):
-            mtime = int(os.path.getmtime(gonk_snapshot))
-            mtime_file = os.path.join(dirs['abs_work_dir'], '.gonk_mtime')
-            if os.path.exists(mtime_file):
-                try:
-                    prev_mtime = int(self.read_from_file(mtime_file, error_level=INFO))
-                    if mtime == prev_mtime:
-                        # transition code - help existing build dirs without a sources.xml.original
-                        sourcesfile = os.path.join(dirs['work_dir'], 'sources.xml')
-                        sourcesfile_orig = sourcesfile + '.original'
-                        if not os.path.exists(sourcesfile_orig):
-                            self.run_command(tar + ["xf", "gonk.tar.xz", "--strip-components", "1", "B2G_default_*/sources.xml"],
-                                             cwd=dirs['work_dir'])
-                            self.run_command(["cp", "-p", sourcesfile, sourcesfile_orig], cwd=dirs['work_dir'])
-                        # end transition code
-                        self.info("We already have this gonk unpacked; skipping")
-                        return
-                except:
-                    pass
-
-            self.info("Writing %s to %s" % (mtime, mtime_file))
-            self.write_to_file(mtime_file, str(mtime))
-            retval = self.run_command(tar + ["xf", "gonk.tar.xz", "--strip-components", "1"], cwd=dirs['work_dir'])
-            if retval != 0:
-                self.fatal("failed to unpack gonk", exit_code=2)
-
-            # output our sources.xml, make a copy for update_sources_xml()
-            self.run_command(["cat", "sources.xml"], cwd=dirs['work_dir'])
-            self.run_command(["cp", "-p", "sources.xml", "sources.xml.original"], cwd=dirs['work_dir'])
-
         gecko_config = self.load_gecko_config()
         extra_tarballs = self.config.get('additional_source_tarballs', [])
         if 'additional_source_tarballs' in gecko_config:
@@ -709,7 +691,7 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
 
         for tarball in extra_tarballs:
             self.run_command(tar + ["xf", tarball], cwd=dirs['work_dir'],
-                             halt_on_failure=True)
+                             halt_on_failure=True, fatal_exit_code=3)
 
     def checkout_gaia(self):
         dirs = self.query_abs_dirs()
@@ -826,64 +808,50 @@ class B2GBuild(LocalesMixin, MockMixin, PurgeMixin, BaseScript, VCSMixin,
 
     def update_source_manifest(self):
         dirs = self.query_abs_dirs()
-        gecko_config = self.load_gecko_config()
-        gaia_config = gecko_config.get('gaia')
         manifest_config = self.config.get('manifest', {})
 
         sourcesfile = os.path.join(dirs['work_dir'], 'sources.xml')
         sourcesfile_orig = sourcesfile + '.original'
         sources = self.read_from_file(sourcesfile_orig, verbose=False)
         dom = xml.dom.minidom.parseString(sources)
-        git_base_url = "https://git.mozilla.org/"
-        for element in dom.getElementsByTagName('remote'):
-            if element.getAttribute('name') == 'mozillaorg':
-                pieces = urlparse.urlparse(element.getAttribute('fetch'))
-                if pieces:
-                    git_base_url = "https://git.mozilla.org%s" % pieces[2]
-                    if not git_base_url.endswith('/'):
-                        git_base_url += "/"
-                    self.info("Found git_base_url of %s in manifest." % git_base_url)
-                    break
-        else:
-            self.warning("Couldn't find git_base_url in manifest; using %s" % git_base_url)
-        new_sources = []
+        # Add comments for which hg revisions we came from
+        manifest = dom.firstChild
+        manifest.appendChild(dom.createTextNode("  "))
+        manifest.appendChild(dom.createComment("Mozilla Info"))
+        manifest.appendChild(dom.createTextNode("\n  "))
+        manifest.appendChild(dom.createComment('Mercurial-Information: <remote fetch="https://hg.mozilla.org/" name="hgmozillaorg">'))
+        manifest.appendChild(dom.createTextNode("\n  "))
+        manifest.appendChild(dom.createComment('Mercurial-Information: <project name="%s" path="gecko" remote="hgmozillaorg" revision="%s"/>' %
+                             (self.query_repo(), self.query_revision())))
 
-        for line in sources.splitlines():
-            new_sources.append(line)
-            # XXX Bug here. We shouldn't look for a specific comment, and
-            # instead put these new nodes at the beginning / end.
-            if 'Gonk specific things' in line:
-                new_sources.append('  <!-- Mercurial-Information: <remote fetch="https://hg.mozilla.org/" name="hgmozillaorg"> -->')
-                new_sources.append('  <!-- Mercurial-Information: <project name="%s" path="gecko" remote="hgmozillaorg" revision="%s"/> -->' %
-                                   (self.buildbot_config['properties']['repo_path'], self.buildbot_properties['gecko_revision']))
-                if gecko_config.get('config_version', 0) < 2 and 'gaia_revision' in self.buildbot_properties:
-                    new_sources.append('  <!-- Mercurial-Information: <project name="%s" path="gaia" remote="hgmozillaorg" revision="%s"/> -->' %
-                                       (gaia_config['repo'].replace('https://hg.mozilla.org/', ''), self.buildbot_properties['gaia_revision']))
+        if self.query_do_translate_hg_to_git():
+            # Find the base url used for git.m.o so we can refer to it
+            # properly in the project node below
+            git_base_url = "https://git.mozilla.org/"
+            for element in dom.getElementsByTagName('remote'):
+                if element.getAttribute('name') == 'mozillaorg':
+                    pieces = urlparse.urlparse(element.getAttribute('fetch'))
+                    if pieces:
+                        git_base_url = "https://git.mozilla.org%s" % pieces[2]
+                        if not git_base_url.endswith('/'):
+                            git_base_url += "/"
+                        self.info("Found git_base_url of %s in manifest." % git_base_url)
+                        break
+            else:
+                self.warning("Couldn't find git_base_url in manifest; using %s" % git_base_url)
 
-                if self.query_do_translate_hg_to_git():
-                    url = manifest_config['translate_base_url']
-                    gecko_git = self.query_mapper_git_revision(url, 'gecko', self.buildbot_properties['gecko_revision'],
-                                                               require_answer=self.config.get('require_git_rev', True))
-                    new_sources.append('  <project name="%s" path="gecko" remote="mozillaorg" revision="%s"/>' % ("https://git.mozilla.org/releases/gecko.git".replace(git_base_url, ''), gecko_git))
-                    # We don't need to use mapper for gaia after config version
-                    # 2, since that's when we switched to pulling gaia directly
-                    # from git
-                    if gecko_config.get('config_version', 0) < 2:
-                        if 'gaia_revision' in self.buildbot_properties:
-                            gaia_git = self.query_mapper_git_revision(url, 'gaia', self.buildbot_properties['gaia_revision'],
-                                                                      require_answer=self.config.get('require_git_rev', True))
-                            new_sources.append('  <project name="%s" path="gaia" remote="mozillaorg" revision="%s"/>' %
-                                               ("https://git.mozilla.org/releases/gaia.git".replace(git_base_url, ''), gaia_git))
+            manifest.appendChild(dom.createTextNode("\n  "))
+            url = manifest_config['translate_base_url']
+            gecko_git = self.query_mapper_git_revision(url, 'gecko',
+                                                       self.query_revision(),
+                                                       require_answer=self.config.get('require_git_rev',
+                                                                                      True))
+            project_name = "https://git.mozilla.org/releases/gecko.git".replace(git_base_url, '')
+            # XXX This assumes that we have a mozillaorg remote
+            add_project(dom, name=project_name, path="gecko", remote="mozillaorg", revision=gecko_git)
+        manifest.appendChild(dom.createTextNode("\n"))
 
-                        # Figure out when our gaia commit happened
-                        gaia_time = self.get_hg_commit_time(os.path.join(dirs['abs_work_dir'], 'gaia'), self.buildbot_properties['gaia_revision'])
-
-                        # Write the gaia commit information to 'gaia_commit_override.txt'
-                        gaia_override = os.path.join(dirs['abs_work_dir'], 'gaia', 'gaia_commit_override.txt')
-                        self.write_to_file(gaia_override, "%s\n%s\n" % (gaia_git, gaia_time))
-                new_sources.extend(self._generate_locale_manifest(git_base_url=git_base_url))
-
-        self.write_to_file(sourcesfile, "\n".join(new_sources), verbose=False)
+        self.write_to_file(sourcesfile, dom.toxml(), verbose=False)
         self.run_command(["diff", "-u", sourcesfile_orig, sourcesfile], success_codes=[1])
 
     def build(self):

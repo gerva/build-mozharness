@@ -121,13 +121,17 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
         if self.buildbot_config:
             c = self.config
             message = "Unable to set %s from the buildbot config"
+            if c.get("installer_url"):
+                self.installer_url = c['installer_url']
+            if c.get("test_url"):
+                self.test_url = c['test_url']
             try:
                 files = self.buildbot_config['sourcestamp']['changes'][-1]['files']
                 # Bug 868490 - Only require exactly two files if require_test_zip;
                 # otherwise accept either 1 or 2, since we'll be getting a
                 # test_zip url that we don't need.
                 expected_length = [1, 2, 3]
-                if c.get("require_test_zip"):
+                if c.get("require_test_zip") and not self.test_url:
                     expected_length = [2, 3]
                 actual_length = len(files)
                 if actual_length not in expected_length:
@@ -135,21 +139,22 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
                                (c['buildbot_json_path'], str(expected_length), actual_length))
                 for f in files:
                     if f['name'].endswith('tests.zip'):  # yuk
-                        # str() because of unicode issues on mac
-                        self.test_url = str(f['name'])
-                        self.info("Found test url %s." % self.test_url)
+                        if not self.test_url:
+                            # str() because of unicode issues on mac
+                            self.test_url = str(f['name'])
+                            self.info("Found test url %s." % self.test_url)
                     elif f['name'].endswith('crashreporter-symbols.zip'):  # yuk
                         self.symbols_url = str(f['name'])
                         self.info("Found symbols url %s." % self.symbols_url)
                     else:
-                        self.installer_url = str(f['name'])
-                        self.info("Found installer url %s." % self.installer_url)
-            except IndexError, e:
+                        if not self.installer_url:
+                            self.installer_url = str(f['name'])
+                            self.info("Found installer url %s." % self.installer_url)
+            except IndexError:
                 if c.get("require_test_zip"):
                     message = message % ("installer_url+test_url")
                 else:
                     message = message % ("installer_url")
-                self.fatal("%s: %s!" % (message, str(e)))
             missing = []
             if not self.installer_url:
                 missing.append("installer_url")
@@ -202,7 +207,8 @@ You can set this by:
                                      error_level=FATAL)
         command = self.query_exe('unzip', return_type='list')
         command.extend(['-q', '-o', zipfile])
-        self.run_command(command, cwd=parent_dir, halt_on_failure=True)
+        self.run_command(command, cwd=parent_dir, halt_on_failure=True,
+                         fatal_exit_code=3, output_timeout=1760)
 
     def _extract_test_zip(self, target_unzip_dirs=None):
         dirs = self.query_abs_dirs()
@@ -219,7 +225,8 @@ You can set this by:
         # TODO error_list
         # unzip return code 11 is 'no matching files were found'
         self.run_command(unzip_cmd, cwd=test_install_dir,
-                         halt_on_failure=True, success_codes=[0, 11])
+                         halt_on_failure=True, success_codes=[0, 11],
+                         fatal_exit_code=3)
 
     def _read_tree_config(self):
         """Reads an in-tree config file"""
@@ -232,7 +239,7 @@ You can set this by:
             tree_config_path = os.path.join(test_install_dir, rel_tree_config_path)
 
             if not os.path.isfile(tree_config_path):
-                self.fatal("The in-tree configuration file '%s' does not exist!" \
+                self.fatal("The in-tree configuration file '%s' does not exist!"
                            "It must be added to '%s'. See bug 981030 for more details." %
                            (tree_config_path, os.path.join('gecko', 'testing', rel_tree_config_path)))
 
@@ -273,7 +280,7 @@ You can set this by:
         self.set_buildbot_property("symbols_url", self.symbols_url,
                                    write_to_file=True)
         self.run_command(['unzip', '-q', source], cwd=self.symbols_path,
-                         halt_on_failure=True)
+                         halt_on_failure=True, fatal_exit_code=3)
 
     def download_and_extract(self, target_unzip_dirs=None):
         """
@@ -336,7 +343,8 @@ Did you run with --create-virtualenv? Is mozinstall in virtualenv_modules?""")
         cmd.extend([self.installer_path,
                     '--destination', target_dir])
         # TODO we'll need some error checking here
-        self.binary_path = self.get_output_from_command(cmd, halt_on_failure=True)
+        self.binary_path = self.get_output_from_command(cmd, halt_on_failure=True,
+                                                        fatal_exit_code=3)
 
     def install_minidump_stackwalk(self):
         dirs = self.query_abs_dirs()
@@ -408,7 +416,8 @@ Did you run with --create-virtualenv? Is mozinstall in virtualenv_modules?""")
             self.run_command(cmd,
                              cwd=dirs['abs_work_dir'],
                              error_list=BaseErrorList,
-                             halt_on_failure=suite['halt_on_failure'])
+                             halt_on_failure=suite['halt_on_failure'],
+                             fatal_exit_code=suite.get('fatal_exit_code', 3))
 
     def preflight_run_tests(self):
         """preflight commands for all tests"""

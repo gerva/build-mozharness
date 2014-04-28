@@ -602,12 +602,11 @@ class ScriptMixin(object):
                     halt_on_failure=False, success_codes=None,
                     env=None, partial_env=None, return_type='status',
                     throw_exception=False, output_parser=None,
-                    output_timeout=None, **kwargs):
+                    output_timeout=None, fatal_exit_code=2, **kwargs):
         """Run a command, with logging and error parsing.
 
         output_timeout is the number of seconds without output before the process
-        is killed; it requires that mozprocess is installed in the script's
-        virtualenv.
+        is killed.
 
         TODO: context_lines
         TODO: error_level_override?
@@ -701,10 +700,20 @@ class ScriptMixin(object):
             if throw_exception:
                 raise subprocess.CalledProcessError(returncode, command)
         self.log("Return code: %d" % returncode, level=return_level)
+
         if halt_on_failure:
-            if parser.num_errors or returncode not in success_codes:
+            _fail = False
+            if returncode not in success_codes:
+                self.error("%s not in success codes: %s" % (returncode,
+                                                            success_codes))
+                _fail = True
+            if parser.num_errors:
+                self.error("failures found while parsing output")
+                _fail = True
+            if _fail:
+                self.return_code = fatal_exit_code
                 self.fatal("Halting on failure while running %s" % command,
-                           exit_code=returncode)
+                           exit_code=fatal_exit_code)
         if return_type == 'num_errors':
             return parser.num_errors
         return returncode
@@ -714,7 +723,7 @@ class ScriptMixin(object):
                                 silent=False, log_level=INFO,
                                 tmpfile_base_path='tmpfile',
                                 return_type='output', save_tmpfiles=False,
-                                throw_exception=False):
+                                throw_exception=False, fatal_exit_code=2):
         """Similar to run_command, but where run_command is an
         os.system(command) analog, get_output_from_command is a `command`
         analog.
@@ -811,8 +820,9 @@ class ScriptMixin(object):
             raise subprocess.CalledProcessError(p.returncode, command)
         self.log("Return code: %d" % p.returncode, level=return_level)
         if halt_on_failure and return_level == ERROR:
+            self.return_code = fatal_exit_code
             self.fatal("Halting on failure while running %s" % command,
-                       exit_code=p.returncode)
+                       exit_code=fatal_exit_code)
         # Hm, options on how to return this? I bet often we'll want
         # output_lines[0] with no newline.
         if return_type != 'output':
@@ -1018,7 +1028,7 @@ class BaseScript(ScriptMixin, LogMixin, object):
         # keys/values are present in a config file with a higher precedence,
         # ignore those.
         dirs = self.query_abs_dirs()
-        cfg_files_dump_config = {} # we will dump this to file
+        cfg_files_dump_config = {}  # we will dump this to file
         # keep track of keys that did not come from a config file
         keys_not_from_file = set(self.config.keys())
         if not cfg_files:
