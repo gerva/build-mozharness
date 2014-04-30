@@ -156,14 +156,15 @@ class MarFile(ScriptMixin, LogMixin, object):
         files = self.mar_scripts
         ini_file = os.path.join(temp_dir, files.ini_file)
         self.info("application.ini file: %s" % ini_file)
+
         # log the content of application.ini
         with self.opened(ini_file, 'r') as (ini, error):
             if error:
                 self.fatal('cannot open {0}'.format(ini_file))
             self.debug(ini.read())
         # delete temp_dir
-        self.rmtree(temp_dir)
         self.build_id = buildid_form_ini(ini_file)
+        self.rmtree(temp_dir)
         return self.build_id
 
 
