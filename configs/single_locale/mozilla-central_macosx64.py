@@ -86,6 +86,7 @@ config = {
     "buildid_option": "BuildID",
     "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
     "incremental_update_script": "tools/update-packaging/make_incremental_update.sh",
+    "balrog_release_pusher_script": "scripts/updates/balrog-release-pusher.py",
     "update_packaging_dir": "tools/update-packaging",
     "local_mar_tool_dir": "dist/host/bin",
     "mar": "mar",
