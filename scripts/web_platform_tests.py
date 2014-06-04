@@ -69,7 +69,7 @@ class WebPlatformTest(TestingMixin, MercurialScript, BlobUploadMixin):
         dirs = {}
         dirs['abs_app_install_dir'] = os.path.join(abs_dirs['abs_work_dir'], 'application')
         dirs['abs_test_install_dir'] = os.path.join(abs_dirs['abs_work_dir'], 'tests')
-        dirs["abs_wpttest_dir"] = os.path.join(dirs['abs_test_install_dir'], "web-platform-tests")
+        dirs["abs_wpttest_dir"] = os.path.join(dirs['abs_test_install_dir'], "web-platform")
         dirs['abs_blob_upload_dir'] = os.path.join(abs_dirs['abs_work_dir'], 'blobber_upload_dir')
 
         abs_dirs.update(dirs)
@@ -197,7 +197,7 @@ class StructuredFormatter(object):
         time = data["time"] - start_time
 
         if "expected" in data:
-            return "TEST-END UNEXPECTED-%s | %s | expected %s | %s | took %ims" % (
+            return "TEST-END TEST-UNEXPECTED-%s | %s | expected %s | %s | took %ims" % (
                 data["status"], self.id_str(data["test"]), data["expected"],
                 data.get("message", ""), time)
         else:

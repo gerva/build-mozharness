@@ -5,7 +5,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 # ***** END LICENSE BLOCK *****
 """desktop_unittest.py
-The goal of this is to extract desktop unittestng from buildbot's factory.py
+The goal of this is to extract desktop unittesting from buildbot's factory.py
 
 author: Jordan Lund
 """
@@ -42,6 +42,14 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
             "help": "Specify which mochi suite to run. "
                     "Suites are defined in the config file.\n"
                     "Examples: 'all', 'plain1', 'plain5', 'chrome', or 'a11y'"}
+         ],
+        [['--webapprt-suite', ], {
+            "action": "extend",
+            "dest": "specified_webapprt_suites",
+            "type": "string",
+            "help": "Specify which webapprt suite to run. "
+                    "Suites are defined in the config file.\n"
+                    "Examples: 'content', 'chrome'"}
          ],
         [['--reftest-suite', ], {
             "action": "extend",
@@ -97,9 +105,18 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
             "default": False,
             "help": "Run tests with multiple processes."}
          ],
+        [["--total-chunks"], {
+            "action": "store",
+            "dest": "total_chunks",
+            "help": "Number of total chunks"}
+         ],
+        [["--this-chunk"], {
+            "action": "store",
+            "dest": "this_chunk",
+            "help": "Number of this chunk"}
+         ],
     ] + copy.deepcopy(testing_config_options) + \
         copy.deepcopy(blobupload_config_options)
-
 
     def __init__(self, require_config_file=True):
         # abs_dirs defined already in BaseScript but is here to make pylint happy
@@ -129,7 +146,7 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
         self.binary_path = c.get('binary_path')
         self.abs_app_dir = None
 
-    ###### helper methods
+    # helper methods {{{2
     def _pre_config_lock(self, rw_config):
         c = self.config
         if not c.get('run_all_suites'):
@@ -158,6 +175,7 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
         dirs['abs_test_bin_components_dir'] = os.path.join(dirs['abs_test_bin_dir'],
                                                            'components')
         dirs['abs_mochitest_dir'] = os.path.join(dirs['abs_test_install_dir'], "mochitest")
+        dirs['abs_webapprt_dir'] = os.path.join(dirs['abs_test_install_dir'], "mochitest")
         dirs['abs_reftest_dir'] = os.path.join(dirs['abs_test_install_dir'], "reftest")
         dirs['abs_xpcshell_dir'] = os.path.join(dirs['abs_test_install_dir'], "xpcshell")
         dirs['abs_cppunittest_dir'] = os.path.join(dirs['abs_test_install_dir'], "cppunittests")
@@ -230,10 +248,17 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
             base_cmd = [self.query_python_path('python'), '-u']
             base_cmd.append(dirs["abs_%s_dir" % suite_category] + "/" + run_file)
             abs_app_dir = self.query_abs_app_dir()
+
+            webapprt_path = os.path.join(os.path.dirname(self.binary_path),
+                                         'webapprt-stub')
+            if c.get('exe_suffix'):
+                webapprt_path += c['exe_suffix']
+
             str_format_values = {
                 'binary_path': self.binary_path,
                 'symbols_path': self._query_symbols_url(),
-                'abs_app_dir': abs_app_dir
+                'abs_app_dir': abs_app_dir,
+                'app_path': webapprt_path
             }
             # TestingMixin._download_and_extract_symbols() will set
             # self.symbols_path when downloading/extracting.
@@ -243,15 +268,20 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
             if c['e10s']:
                 base_cmd.append('--e10s')
 
+            if c.get('total_chunks') and c.get('this_chunk'):
+                base_cmd.extend(['--total-chunks', c['total_chunks'],
+                                 '--this-chunk', c['this_chunk']])
+
             # set pluginsPath
             abs_app_plugins_dir = os.path.join(abs_app_dir, 'plugins')
             str_format_values['test_plugin_path'] = abs_app_plugins_dir
 
             suite_options = '%s_options' % suite_category
             if suite_options not in self.tree_config:
-                self.fatal("Key '%s' not defined in the in-tree config! Please add it to '%s'." \
-                           "See bug 981030 for more details." % (suite_options,
-                           os.path.join('gecko', 'testing', self.config['in_tree_config'])))
+                self.fatal("Key '%s' not defined in the in-tree config! Please add it to '%s'. "
+                           "See bug 981030 for more details." %
+                           (suite_options,
+                            os.path.join('gecko', 'testing', self.config['in_tree_config'])))
             options = list(self.tree_config[suite_options])
             if options:
                 for i, option in enumerate(options):
@@ -266,7 +296,7 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
                              (suite_category, suite_category))
                 return base_cmd
         else:
-            self.fatal("'binary_path' could not be determined.\n This should"
+            self.fatal("'binary_path' could not be determined.\n This should "
                        "be like '/path/build/application/firefox/firefox'"
                        "\nIf you are running this script without the 'install' "
                        "action (where binary_path is set), please ensure you are"
@@ -336,6 +366,7 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
     def run_tests(self):
         self._run_category_suites('mochitest')
         self._run_category_suites('reftest')
+        self._run_category_suites('webapprt')
         self._run_category_suites('xpcshell',
                                   preflight_run_method=self.preflight_xpcshell)
         self._run_category_suites('cppunittest',
@@ -378,7 +409,6 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
         """run suite(s) to a specific category"""
         c = self.config
         dirs = self.query_abs_dirs()
-        abs_base_cmd = self._query_abs_base_cmd(suite_category)
         suites = self._query_specified_suites(suite_category)
         abs_app_dir = self.query_abs_app_dir()
 
@@ -386,6 +416,7 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
             preflight_run_method(suites)
         if suites:
             self.info('#### Running %s suites' % suite_category)
+            abs_base_cmd = self._query_abs_base_cmd(suite_category)
             for suite in suites:
                 cmd = abs_base_cmd[:]
                 replace_dict = {
