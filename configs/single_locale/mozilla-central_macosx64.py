@@ -105,4 +105,9 @@ config = {
     "aus_ssh_key": AUS_SSH_KEY,
     "aus_upload_base_dir": AUS_UPLOAD_BASE_DIR,
     "aus_base_dir": AUS_BASE_DIR,
+
+    #BALROG
+    "balrog_credentials_file": "oauth.txt",
+    "balrog_api_root": "http://127.0.0.1:9000",
+    "balrog_username": "mgervasini@mozilla.com"
 }
