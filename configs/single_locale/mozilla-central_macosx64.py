@@ -107,7 +107,13 @@ config = {
     "aus_base_dir": AUS_BASE_DIR,
 
     #BALROG
+    "product": "Firefox",
+    "platform": "osx64",
+    "hashType": "sha512",
     "balrog_credentials_file": "oauth.txt",
     "balrog_api_root": "http://127.0.0.1:9000",
-    "balrog_username": "mgervasini@mozilla.com"
+    "balrog_username": "mgervasini@mozilla.com",
+    "balrog_usernames": {
+        "Firefox": "mgervasini@mozilla.com"
+    }
 }

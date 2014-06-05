@@ -150,7 +150,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                     replace_dict=replace_dict)
         if config.get('base_en_us_binary_url') and \
            config.get('release_config_file'):
-#            release_config = self.query_release_config()
             binary_url = config['base_en_us_binary_url'] % replace_dict
             repack_env['EN_US_BINARY_URL'] = binary_url
         if 'MOZ_SIGNING_SERVERS' in os.environ:
@@ -335,8 +334,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         revision = self.query_revision()
         if not revision:
             self.fatal("Can't determine revision!")
-        # TODO do this through VCSMixin instead of hardcoding hg
-        #self.update(dest=dirs["abs_mozilla_dir"], revision=revision)
+        #  TODO do this through VCSMixin instead of hardcoding hg
+        #  self.update(dest=dirs["abs_mozilla_dir"], revision=revision)
         hg = self.query_exe("hg")
         self.run_command([hg, "update", "-r", revision],
                          cwd=dirs["abs_mozilla_dir"],
@@ -430,7 +429,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def make_export(self, buildid):
         """calls make export <buildid>"""
-        #is it really needed ???
+        #  is it really needed ???
         if buildid is None:
             return
         dirs = self.query_abs_dirs()
@@ -507,6 +506,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             for step in steps:
                 self.info("%s: %s" % (step, steps[step]))
 
+    def localized_marfile(self, locale):
+        config = self.config
+        version = self.query_version()
+        localized_mar = config['localized_mar'] % {'version': version,
+                                                   'locale': locale}
+        localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
+                                     localized_mar)
+        return localized_mar
+
     def generate_partials(self, locale):
         """generate partial files"""
         config = self.config
@@ -520,10 +528,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                  ini_file=config['application_ini'],
                                  mar_binaries=self._mar_binaries(),
                                  env=env)
-        localized_mar = config['localized_mar'] % {'version': version,
-                                                   'locale': locale}
-        localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
-                                     localized_mar)
+        localized_mar = self.localized_marfile(locale)
 
         if not os.path.exists(localized_mar):
             # *.complete.mar already exist in windows but
@@ -569,14 +574,21 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def submit_to_balrog(self):
         """submit to barlog"""
-#        appVersion = self.query_version()
-#        appVersion = self.query_version()
-#        for locale in self.query_locales():
-#            appName = self.query_base_package_name(locale)
-#            self.submit_balrog_updates(release_type="nightly",
-#                                       appVersion=appVersion,
-#                                       appName=appName)
-        self.submit_balrog_updates(release_type="nightly")
+        config = self.config
+        platform = config['platform']
+        hashType = config['hashType']
+        for locale in self.query_locales():
+            appName = self.query_base_package_name(locale)
+            marfile = self.localized_marfile(locale)
+            appVersion = self.query_version()
+            buildid = self.query_buildid()
+            branch = "blah"
+            complete_mar_url = "http://ftp.mozilla.org/pub/mozilla.org"
+            self.submit_balrog_updates(marfile=marfile, hash_type=hashType,
+                                       appName=appName, appVersion=appVersion,
+                                       platform=platform, branch=branch,
+                                       complete_mar_url=complete_mar_url,
+                                       buildid=buildid, release_type="nightly")
 
     def delete_pgc_files(self):
         """deletes pgc files"""
@@ -590,7 +602,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """returns the url for previous mar"""
         config = self.config
         base_url = config['previous_mar_url']
-        return "/".join((base_url, self._localized_mar(locale)))
+        return "/".join((base_url, self._localized_mar_name(locale)))
 
     def get_previous_mar(self, locale):
         """downloads the previous mar file"""
@@ -599,7 +611,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                            self._previous_mar_filename())
         return self._previous_mar_filename()
 
-    def _localized_mar(self, locale):
+    def _localized_mar_name(self, locale):
         """returns localized mar name"""
         config = self.config
         version = self.query_version()
