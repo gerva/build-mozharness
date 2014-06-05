@@ -24,7 +24,6 @@ except ImportError:
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
-from mozharness.base.log import OutputParser
 from mozharness.base.transfer import TransferMixin
 from mozharness.base.mar import MarTool, MarFile, MarScripts
 from mozharness.base.errors import BaseErrorList, MakefileErrorList
@@ -37,6 +36,7 @@ from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
+from mozharness.mozilla.updates.balrog import BalrogMixin
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -49,7 +49,7 @@ PyMakeIgnoreList = [
 # DesktopSingleLocale {{{1
 class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           MockMixin, PurgeMixin, BuildbotMixin, TransferMixin,
-                          VCSMixin, SigningMixin, BaseScript):
+                          VCSMixin, SigningMixin, BaseScript, BalrogMixin):
     """Manages desktop repacks"""
     config_options = [[
         ['--locale', ],
@@ -118,11 +118,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "list-locales",
                 "setup",
                 "repack",
-                #"generate-complete-mar",
-                #"generate-partials",
-                "create-nightly-snippets",
-                "upload-nightly-repacks",
-                "upload-snippets",
+                "submit-to-balrog",
                 "summary",
             ],
             require_config_file=require_config_file
@@ -511,108 +507,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             for step in steps:
                 self.info("%s: %s" % (step, steps[step]))
 
-    def upload_repacks(self):
-        """calls make upload <locale>"""
-        config = self.config
-        dirs = self.query_abs_dirs()
-        locales = self.query_locales()
-        version = self.query_version()
-        upload_env = self.query_repack_env()
-        success_count = 0
-        total_count = 0
-        cwd = dirs['abs_locales_dir']
-        for locale in locales:
-            if self.query_failure(locale):
-                self.warning("Skipping previously failed locale %s." % locale)
-                continue
-            total_count += 1
-            if config.get('base_post_upload_cmd'):
-                upload_cmd = {'version': version, 'locale': locale}
-                upload_cmd = config['base_post_upload_cmd'] % upload_cmd
-                upload_env['POST_UPLOAD_CMD'] = upload_cmd
-            target = ["upload", "AB_CD=%s" % locale]
-            output = self._get_output_from_make(target, cwd=cwd, env=upload_env)
-            parser = OutputParser(config=self.config, log_obj=self.log_obj,
-                                  error_list=MakefileErrorList)
-            parser.add_lines(output)
-            if parser.num_errors:
-                msg = "%s failed in make upload!" % (locale)
-                self.add_failure(locale, message=msg)
-                continue
-            package_name = self.query_base_package_name(locale)
-            r = re.compile("(http.*%s)" % package_name)
-            success = False
-            for line in output.splitlines():
-                m = r.match(line)
-                if m:
-                    self.upload_urls[locale] = m.groups()[0]
-                    self.info("Found upload url %s" % self.upload_urls[locale])
-                    success = True
-            if not success:
-                msg = "Failed to detect %s url in make upload!" % locale
-                self.add_failure(locale, message=msg)
-                self.debug(output)
-                continue
-            success_count += 1
-            msg = "Uploaded %d of %d binaries successfully." % (success_count,
-                                                                total_count)
-        self.summarize_success_count(success_count, total_count, message=msg)
-
-    def create_nightly_snippets(self):
-        """create snippets for nightly"""
-        config = self.config
-        dirs = self.query_abs_dirs()
-        locales = self.query_locales()
-        buildid = self.query_buildid()
-        version = self.query_version()
-        success_count = 0
-        total_count = 0
-        final_msg = "Created %d of %d snippets successfully."
-        for locale in locales:
-            total_count += 1
-            aus_dict = {'buildid': buildid,
-                        'build_target': config['build_target'],
-                        'locale': locale}
-            aus_dir = config['aus_base_dir'] % aus_dict
-            aus_abs_dir = os.path.join(dirs['abs_work_dir'], 'update', aus_dir)
-            base_name = self.query_base_package_name(locale)
-            binary_path = os.path.join(self._abs_dist_dir(), base_name)
-            # for win repacks
-            binary_path = binary_path.replace(os.sep, "/")
-            url = self.query_upload_url(locale)
-            if not url:
-                msg = "Can't create a snippet for %s " % locale
-                msg += "without an upload url."
-                self.add_failure(locale, msg)
-                continue
-            if not self.create_complete_snippet(binary_path, version,
-                                                buildid, url, aus_abs_dir):
-                msg = "Errors creating snippet for %s! " % locale
-                msg += "Removing snippet directory."
-                self.add_failure(locale, message=msg)
-                self.rmtree(aus_abs_dir)
-                continue
-            self._touch_file(os.path.join(aus_abs_dir, "partial.txt"))
-            success_count += 1
-        self.summarize_success_count(success_count,
-                                     total_count,
-                                     message=final_msg)
-
-    def upload_nightly_snippets(self):
-        """uploads nightly snippets"""
-        config = self.config
-        dirs = self.query_abs_dirs()
-        update_dir = os.path.join(dirs['abs_work_dir'], 'update')
-        if not os.path.exists(update_dir):
-            self.error("No such directory %s! Skipping..." % update_dir)
-            return
-        if self.rsync_upload_directory(update_dir,
-                                       config['aus_ssh_key'],
-                                       config['aus_user'],
-                                       config['aus_server'],
-                                       config['aus_upload_basedir']):
-            self.return_code += 1
-
     def generate_partials(self, locale):
         """generate partial files"""
         config = self.config
@@ -652,6 +546,37 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         archive = os.path.join(update_mar_dir, archive)
         # let's make the incremental update
         to_m.incremental_update(from_m, archive)
+
+    def _query_objdir(self):
+        if self.objdir:
+            return self.objdir
+
+        self.objdir = self.config['objdir']
+        return self.objdir
+
+    def query_abs_dirs(self):
+        if self.abs_dirs:
+            return self.abs_dirs
+        abs_dirs = super(DesktopSingleLocale, self).query_abs_dirs()
+        dirs = {}
+        dirs['abs_tools_dir'] = os.path.join(abs_dirs['abs_work_dir'], 'tools')
+
+        for key in dirs.keys():
+            if key not in abs_dirs:
+                abs_dirs[key] = dirs[key]
+        self.abs_dirs = abs_dirs
+        return self.abs_dirs
+
+    def submit_to_balrog(self):
+        """submit to barlog"""
+#        appVersion = self.query_version()
+#        appVersion = self.query_version()
+#        for locale in self.query_locales():
+#            appName = self.query_base_package_name(locale)
+#            self.submit_balrog_updates(release_type="nightly",
+#                                       appVersion=appVersion,
+#                                       appName=appName)
+        self.submit_balrog_updates(release_type="nightly")
 
     def delete_pgc_files(self):
         """deletes pgc files"""
