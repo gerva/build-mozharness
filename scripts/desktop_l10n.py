@@ -37,7 +37,7 @@ from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
 from mozharness.mozilla.updates.balrog import BalrogMixin
-from mozharness.mozilla.summary import decorator__
+from mozharness.mozilla.summary import per_locale_summary
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -291,8 +291,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 # upload failed
                 fail_message = '%s failed in make upload' % (locale)
                 self.add_failure(locale, fail_message)
-        else:
-            success_count += 1
+            else:
+                success_count += 1
         self.summarize_success_count(success_count, total_count,
                                      message="Uploaded %d of %d binaries successfully.")
 
@@ -484,7 +484,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cwd = dirs['abs_locales_dir']
         return self._make(target=["wget-en-US"], cwd=cwd, env=env)
 
-    @decorator__
+    @per_locale_summary
     def make_upload(self, locale):
         """wrapper for make upload command"""
         config = self.config
