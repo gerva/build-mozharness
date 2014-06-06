@@ -37,6 +37,7 @@ from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
 from mozharness.mozilla.updates.balrog import BalrogMixin
+from mozharness.mozilla.summary import decorator__
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -118,6 +119,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "list-locales",
                 "setup",
                 "repack",
+                "upload-repacks",
                 "submit-to-balrog",
                 "summary",
             ],
@@ -126,6 +128,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.buildid = None
         self.make_ident_output = None
         self.repack_env = None
+        self.upload_env = None
         self.revision = None
         self.version = None
         self.upload_urls = {}
@@ -159,6 +162,20 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             repack_env['MOZ_SIGN_CMD'] = sign_cmd.replace('\\', '\\\\\\\\')
         self.repack_env = repack_env
         return self.repack_env
+
+    def query_upload_env(self):
+        if self.upload_env:
+            return self.upload_env
+        c = self.config
+        buildid = self.query_buildid()
+        version = self.query_version()
+        upload_env = self.query_env(partial_env=c.get("upload_env"),
+                                    replace_dict={'buildid': buildid,
+                                                  'version': version})
+        if 'MOZ_SIGNING_SERVERS' in os.environ:
+            upload_env['MOZ_SIGN_CMD'] = subprocess.list2cmdline(self.query_moz_sign_cmd())
+        self.upload_env = upload_env
+        return self.upload_env
 
     def _query_make_ident_output(self):
         """Get |make ident| output from the objdir.
@@ -264,6 +281,20 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         msg += "--create-nightly-snippets, or specify "
         msg += "the 'snippet_base_url' in self.config!"
         self.error(msg)
+
+    def upload_repacks(self):
+        total_count = 0
+        success_count = 0
+        for locale in self.query_locales():
+            total_count += 1
+            if self.make_upload(locale=locale):
+                # upload failed
+                fail_message = '%s failed in make upload' % (locale)
+                self.add_failure(locale, fail_message)
+        else:
+            success_count += 1
+        self.summarize_success_count(success_count, total_count,
+                                     message="Uploaded %d of %d binaries successfully.")
 
     def add_failure(self, locale, message, **kwargs):
         self.locales_property[locale] = "Failed"
@@ -452,6 +483,23 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         cwd = dirs['abs_locales_dir']
         return self._make(target=["wget-en-US"], cwd=cwd, env=env)
+
+    @decorator__
+    def make_upload(self, locale):
+        """wrapper for make upload command"""
+        config = self.config
+        env = self.query_upload_env()
+        dirs = self.query_abs_dirs()
+        buildid = self.query_buildid()
+        try:
+            env['POST_UPLOAD_CMD'] = config['base_post_upload_cmd'] % {'buildid': buildid}
+        except KeyError:
+            # no base_post_upload_cmd in configuration, just skip it
+            pass
+        target = ['upload', 'AB_CD=%s' % (locale)]
+        cwd = dirs['abs_locales_dir']
+        return self._make(target=target, cwd=cwd, env=env,
+                          halt_on_failure=False)
 
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
