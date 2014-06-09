@@ -6,8 +6,10 @@ def per_locale_summary(func):
         result = func(self, *args, **kwargs)
         if result == 0:
             # success!
-            message = 'success: %s, locale = %s' %(name, locale)
-            self.add_success(locale, message)
+            # there's no add_success method...
+            # message = 'success: %s, locale = %s' %(name, locale)
+            # self.add_success(locale, message)
+            pass
         else:
             message = 'failure: %s, locale = %s' %(name, locale)
             self.add_failure(locale, message)

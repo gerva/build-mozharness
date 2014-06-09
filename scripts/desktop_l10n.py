@@ -283,18 +283,44 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.error(msg)
 
     def upload_repacks(self):
+        """iterates through the list of locales and calls make upload"""
         total_count = 0
         success_count = 0
+
+#        with summarize(self.make_upload) as s:
+#            for l in self.query_locales():
+#                s(locale=l)
+
+#        self.summarize(self.make_upload,
+#                        dict(locale=l) for l in self.query_locales())
+
+#        self.summarize(self.make_upload, self.query_locales())
         for locale in self.query_locales():
             total_count += 1
-            if self.make_upload(locale=locale):
-                # upload failed
-                fail_message = '%s failed in make upload' % (locale)
-                self.add_failure(locale, fail_message)
-            else:
+            # use locale=locale so the decorator can extract the locale based
+            # on the option name
+            if not self.make_upload(locale=locale):
                 success_count += 1
         self.summarize_success_count(success_count, total_count,
                                      message="Uploaded %d of %d binaries successfully.")
+
+    def summarize(self, func, items):
+        """runs func for any item in items, calls the add_failure() for each
+           error. It assumes that function returns 0 when successful.
+           returns a two element tuple with (success_count, total_count)"""
+        success_count = 0
+        total_count = len(items)
+        name = func.__name__
+        for item in items:
+            result = func(item)
+            if result == 0:
+                #  success!
+                success_count += 1
+            else:
+                #  func failed...
+                message = 'failure: %s(%s)' % (name, item)
+                self.add_failure(item, message)
+        return (success_count, total_count)
 
     def add_failure(self, locale, message, **kwargs):
         self.locales_property[locale] = "Failed"
@@ -501,6 +527,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._make(target=target, cwd=cwd, env=env,
                           halt_on_failure=False)
 
+    @per_locale_summary
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
         env = self.query_repack_env()
@@ -539,9 +566,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         locales = self.query_locales()
         results = {}
         for locale in locales:
-            compare_locales = self.run_compare_locales(locale)
-            installers = self.make_installers(locale)
-            partials = self.generate_partials(locale)
+            compare_locales = self.run_compare_locales(locale=locale)
+            installers = self.make_installers(locale=locale)
+            partials = self.generate_partials(locale=locale)
             # log results:
             result = {}
             result['compare_locales'] = compare_locales
@@ -563,6 +590,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                      localized_mar)
         return localized_mar
 
+    @per_locale_summary
     def generate_partials(self, locale):
         """generate partial files"""
         config = self.config
