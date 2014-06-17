@@ -37,7 +37,6 @@ from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
 from mozharness.mozilla.updates.balrog import BalrogMixin
-from mozharness.mozilla.summary import per_locale_summary
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -284,25 +283,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def upload_repacks(self):
         """iterates through the list of locales and calls make upload"""
-        total_count = 0
-        success_count = 0
+        self.summarize(self.make_upload, self.query_locales())
 
-#        with summarize(self.make_upload) as s:
-#            for l in self.query_locales():
-#                s(locale=l)
-
-#        self.summarize(self.make_upload,
-#                        dict(locale=l) for l in self.query_locales())
-
-#        self.summarize(self.make_upload, self.query_locales())
-        for locale in self.query_locales():
-            total_count += 1
-            # use locale=locale so the decorator can extract the locale based
-            # on the option name
-            if not self.make_upload(locale=locale):
-                success_count += 1
-        self.summarize_success_count(success_count, total_count,
-                                     message="Uploaded %d of %d binaries successfully.")
 
     def summarize(self, func, items):
         """runs func for any item in items, calls the add_failure() for each
@@ -372,14 +354,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                 tag_override=config.get('tag_override'))
         self.pull_locale_source()
 
-    # list_locales() is defined in LocalesMixin.
-
     def _setup_configure(self, buildid=None):
         """configuration setup"""
         if self.make_configure():
             self.fatal("Configure failed!")
-        self.make_dirs()
-        self.make_export(buildid)
+        if self.make_dirs():
+            self.fatal("make dir failed!")
+        # do we need it?
+        if self.make_export(buildid):
+            self.fatal("make export failed!")
 
     def setup(self):
         """setup step"""
@@ -450,6 +433,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
               halt_on_failure=True):
         """Runs make. Returns the exit code"""
         make = self.query_exe("make", return_type="list")
+        self.info("**** target: {0}".format(target))
+        self.info("**** cwd: {0}".format(cwd))
+        self.info("**** env: {0}".format(env))
         return self.run_command(make + target,
                                 cwd=cwd,
                                 env=env,
@@ -510,7 +496,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cwd = dirs['abs_locales_dir']
         return self._make(target=["wget-en-US"], cwd=cwd, env=env)
 
-    @per_locale_summary
     def make_upload(self, locale):
         """wrapper for make upload command"""
         config = self.config
@@ -527,10 +512,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._make(target=target, cwd=cwd, env=env,
                           halt_on_failure=False)
 
-    @per_locale_summary
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
         env = self.query_repack_env()
+        self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
         self._mar_tools_download()
         # make.py: error: l10n-base required when using locale-mergedir
@@ -538,12 +523,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # --locale-mergedir=e:\...\...\...
         # replacing \ with /
         # this kind of hacks makes me sad
-        env['LOCALE_MERGEDIR'] = env['LOCALE_MERGEDIR'].replace("\\", "/")
+        #env['LOCALE_MERGEDIR'] = env['LOCALE_MERGEDIR'].replace("\\", "/")
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
-        target = ["installers-%s" % locale,
+        cmd = ["installers-%s" % locale,
                   "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"]]
-        return self._make(target=target, cwd=cwd,
+        return self._make(target=cmd, cwd=cwd,
                           env=env, halt_on_failure=False)
 
     def generate_complete_mar(self, locale):
@@ -558,28 +543,29 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cmd = os.path.join(dirs['abs_objdir'], config['update_packaging_dir'])
         cmd = ['-C', cmd, 'full-update', 'AB_CD=%s' % locale,
                'PACKAGE_BASE_DIR=%s' % package_basedir]
-        self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=env)
+        return self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=env)
+
+
+    def repack_locale(self, locale):
+        if self.run_compare_locales(locale) != 0:
+            self.error("compare locale %s failed" % (locale))
+            return
+
+        if self.make_installers(locale) != 0:
+            self.error("make installers-%s failed" % (locale))
+            return
+
+        if self.generate_partials(locale) != 0:
+            self.error("generate partials %s failed" % (locale))
+            return
+
+        return 0
+
 
     def repack(self):
         """creates the repacks and udpates"""
-        # TODO per-locale logs and reporting.
-        locales = self.query_locales()
-        results = {}
-        for locale in locales:
-            compare_locales = self.run_compare_locales(locale=locale)
-            installers = self.make_installers(locale=locale)
-            partials = self.generate_partials(locale=locale)
-            # log results:
-            result = {}
-            result['compare_locales'] = compare_locales
-            result['installers'] = installers
-            result['partials'] = partials
-            results[locale] = result
-        for locale in results:
-            self.info(locale)
-            steps = results[locale]
-            for step in steps:
-                self.info("%s: %s" % (step, steps[step]))
+        self.summarize(self.repack_locale, self.query_locales())
+
 
     def localized_marfile(self, locale):
         config = self.config
@@ -590,7 +576,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                      localized_mar)
         return localized_mar
 
-    @per_locale_summary
     def generate_partials(self, locale):
         """generate partial files"""
         config = self.config
@@ -626,7 +611,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                            'to_buildid': to_m.buildid()}
         archive = os.path.join(update_mar_dir, archive)
         # let's make the incremental update
-        to_m.incremental_update(from_m, archive)
+        return to_m.incremental_update(from_m, archive)
 
     def _query_objdir(self):
         if self.objdir:
@@ -653,18 +638,25 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         platform = config['platform']
         hashType = config['hashType']
-        for locale in self.query_locales():
-            appName = self.query_base_package_name(locale)
-            marfile = self.localized_marfile(locale)
-            appVersion = self.query_version()
-            buildid = self.query_buildid()
-            branch = "blah"
-            complete_mar_url = "http://ftp.mozilla.org/pub/mozilla.org"
-            self.submit_balrog_updates(marfile=marfile, hash_type=hashType,
-                                       appName=appName, appVersion=appVersion,
-                                       platform=platform, branch=branch,
-                                       complete_mar_url=complete_mar_url,
-                                       buildid=buildid, release_type="nightly")
+        self.summarize(self.submit_locale_to_balrog, self.query_locales())
+
+    def submit_locale_to_balrog(self, locale):
+        """submit a single locale to balrog"""
+        config = self.config
+        platform = config['platform']
+        hashType = config['hashType']
+        appName = self.query_base_package_name(locale)
+        marfile = self.localized_marfile(locale)
+        appVersion = self.query_version()
+        buildid = self.query_buildid()
+        branch = "blah"
+        complete_mar_url = "http://ftp.mozilla.org/pub/mozilla.org"
+        return self.submit_balrog_updates(marfile=marfile, hash_type=hashType,
+                                          appName=appName, appVersion=appVersion,
+                                          platform=platform, branch=branch,
+                                          complete_mar_url=complete_mar_url,
+                                          buildid=buildid,
+                                          release_type="nightly")
 
     def delete_pgc_files(self):
         """deletes pgc files"""
