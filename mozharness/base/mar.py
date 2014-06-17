@@ -107,10 +107,10 @@ class MarFile(ScriptMixin, LogMixin, object):
                                 mar_scripts.env)
         env["MOZ_PKG_PRETTYNAMES"] = self.prettynames
         self.mkdir_p(dst_dir)
-        self.run_command(cmd,
-                         cwd=dst_dir,
-                         env=env,
-                         halt_on_failure=True)
+        return self.run_command(cmd,
+                                cwd=dst_dir,
+                                env=env,
+                                halt_on_failure=True)
 
     def download(self):
         """downloads mar file - not implemented yet"""
@@ -143,9 +143,10 @@ class MarFile(ScriptMixin, LogMixin, object):
         env = tools_environment(tools_dir,
                                 mar_scripts.mar_binaries,
                                 mar_scripts.env)
-        self.run_command(cmd, cwd=None, env=env)
+        result = self.run_command(cmd, cwd=None, env=env)
         self.rmtree(todir)
         self.rmtree(fromdir)
+        return result
 
     def buildid(self):
         """returns the buildid of the current mar file"""
