@@ -98,6 +98,12 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, VCSMixin, BaseScript, BlobUpl
          "dest": "this_chunk",
          "help": "Number of this chunk",
          }
+    ], [
+        ["--test-path"],
+        {"action": "store",
+         "dest": "test_path",
+         "help": "Path of tests to run",
+         }
     ]] + copy.deepcopy(testing_config_options) \
        + copy.deepcopy(blobupload_config_options)
 
@@ -266,6 +272,7 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, VCSMixin, BaseScript, BlobUpl
             'busybox': self.busybox_path,
             'total_chunks': self.config.get('total_chunks'),
             'this_chunk': self.config.get('this_chunk'),
+            'test_path': self.config.get('test_path'),
             'certificate_path': dirs['abs_certs_dir'],
         }
 
@@ -386,8 +393,13 @@ class B2GEmulatorTest(TestingMixin, TooltoolMixin, VCSMixin, BaseScript, BlobUpl
         logcat = os.path.join(dirs['abs_work_dir'], 'emulator-5554.log')
         if os.path.isfile(logcat):
             if parser.fail_count != 0 or parser.crashed or parser.leaked:
+                # On failure, dump logcat, check if the emulator is still
+                # running, and if it is still accessible via adb.
                 self.info('dumping logcat')
                 self.run_command(['cat', logcat], error_list=LogcatErrorList)
+
+                self.run_command(['ps', '-C', 'emulator'])
+                self.run_command([self.adb_path, 'devices'])
 
             # upload logcat to blobber
             self.copyfile(logcat, os.path.join(env['MOZ_UPLOAD_DIR'],

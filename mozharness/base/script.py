@@ -58,6 +58,7 @@ class ScriptMixin(object):
     """
 
     env = None
+    script_obj = None
 
     # Simple filesystem commands {{{2
     def mkdir_p(self, path, error_level=ERROR):
@@ -91,6 +92,7 @@ class ScriptMixin(object):
                 error_level=error_level,
                 error_message=error_message,
                 args=(path, ),
+                log_level=log_level,
             )
         if os.path.exists(path):
             if os.path.isdir(path):
@@ -100,6 +102,7 @@ class ScriptMixin(object):
                     error_message=error_message,
                     retry_exceptions=(OSError, ),
                     args=(path, ),
+                    log_level=log_level,
                 )
             else:
                 return self.retry(
@@ -108,6 +111,7 @@ class ScriptMixin(object):
                     error_message=error_message,
                     retry_exceptions=(OSError, ),
                     args=(path, ),
+                    log_level=log_level,
                 )
         else:
             self.debug("%s doesn't exist." % path)
@@ -462,7 +466,7 @@ class ScriptMixin(object):
     def retry(self, action, attempts=None, sleeptime=60, max_sleeptime=5 * 60,
               retry_exceptions=(Exception, ), good_statuses=None, cleanup=None,
               error_level=ERROR, error_message="%(action)s failed after %(attempts)d tries!",
-              failure_status=-1, args=(), kwargs={}):
+              failure_status=-1, log_level=INFO, args=(), kwargs={}):
         """ Generic retry command.
             Ported from tools util.retry.
 
@@ -502,8 +506,8 @@ class ScriptMixin(object):
             retry = False
             n += 1
             try:
-                self.info("retry: Calling %s with args: %s, kwargs: %s, attempt #%d" %
-                          (action, str(args), str(kwargs), n))
+                self.log("retry: Calling %s with args: %s, kwargs: %s, attempt #%d" %
+                         (action, str(args), str(kwargs), n), level=log_level)
                 status = action(*args, **kwargs)
                 if good_statuses and status not in good_statuses:
                     retry = True
@@ -520,8 +524,8 @@ class ScriptMixin(object):
                     self.log(error_message % {'action': action, 'attempts': n}, level=error_level)
                     return failure_status
                 if sleeptime > 0:
-                    self.info("retry: Failed, sleeping %d seconds before retrying" %
-                              sleeptime)
+                    self.log("retry: Failed, sleeping %d seconds before retrying" %
+                             sleeptime, level=log_level)
                     time.sleep(sleeptime)
                     sleeptime = sleeptime * 2
                     if sleeptime > max_sleeptime:
@@ -585,10 +589,10 @@ class ScriptMixin(object):
             default = exe_name
         exe = self.config.get(exe_dict, {}).get(exe_name, default)
         repl_dict = {}
-        if hasattr(self, 'query_abs_dirs'):
+        if hasattr(self.script_obj, 'query_abs_dirs'):
             # allow for 'make': '%(abs_work_dir)s/...' etc.
-            dirs = self.query_abs_dirs()
-            repl_dict['abs_work_dir'] = dirs['abs_work_dir']
+            dirs = self.script_obj.query_abs_dirs()
+            repl_dict.update(dirs)
         if isinstance(exe, list) or isinstance(exe, tuple):
             exe = [x % repl_dict for x in exe]
         elif isinstance(exe, str):
@@ -731,7 +735,8 @@ class ScriptMixin(object):
                                 silent=False, log_level=INFO,
                                 tmpfile_base_path='tmpfile',
                                 return_type='output', save_tmpfiles=False,
-                                throw_exception=False, fatal_exit_code=2):
+                                throw_exception=False, fatal_exit_code=2,
+                                ignore_errors=False, success_codes=None):
         """Similar to run_command, but where run_command is an
         os.system(command) analog, get_output_from_command is a `command`
         analog.
@@ -744,6 +749,10 @@ class ScriptMixin(object):
         every N seconds?
         TODO: optionally only keep the first or last (N) line(s) of output?
         TODO: optionally only return the tmp_stdout_filename?
+
+        ignore_errors=True is for the case where a command might produce standard
+        error output, but you don't particularly care; setting to True will
+        cause standard error to be logged at DEBUG rather than ERROR
         """
         if cwd:
             if not os.path.isdir(cwd):
@@ -763,6 +772,8 @@ class ScriptMixin(object):
         tmp_stderr = None
         tmp_stdout_filename = '%s_stdout' % tmpfile_base_path
         tmp_stderr_filename = '%s_stderr' % tmpfile_base_path
+        if success_codes is None:
+            success_codes = [0]
 
         # TODO probably some more elegant solution than 2 similar passes
         try:
@@ -809,16 +820,17 @@ class ScriptMixin(object):
                     self.log(' %s' % line, level=log_level)
                 output = '\n'.join(output_lines)
         if os.path.exists(tmp_stderr_filename) and os.path.getsize(tmp_stderr_filename):
-            return_level = ERROR
-            self.error("Errors received:")
+            if not ignore_errors:
+                return_level = ERROR
+            self.log("Errors received:", level=return_level)
             errors = self.read_from_file(tmp_stderr_filename,
                                          verbose=False)
             for line in errors.rstrip().splitlines():
                 if not line or line.isspace():
                     continue
                 line = line.decode("utf-8")
-                self.error(' %s' % line)
-        elif p.returncode:
+                self.log(' %s' % line, level=return_level)
+        elif p.returncode not in success_codes and not ignore_errors:
             return_level = ERROR
         # Clean up.
         if not save_tmpfiles:
@@ -1001,6 +1013,7 @@ class BaseScript(ScriptMixin, LogMixin, object):
         self.all_actions = tuple(rw_config.all_actions)
         self.env = None
         self.new_log_obj(default_log_level=default_log_level)
+        self.script_obj = self
 
         # Set self.config to read-only.
         #
