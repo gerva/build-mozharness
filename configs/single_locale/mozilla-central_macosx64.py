@@ -57,10 +57,8 @@ config = {
         "UPLOAD_USER": STAGE_USER,
         "UPLOAD_SSH_KEY": STAGE_SSH_KEY,
         "UPLOAD_HOST": STAGE_SERVER,
-        #"POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-android-l10n -p mobile -i %(buildid)s --release-to-latest --release-to-dated",
-        #"POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
-        "POST_UPLOAD_CMD": "echo AAAAA",
-        #"UPLOAD_TO_TEMP": "0",
+        "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
+        "UPLOAD_TO_TEMP": "1",
         "UPLOAD_PATH": "/tmp/"
     },
     #l10n
