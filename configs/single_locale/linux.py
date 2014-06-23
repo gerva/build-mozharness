@@ -103,7 +103,7 @@ config = {
     "aus_base_dir": AUS_BASE_DIR,
 
     # Mock
-#    'mock_target': 'mozilla-centos6-i386',
+    'mock_target': 'mozilla-centos6-i386',
 #    'mock_packages':
 #    ['autoconf213', 'python', 'zip', 'mozilla-python27-mercurial', 'git', 'ccache',
 #     'glibc-static', 'libstdc++-static', 'perl-Test-Simple', 'perl-Config-General',
