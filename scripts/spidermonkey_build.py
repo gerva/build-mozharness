@@ -186,6 +186,10 @@ class SpidermonkeyBuild(MockMixin,
                 os.path.join(abs_work_dir, self.config['analysis-dir']),
             'abs_analyzed_objdir':
                 os.path.join(abs_work_dir, self.config['srcdir'], self.config['analysis-objdir']),
+            'analysis_scriptdir':
+                os.path.join(self.config['srcdir'], self.config['analysis-scriptdir']),
+            'abs_tools_dir':
+                os.path.join(abs_dirs['base_work_dir'], 'tools'),
         }
 
         abs_dirs.update(dirs)
@@ -242,7 +246,7 @@ class SpidermonkeyBuild(MockMixin,
             key = self.buildbot_config['properties']['upload_ssh_key']
         else:
             key = self.config['upload_ssh_key']
-        if self.active_mock_target and not key.startswith("/"):
+        if self.mock_enabled and not key.startswith("/"):
             key = "/home/mock_mozilla/.ssh/" + key
         return key
 

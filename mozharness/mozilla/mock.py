@@ -27,7 +27,8 @@ class MockMixin(object):
     This is dependent on ScriptMixin
     """
     done_mock_setup = False
-    active_mock_target = None
+    mock_enabled = False
+    default_mock_target = None
 
     def init_mock(self, mock_target):
         "Initialize mock environment defined by `mock_target`"
@@ -66,23 +67,21 @@ class MockMixin(object):
                 halt_on_failure=True,
                 fatal_exit_code=3)
 
-    def enable_mock(self, config=None):
+    def enable_mock(self):
         """Wrap self.run_command and self.get_output_from_command to run inside
         the mock environment given by self.config['mock_target']"""
-        if not config:
-            config = self.config
-        if not 'mock_target' in config:
+        if not self.default_mock_target and 'mock_target' not in self.config:
             return
-        self.active_mock_target = config['mock_target']
+        self.mock_enabled = True
         self.run_command = self.run_command_m
         self.get_output_from_command = self.get_output_from_command_m
 
     def disable_mock(self):
         """Restore self.run_command and self.get_output_from_command to their
         original versions. This is the opposite of self.enable_mock()"""
-        if not self.active_mock_target:
+        if not self.default_mock_target and 'mock_target' not in self.config:
             return
-        self.active_mock_target = None
+        self.mock_enabled = False
         self.run_command = super(MockMixin, self).run_command
         self.get_output_from_command = super(MockMixin, self).get_output_from_command
 
@@ -170,6 +169,8 @@ class MockMixin(object):
             t = c['mock_target']
         else:
             t = mock_target
+        self.default_mock_target = t
+
         # Don't re-initialize mock if we're using the same packages as before
         # Put the cache inside the mock root so that if somebody else resets
         # the environment, it invalidates the cache
@@ -225,20 +226,22 @@ class MockMixin(object):
         self.done_mock_setup = True
 
     def run_command_m(self, *args, **kwargs):
-        """Executes self.run_mock_command if self.active_mock_target is set,
+        """Executes self.run_mock_command if self.config['mock_target'] is set,
         otherwise executes self.run_command."""
-        if self.active_mock_target:
+        mock_target = self.default_mock_target or self.config.get('mock_target')
+        if mock_target:
             self.setup_mock()
-            return self.run_mock_command(self.active_mock_target, *args, **kwargs)
+            return self.run_mock_command(mock_target, *args, **kwargs)
         else:
             return super(MockMixin, self).run_command(*args, **kwargs)
 
     def get_output_from_command_m(self, *args, **kwargs):
         """Executes self.get_mock_output_from_command if
-        self.active_mock_target is set, otherwise executes
+        self.config['mock_target'] is set, otherwise executes
         self.get_output_from_command."""
-        if self.active_mock_target:
+        mock_target = self.default_mock_target or self.config.get('mock_target')
+        if mock_target:
             self.setup_mock()
-            return self.get_mock_output_from_command(self.active_mock_target, *args, **kwargs)
+            return self.get_mock_output_from_command(mock_target, *args, **kwargs)
         else:
             return super(MockMixin, self).get_output_from_command(*args, **kwargs)
