@@ -87,7 +87,7 @@ config = {
     "mbsdiff": "mbsdiff",
     "candidates_base_url": CANDIDATES_URL,
     "partials_url": "%(base_url)s/latest-mozilla-central/",
-    "mar_tools_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/linux/",
+    "mar_tools_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/linux64/",
     "complete_mar": "firefox-%(version)s.en-US.linux-i686.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-i686.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
