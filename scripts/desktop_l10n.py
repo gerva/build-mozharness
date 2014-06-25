@@ -25,7 +25,7 @@ except ImportError:
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.transfer import TransferMixin
-from mozharness.base.mar import MarTool, MarFile, MarScripts
+from mozharness.mozilla.mar import MarTool, MarFile, MarScripts
 from mozharness.base.errors import BaseErrorList, MakefileErrorList
 from mozharness.mozilla.release import ReleaseMixin
 from mozharness.mozilla.signing import MobileSigningMixin
