@@ -49,7 +49,7 @@ def query_ini_file(ini_file, section, option):
     return ini.get(section, option)
 
 
-def buildid_form_ini(ini_file):
+def buildid_from_ini(ini_file):
     """reads an ini_file and returns the buildid"""
     return query_ini_file(ini_file,
                           CONFIG.get('buildid_section'),
@@ -164,7 +164,7 @@ class MarFile(ScriptMixin, LogMixin, object):
                 self.fatal('cannot open {0}'.format(ini_file))
             self.debug(ini.read())
         # delete temp_dir
-        self.build_id = buildid_form_ini(ini_file)
+        self.build_id = buildid_from_ini(ini_file)
         self.rmtree(temp_dir)
         return self.build_id
 
