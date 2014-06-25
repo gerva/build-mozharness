@@ -20,6 +20,7 @@ sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.log import LogMixin
 from mozharness.base.script import ScriptMixin
+from mozharness.mozilla.mock import MockMixin
 
 
 CONFIG = {
@@ -57,15 +58,20 @@ def buildid_from_ini(ini_file):
 
 
 # MarTool {{{1
-class MarTool(ScriptMixin, LogMixin, object):
+class MarTool(ScriptMixin, LogMixin, MockMixin, object):
     """manages the mar tools executables"""
-    def __init__(self, url, dst_dir, log_obj, binaries):
-        self.url = url
+    def __init__(self, config, dst_dir, log_obj, binaries):
+        self.url = config['mar_tools_url']
         self.dst_dir = dst_dir
         self.binaries = binaries
         self.log_obj = log_obj
-        self.config = CONFIG
+        self.config = config
+        # enable mock
+        if config.get('enable_mock'):
+            self.mock_enable()
+
         super(MarTool, self).__init__()
+
 
     def download(self):
         """downloads mar tools executables (mar,mbsdiff)
@@ -86,14 +92,15 @@ class MarTool(ScriptMixin, LogMixin, object):
 # MarFile {{{1
 class MarFile(ScriptMixin, LogMixin, object):
     """manages the downlad/unpack and incremental updates of mar files"""
-    def __init__(self, mar_scripts, log_obj, filename=None, prettynames=0):
+    def __init__(self, config, mar_scripts, log_obj, filename=None,
+                 prettynames=0):
         self.filename = filename
         super(MarFile, self).__init__()
         self.log_obj = log_obj
         self.build_id = None
         self.mar_scripts = mar_scripts
         self.prettynames = str(prettynames)
-        self.config = CONFIG
+        self.config = config
 
     def unpack_mar(self, dst_dir):
         """unpacks a mar file into dst_dir"""
@@ -172,13 +179,14 @@ class MarFile(ScriptMixin, LogMixin, object):
 class MarScripts(object):
     """holds the information on scripts and directories paths needed
        by MarTool and MarFile"""
-    def __init__(self, unpack, incremental_update,
-                 tools_dir, ini_file, mar_binaries,
+    def __init__(self, config, unpack, incremental_update,
+                 tools_dir, mar_binaries,
                  env):
+        self.ini_file = config['application_ini']
+        self.config = config
         self.unpack = unpack
         self.incremental_update = incremental_update
         self.tools_dir = tools_dir
-        self.ini_file = ini_file
         self.mar_binaries = mar_binaries
         # what happens in mar.py stays in mar.py
         self.env = copy.deepcopy(env)

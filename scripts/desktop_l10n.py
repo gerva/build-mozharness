@@ -583,10 +583,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         update_mar_dir = self.update_mar_dir()
         incremental_update = self._incremental_update_script()
         env = self.query_repack_env()
-        mar_scripts = MarScripts(unpack=self._unpack_script(),
+        mar_scripts = MarScripts(config=config,
+                                 unpack=self._unpack_script(),
                                  incremental_update=incremental_update,
                                  tools_dir=self._mar_tool_dir(),
-                                 ini_file=config['application_ini'],
                                  mar_binaries=self._mar_binaries(),
                                  env=env)
         localized_mar = self.localized_marfile(locale)
@@ -597,11 +597,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.info("%s does not exist. Creating it." % localized_mar)
             self.generate_complete_mar(locale)
 
-        to_m = MarFile(mar_scripts,
+        to_m = MarFile(config=config,
+                       mar_scripts=mar_scripts,
                        log_obj=self.log_obj,
                        filename=localized_mar,
                        prettynames=1)
-        from_m = MarFile(mar_scripts,
+        from_m = MarFile(config=config,
+                         mar_scripts=mar_scripts,
                          log_obj=self.log_obj,
                          filename=self.get_previous_mar(locale),
                          prettynames=1)
@@ -716,10 +718,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _mar_tools_download(self):
         """downloads mar and mbsdiff files"""
         config = self.config
-        martool = MarTool(config['mar_tools_url'],
-                          self._mar_tool_dir(),
-                          self.log_obj,
-                          self._mar_binaries())
+        martool = MarTool(config=config,
+                          dst_dir=self._mar_tool_dir(),
+                          log_obj=self.log_obj,
+                          binaries=self._mar_binaries())
         martool.download()
 
     def _incremental_update_script(self):
