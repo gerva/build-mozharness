@@ -285,7 +285,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """iterates through the list of locales and calls make upload"""
         self.summarize(self.make_upload, self.query_locales())
 
-
     def summarize(self, func, items):
         """runs func for any item in items, calls the add_failure() for each
            error. It assumes that function returns 0 when successful.
@@ -523,11 +522,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # --locale-mergedir=e:\...\...\...
         # replacing \ with /
         # this kind of hacks makes me sad
-        #env['LOCALE_MERGEDIR'] = env['LOCALE_MERGEDIR'].replace("\\", "/")
+        # env['LOCALE_MERGEDIR'] = env['LOCALE_MERGEDIR'].replace("\\", "/")
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
         cmd = ["installers-%s" % locale,
-                  "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"]]
+               "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"]]
         return self._make(target=cmd, cwd=cwd,
                           env=env, halt_on_failure=False)
 
@@ -545,8 +544,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                'PACKAGE_BASE_DIR=%s' % package_basedir]
         return self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=env)
 
-
     def repack_locale(self, locale):
+        """wraps the logic for comapare locale, make installers and generate
+           partials"""
         if self.run_compare_locales(locale) != 0:
             self.error("compare locale %s failed" % (locale))
             return
@@ -561,11 +561,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         return 0
 
-
     def repack(self):
         """creates the repacks and udpates"""
         self.summarize(self.repack_locale, self.query_locales())
-
 
     def localized_marfile(self, locale):
         config = self.config
@@ -637,28 +635,54 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def submit_to_balrog(self):
         """submit to barlog"""
-        config = self.config
-        platform = config['platform']
-        hashType = config['hashType']
         self.summarize(self.submit_locale_to_balrog, self.query_locales())
 
     def submit_locale_to_balrog(self, locale):
         """submit a single locale to balrog"""
-        config = self.config
-        platform = config['platform']
-        hashType = config['hashType']
-        appName = self.query_base_package_name(locale)
-        marfile = self.localized_marfile(locale)
-        appVersion = self.query_version()
-        buildid = self.query_buildid()
-        branch = "blah"
-        complete_mar_url = "http://ftp.mozilla.org/pub/mozilla.org"
-        return self.submit_balrog_updates(marfile=marfile, hash_type=hashType,
-                                          appName=appName, appVersion=appVersion,
-                                          platform=platform, branch=branch,
-                                          complete_mar_url=complete_mar_url,
-                                          buildid=buildid,
-                                          release_type="nightly")
+        if not self.query_is_nightly():
+            self.info("Not a nightly build, skipping balrog submission.")
+            return
+
+        if not self.config.get("balrog_api_root"):
+            self.info("balrog_api_root not set; skipping balrog submission.")
+            return
+
+        marfile = self.query_marfile_path()
+        # Need to update the base url to point at FTP, or better yet, read post_upload.py output?
+        mar_url = self.query_complete_mar_url()
+
+        # Set other necessary properties for Balrog submission. None need to
+        # be passed back to buildbot, so we won't write them to the properties
+        # files.
+        # Locale is hardcoded to en-US, for silly reasons
+        self.set_buildbot_property("locale", "en-US")
+        self.set_buildbot_property("appVersion", self.query_version())
+        # The Balrog submitter translates this platform into a build target
+        # via https://github.com/mozilla/build-tools/blob/master/lib/python/release/platforms.py#L23
+        self.set_buildbot_property("platform", self.buildbot_config["properties"]["platform"])
+        # TODO: Is there a better way to get this?
+        self.set_buildbot_property("appName", "B2G")
+        # TODO: don't hardcode
+        self.set_buildbot_property("hashType", "sha512")
+        self.set_buildbot_property("completeMarSize", self.query_filesize(marfile))
+        self.set_buildbot_property("completeMarHash", self.query_sha512sum(marfile))
+        self.set_buildbot_property("completeMarUrl", mar_url)
+
+        # do nothing, for now
+        return 0
+        return self.submit_balrog_updates()
+
+    def query_complete_mar_url(self):
+        if "complete_mar_url" in self.config:
+            return self.config["complete_mar_url"]
+        if "completeMarUrl" in self.package_urls:
+            return self.package_urls["completeMarUrl"]
+        # XXX: remove this after everything is uploading publicly
+        url = self.config.get("update", {}).get("mar_base_url")
+        if url:
+            url += os.path.basename(self.query_marfile_path())
+            return url.format(branch=self.query_branch())
+        self.fatal("Couldn't find complete mar url in config or package_urls")
 
     def delete_pgc_files(self):
         """deletes pgc files"""
