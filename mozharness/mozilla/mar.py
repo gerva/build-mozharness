@@ -70,6 +70,8 @@ class MarTool(BaseScript, ScriptMixin, LogMixin, MockMixin, object):
         if 'mock_target' in self.config:
             self.enable_mock()
 
+        super(MarTool, self).__init__()
+
     def download(self):
         """downloads mar tools executables (mar,mbsdiff)
            and stores them local_dir()"""
@@ -100,6 +102,8 @@ class MarFile(BaseScript, ScriptMixin, LogMixin, MockMixin, object):
         # enable mock
         if 'mock_target' in self.config:
             self.enable_mock()
+
+        super(MarFile, self).__init__()
 
     def unpack_mar(self, dst_dir):
         """unpacks a mar file into dst_dir"""
