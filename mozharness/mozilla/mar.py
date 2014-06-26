@@ -67,7 +67,7 @@ class MarTool(ScriptMixin, LogMixin, MockMixin, object):
         self.log_obj = log_obj
         self.config = config
         # enable mock
-        if config.get('enable_mock'):
+        if 'mock_target' in self.config:
             self.mock_enable()
 
         super(MarTool, self).__init__()
@@ -100,8 +100,9 @@ class MarFile(ScriptMixin, LogMixin, object):
         self.prettynames = str(prettynames)
         self.config = config
         # enable mock
-        if config.get('enable_mock'):
+        if 'mock_target' in self.config:
             self.mock_enable()
+
         super(MarFile, self).__init__()
 
     def unpack_mar(self, dst_dir):
