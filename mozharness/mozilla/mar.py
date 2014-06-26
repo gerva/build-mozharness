@@ -19,7 +19,7 @@ import copy
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.log import LogMixin
-from mozharness.base.script import ScriptMixin
+from mozharness.base.script import ScriptMixin, BaseScript
 from mozharness.mozilla.mock import MockMixin
 
 
@@ -58,7 +58,7 @@ def buildid_from_ini(ini_file):
 
 
 # MarTool {{{1
-class MarTool(ScriptMixin, LogMixin, MockMixin, object):
+class MarTool(BaseScript, ScriptMixin, LogMixin, MockMixin, object):
     """manages the mar tools executables"""
     def __init__(self, config, dst_dir, log_obj, binaries):
         self.url = config['mar_tools_url']
@@ -87,7 +87,7 @@ class MarTool(ScriptMixin, LogMixin, MockMixin, object):
 
 
 # MarFile {{{1
-class MarFile(ScriptMixin, LogMixin, MockMixin, object):
+class MarFile(BaseScript, ScriptMixin, LogMixin, MockMixin, object):
     """manages the downlad/unpack and incremental updates of mar files"""
     def __init__(self, config, mar_scripts, log_obj, filename=None,
                  prettynames=0):
