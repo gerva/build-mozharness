@@ -72,7 +72,6 @@ class MarTool(ScriptMixin, LogMixin, MockMixin, object):
 
         super(MarTool, self).__init__()
 
-
     def download(self):
         """downloads mar tools executables (mar,mbsdiff)
            and stores them local_dir()"""
@@ -95,12 +94,15 @@ class MarFile(ScriptMixin, LogMixin, object):
     def __init__(self, config, mar_scripts, log_obj, filename=None,
                  prettynames=0):
         self.filename = filename
-        super(MarFile, self).__init__()
         self.log_obj = log_obj
         self.build_id = None
         self.mar_scripts = mar_scripts
         self.prettynames = str(prettynames)
         self.config = config
+        # enable mock
+        if config.get('enable_mock'):
+            self.mock_enable()
+        super(MarFile, self).__init__()
 
     def unpack_mar(self, dst_dir):
         """unpacks a mar file into dst_dir"""
