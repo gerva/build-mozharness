@@ -89,7 +89,7 @@ class MarTool(ScriptMixin, LogMixin, MockMixin, object):
 
 
 # MarFile {{{1
-class MarFile(ScriptMixin, LogMixin, object):
+class MarFile(ScriptMixin, LogMixin, MockMixin, object):
     """manages the downlad/unpack and incremental updates of mar files"""
     def __init__(self, config, mar_scripts, log_obj, filename=None,
                  prettynames=0):
