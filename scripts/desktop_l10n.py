@@ -628,7 +628,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """submit a single locale to balrog"""
         if not self.query_is_nightly():
             self.info("Not a nightly build, skipping balrog submission.")
-            return
+            # extra safe
+            # return
 
         if not self.config.get("balrog_api_root"):
             self.info("balrog_api_root not set; skipping balrog submission.")
