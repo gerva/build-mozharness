@@ -509,11 +509,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             pass
         target = ['upload', 'AB_CD=%s' % (locale)]
         cwd = dirs['abs_locales_dir']
+#        result = _get_output_from_make()
         return self._make(target=target, cwd=cwd, env=env,
                           halt_on_failure=False)
 
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
+        # TODO... don't download the same file again, store it locally
+        # and move it again where make_installer expects it
+        self.make_wget_en_US()
         env = self.query_repack_env()
         self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
@@ -575,11 +579,23 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                      localized_mar)
         return localized_mar
 
+    def query_partial_mar_filename(self, locale):
+        """returns the path of the partial mar"""
+        config = self.config
+        update_mar_dir = self.update_mar_dir()
+        version = self.query_version()
+        src_mar = self.get_previous_mar(locale)
+        dst_mar = self.localized_marfile(locale)
+        src_buildid = self.query_build_id(src_mar, prettynames=1)
+        dst_buildid = self.query_build_id(dst_mar, prettynames=1)
+        partial_filename = config['partial_mar'] % {'version': version,
+                                                    'locale': locale,
+                                                    'from_buildid': src_buildid,
+                                                    'to_buildid': dst_buildid}
+        return os.path.join(update_mar_dir, partial_filename)
+
     def generate_partials(self, locale):
         """generate partial files"""
-        config = self.config
-        version = self.query_version()
-        update_mar_dir = self.update_mar_dir()
         localized_mar = self.localized_marfile(locale)
         if not os.path.exists(localized_mar):
             # *.complete.mar already exists in windows but
@@ -589,13 +605,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         src_mar = self.get_previous_mar(locale)
         dst_mar = localized_mar
-        src_buildid = self.query_build_id(src_mar, prettynames=1)
-        dst_buildid = self.query_build_id(dst_mar, prettynames=1)
-        partial_filename = config['partial_mar'] % {'version': version,
-                                                    'locale': locale,
-                                                    'from_buildid': src_buildid,
-                                                    'to_buildid': dst_buildid}
-        partial_filename = os.path.join(update_mar_dir, partial_filename)
+        partial_filename = self.query_partial_mar_filename(locale)
         # let's make the incremental update
         return self.do_incremental_update(src_mar, dst_mar, partial_filename,
                                           prettynames=1)
@@ -627,7 +637,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def submit_locale_to_balrog(self, locale):
         """submit a single locale to balrog"""
         if not self.query_is_nightly():
-            self.info("Not a nightly build, skipping balrog submission.")
+            self.info("Not a nightly build")
             # extra safe
             # return
 
@@ -635,7 +645,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.info("balrog_api_root not set; skipping balrog submission.")
             return
 
-        marfile = self.query_marfile_path()
+        marfile = self.localized_marfile(locale)
         # Need to update the base url to point at FTP, or better yet, read post_upload.py output?
         mar_url = self.query_complete_mar_url()
 
