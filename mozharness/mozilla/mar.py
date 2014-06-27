@@ -57,37 +57,6 @@ def buildid_from_ini(ini_file):
                           CONFIG.get('buildid_option'))
 
 
-# MarTool {{{1
-class MarTool(BaseScript, ScriptMixin, LogMixin, MockMixin, object):
-    """manages the mar tools executables"""
-    def __init__(self, config, dst_dir, log_obj, binaries):
-        self.url = config['mar_tools_url']
-        self.dst_dir = dst_dir
-        self.binaries = binaries
-        self.log_obj = log_obj
-        self.config = config
-        # enable mock
-        if 'mock_target' in self.config:
-            self.enable_mock()
-
-        super(MarTool, self).__init__()
-
-    def download(self):
-        """downloads mar tools executables (mar,mbsdiff)
-           and stores them local_dir()"""
-        self.info("getting mar tools")
-        self.mkdir_p(self.dst_dir)
-        for binary in self.binaries:
-            from_url = "/".join((self.url, binary))
-            full_path = os.path.join(self.dst_dir, binary)
-            if not os.path.exists(full_path):
-                self.download_file(from_url, file_name=full_path)
-                self.info("downloaded %s" % full_path)
-            else:
-                self.info("found %s, skipping download" % full_path)
-            self.chmod(full_path, 0755)
-
-
 # MarFile {{{1
 class MarFile(BaseScript, ScriptMixin, LogMixin, MockMixin, object):
     """manages the downlad/unpack and incremental updates of mar files"""
@@ -193,3 +162,79 @@ class MarScripts(object):
         self.mar_binaries = mar_binaries
         # what happens in mar.py stays in mar.py
         self.env = copy.deepcopy(env)
+
+
+# MarMixin{{
+class MarMixin(object):
+    def download_mar_tools(self):
+        """downloads mar tools executables (mar,mbsdiff)
+           and stores them local_dir()"""
+        self.info("getting mar tools")
+        dst_dir = self._mar_tool_dir()
+        self.mkdir_p(dst_dir)
+        config = self.config
+        url = config['mar_tools_url']
+        binaries = (config['mar'], config['mbsdiff'])
+        for binary in binaries:
+            from_url = "/".join((url, binary))
+            full_path = os.path.join(dst_dir, binary)
+            if not os.path.exists(full_path):
+                self.download_file(from_url, file_name=full_path)
+                self.info("downloaded %s" % full_path)
+            else:
+                self.info("found %s, skipping download" % full_path)
+            self.chmod(full_path, 0755)
+
+    def _unpack_mar(self, mar_file, dst_dir, prettynames):
+        """unpacks a mar file into dst_dir"""
+        cmd = ['perl', self._unpack_script(), mar_file]
+        tools_dir = self._mar_tool_dir()
+        env = tools_environment(tools_dir,
+                                self._mar_binaries(),
+                                self.query_repack_env())
+        env["MOZ_PKG_PRETTYNAMES"] = self.prettynames
+        self.mkdir_p(dst_dir)
+        return self.run_command(cmd,
+                                cwd=dst_dir,
+                                env=env,
+                                halt_on_failure=True)
+
+    def do_incremental_update(self, src_mar, dst_mar, partial_filename, prettynames):
+        """create an incremental update from src_mar to dst_src.
+           It stores the result in partial_filename"""
+        fromdir = tempfile.mkdtemp()
+        todir = tempfile.mkdtemp()
+        self._unpack_mar(src_mar, fromdir, prettynames)
+        self._unpack_mar(dst_mar, todir, prettynames)
+        # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
+        cmd = [self._incremental_update_script(), partial_filename,
+               fromdir, todir]
+        mar_scripts = self.mar_scripts
+        tools_dir = mar_scripts.tools_dir
+        env = tools_environment(tools_dir,
+                                mar_scripts.mar_binaries,
+                                mar_scripts.env)
+        result = self.run_command(cmd, cwd=None, env=env)
+        self.rmtree(todir)
+        self.rmtree(fromdir)
+        return result
+
+    def get_buildid(self, mar_file, prettynames):
+        """returns the buildid of the current mar file"""
+        temp_dir = tempfile.mkdtemp()
+        self._unpack_mar(mar_file=mar_file, dst_dir=temp_dir,
+                         prettynames=prettynames)
+        config = self.config
+        ini_file = config['application_ini']
+        ini_file = os.path.join(temp_dir, ini_file)
+        self.info("application.ini file: %s" % ini_file)
+
+        # log the content of application.ini
+        with self.opened(ini_file, 'r') as (ini, error):
+            if error:
+                self.fatal('cannot open {0}'.format(ini_file))
+            self.debug(ini.read())
+        # delete temp_dir
+        build_id = buildid_from_ini(ini_file)
+        self.rmtree(temp_dir)
+        return build_id
