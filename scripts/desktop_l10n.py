@@ -517,7 +517,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """wrapper for make installers-(locale)"""
         # TODO... don't download the same file again, store it locally
         # and move it again where make_installer expects it
-        self.make_wget_en_US()
         env = self.query_repack_env()
         self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
@@ -531,7 +530,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
         cmd = ["installers-%s" % locale,
-               "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"]]
+               "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"],
+               "--debug=j"]
         return self._make(target=cmd, cwd=cwd,
                           env=env, halt_on_failure=False)
 
