@@ -76,7 +76,7 @@ class MarMixin(object):
         env = tools_environment(tools_dir,
                                 self._mar_binaries(),
                                 self.query_repack_env())
-        env["MOZ_PKG_PRETTYNAMES"] = self.prettynames
+        env["MOZ_PKG_PRETTYNAMES"] = prettynames
         self.mkdir_p(dst_dir)
         return self.run_command(cmd,
                                 cwd=dst_dir,
@@ -103,7 +103,7 @@ class MarMixin(object):
         self.rmtree(fromdir)
         return result
 
-    def get_buildid(self, mar_file, prettynames):
+    def query_build_id(self, mar_file, prettynames):
         """returns the buildid of the current mar file"""
         temp_dir = tempfile.mkdtemp()
         self._unpack_mar(mar_file=mar_file, dst_dir=temp_dir,

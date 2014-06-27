@@ -589,8 +589,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         src_mar = self.get_previous_mar(locale),
         dst_mar = localized_mar
-        src_buildid = super(MarMixin, self).get_buildid(src_mar, prettynames=1)
-        dst_buildid = super(MarMixin, self).get_buildid(dst_mar, prettynames=1)
+        src_buildid = self.query_build_id(src_mar, prettynames=1)
+        dst_buildid = self.query_build_id(dst_mar, prettynames=1)
         partial_filename = config['partial_mar'] % {'version': version,
                                                     'locale': locale,
                                                     'from_buildid': src_buildid,
