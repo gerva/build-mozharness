@@ -25,7 +25,7 @@ except ImportError:
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.transfer import TransferMixin
-from mozharness.mozilla.mar import MarTool, MarFile, MarScripts
+from mozharness.mozilla.mar import MarMixin
 from mozharness.base.errors import BaseErrorList, MakefileErrorList
 from mozharness.mozilla.release import ReleaseMixin
 from mozharness.mozilla.signing import MobileSigningMixin
@@ -49,7 +49,8 @@ PyMakeIgnoreList = [
 # DesktopSingleLocale {{{1
 class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           MockMixin, PurgeMixin, BuildbotMixin, TransferMixin,
-                          VCSMixin, SigningMixin, BaseScript, BalrogMixin):
+                          VCSMixin, SigningMixin, BaseScript, BalrogMixin,
+                          MarMixin):
     """Manages desktop repacks"""
     config_options = [[
         ['--locale', ],
@@ -381,7 +382,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                          env=self.query_repack_env(),
                          error_list=BaseErrorList,
                          halt_on_failure=True, fatal_exit_code=3)
-        self._mar_tools_download()
         # if checkout updates CLOBBER file with a newer timestamp,
         # next make -f client.mk configure  will delete archives
         # downloaded with make wget_en_US, so just touch CLOBBER file
@@ -391,6 +391,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # Configure again since the hg update may have invalidated it.
         buildid = self.query_buildid()
         self._setup_configure(buildid=buildid)
+        self.download_mar_tools()
 
     def _clobber_file(self):
         """returns the full path of the clobber file"""
@@ -516,7 +517,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         env = self.query_repack_env()
         self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
-        self._mar_tools_download()
+        self.download_mar_tools()
         # make.py: error: l10n-base required when using locale-mergedir
         # adding a replace(...) because make.py doesn't like
         # --locale-mergedir=e:\...\...\...
@@ -535,7 +536,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         dirs = self.query_abs_dirs()
         self.create_mar_dirs()
-        self._mar_tools_download()
+        self.download_mar_tools()
         package_basedir = os.path.join(dirs['abs_objdir'],
                                        config['package_base_dir'])
         env = self.query_repack_env()
@@ -579,39 +580,25 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         version = self.query_version()
         update_mar_dir = self.update_mar_dir()
-        incremental_update = self._incremental_update_script()
-        env = self.query_repack_env()
-        mar_scripts = MarScripts(config=config,
-                                 unpack=self._unpack_script(),
-                                 incremental_update=incremental_update,
-                                 tools_dir=self._mar_tool_dir(),
-                                 mar_binaries=self._mar_binaries(),
-                                 env=env)
         localized_mar = self.localized_marfile(locale)
-
         if not os.path.exists(localized_mar):
-            # *.complete.mar already exist in windows but
+            # *.complete.mar already exists in windows but
             # it does not exist on other platforms
             self.info("%s does not exist. Creating it." % localized_mar)
             self.generate_complete_mar(locale)
 
-        to_m = MarFile(config=config,
-                       mar_scripts=mar_scripts,
-                       log_obj=self.log_obj,
-                       filename=localized_mar,
-                       prettynames=1)
-        from_m = MarFile(config=config,
-                         mar_scripts=mar_scripts,
-                         log_obj=self.log_obj,
-                         filename=self.get_previous_mar(locale),
-                         prettynames=1)
-        archive = config['partial_mar'] % {'version': version,
-                                           'locale': locale,
-                                           'from_buildid': from_m.buildid(),
-                                           'to_buildid': to_m.buildid()}
-        archive = os.path.join(update_mar_dir, archive)
+        src_mar = self.get_previous_mar(locale),
+        dst_mar = localized_mar
+        src_buildid = super(MarMixin, self).get_buildid(src_mar, prettynames=1)
+        dst_buildid = super(MarMixin, self).get_buildid(dst_mar, prettynames=1)
+        partial_filename = config['partial_mar'] % {'version': version,
+                                                    'locale': locale,
+                                                    'from_buildid': src_buildid,
+                                                    'to_buildid': dst_buildid}
+        partial_filename = os.path.join(update_mar_dir, partial_filename)
         # let's make the incremental update
-        return to_m.incremental_update(from_m, archive)
+        return self.do_incremental_update(src_mar, dst_mar, partial_filename,
+                                          prettynames=1)
 
     def _query_objdir(self):
         if self.objdir:
@@ -738,15 +725,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], config["local_mar_tool_dir"])
-
-    def _mar_tools_download(self):
-        """downloads mar and mbsdiff files"""
-        config = self.config
-        martool = MarTool(config=config,
-                          dst_dir=self._mar_tool_dir(),
-                          log_obj=self.log_obj,
-                          binaries=self._mar_binaries())
-        martool.download()
 
     def _incremental_update_script(self):
         """incremental update script"""
