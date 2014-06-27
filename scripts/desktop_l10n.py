@@ -391,7 +391,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # Configure again since the hg update may have invalidated it.
         buildid = self.query_buildid()
         self._setup_configure(buildid=buildid)
-        self.download_mar_tools()
 
     def _clobber_file(self):
         """returns the full path of the clobber file"""
