@@ -512,7 +512,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def restore_en_US(self):
         dst_installer = self._get_installer_file_path()
         if os.path.exists(dst_installer):
-            self.info("no need to restore %s", dst_installer)
+            self.info("no need to restore %s" % (dst_installer))
             return
         src_installer = self._get_installer_local_copy()
         self.mkdir_p(os.path.dirname(dst_installer))
