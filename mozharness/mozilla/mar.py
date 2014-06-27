@@ -76,7 +76,8 @@ class MarMixin(object):
         env = tools_environment(tools_dir,
                                 self._mar_binaries(),
                                 self.query_repack_env())
-        env["MOZ_PKG_PRETTYNAMES"] = prettynames
+        env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
+        self.info("unpacking %s -> %s" % mar_file, dst_dir)
         self.mkdir_p(dst_dir)
         return self.run_command(cmd,
                                 cwd=dst_dir,
@@ -93,11 +94,10 @@ class MarMixin(object):
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
         cmd = [self._incremental_update_script(), partial_filename,
                fromdir, todir]
-        mar_scripts = self.mar_scripts
-        tools_dir = mar_scripts.tools_dir
+        tools_dir = self._mar_tool_dir()
         env = tools_environment(tools_dir,
-                                mar_scripts.mar_binaries,
-                                mar_scripts.env)
+                                self._mar_binaries(),
+                                self.query_repack_env())
         result = self.run_command(cmd, cwd=None, env=env)
         self.rmtree(todir)
         self.rmtree(fromdir)
