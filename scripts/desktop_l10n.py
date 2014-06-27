@@ -493,7 +493,42 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
         cwd = dirs['abs_locales_dir']
-        return self._make(target=["wget-en-US"], cwd=cwd, env=env)
+        result = self._make(target=["wget-en-US"], cwd=cwd, env=env)
+        if result == 0:
+            # success
+            # store a copy of the installer locally, we will need it later on
+            # for make installers-
+            self.store_en_US()
+
+    def store_en_US(self,):
+        """copy firefox.{bz2,dmg,zip} in a temp directory to avoid multiple
+           downloads"""
+        src_installer = self._get_installer_file_path()
+        dst_installer = self._get_installer_local_copy()
+        self.mkdir_p(os.path.dirname(dst_installer))
+        self.info("storing: %s to %s" % (src_installer, dst_installer))
+        self.copyfile(src_installer, dst_installer)
+
+    def restore_en_US(self):
+        dst_installer = self._get_installer_file_path()
+        src_installer = self._get_installer_local_copy()
+        self.mkdir_p(os.path.dirname(dst_installer))
+        self.info("restoring: %s to %s" % (src_installer, dst_installer))
+        self.copyfile(src_installer, dst_installer)
+
+
+    def _get_installer_file_path(self):
+        config = self.config
+        version = self.query_version()
+        installer_file = config['installer_file'] % {'version': version}
+        return os.path.join(self._abs_dist_dir(), installer_file)
+
+    def _get_installer_local_copy(self):
+        config = self.config
+        version = self.query_version()
+        installer_file = config['installer_file'] % {'version': version}
+        return os.path.join(self._abs_dist_dir(), 'tmp', installer_file)
+
 
     def make_upload(self, locale):
         """wrapper for make upload command"""
@@ -516,10 +551,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """wrapper for make installers-(locale)"""
         # TODO... don't download the same file again, store it locally
         # and move it again where make_installer expects it
+        self.restore_en_US()
         env = self.query_repack_env()
         self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
-        self.download_mar_tools()
         # make.py: error: l10n-base required when using locale-mergedir
         # adding a replace(...) because make.py doesn't like
         # --locale-mergedir=e:\...\...\...
