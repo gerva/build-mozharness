@@ -587,7 +587,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.info("%s does not exist. Creating it." % localized_mar)
             self.generate_complete_mar(locale)
 
-        src_mar = self.get_previous_mar(locale),
+        src_mar = self.get_previous_mar(locale)
         dst_mar = localized_mar
         src_buildid = self.query_build_id(src_mar, prettynames=1)
         dst_buildid = self.query_build_id(dst_mar, prettynames=1)
