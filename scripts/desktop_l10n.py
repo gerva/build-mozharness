@@ -511,11 +511,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def restore_en_US(self):
         dst_installer = self._get_installer_file_path()
+        if os.path.exists(dst_installer):
+            self.info("no need to restore %s", dst_installer)
+            return
         src_installer = self._get_installer_local_copy()
         self.mkdir_p(os.path.dirname(dst_installer))
         self.info("restoring: %s to %s" % (src_installer, dst_installer))
         self.copyfile(src_installer, dst_installer)
-
 
     def _get_installer_file_path(self):
         config = self.config
@@ -528,7 +530,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         version = self.query_version()
         installer_file = config['installer_file'] % {'version': version}
         return os.path.join(self._abs_dist_dir(), 'tmp', installer_file)
-
 
     def make_upload(self, locale):
         """wrapper for make upload command"""
