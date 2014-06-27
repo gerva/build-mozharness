@@ -12,7 +12,6 @@ import ConfigParser
 
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
-from mozfile.mozfile import TemporaryDirectory
 
 
 CONFIG = {
@@ -70,6 +69,16 @@ class MarMixin(object):
                 self.info("found %s, skipping download" % full_path)
             self.chmod(full_path, 0755)
 
+    def _temp_mar_dir(self, name):
+        """creates a temporary directory for mar unpack"""
+        # tempfile.makedir() and TemporaryDir() work great outside mock envs
+        dirs = self.query_abs_dirs()
+        mar_dir = os.path.join(dirs['abs_work_dir'], 'temp_mar_dir', name)
+        # delete mar_dir, it prints a message if temp_dir does not exist..
+        self.rmtree(mar_dir)
+        self.mkdir_p(mar_dir)
+        return mar_dir
+
     def _unpack_mar(self, mar_file, dst_dir, prettynames):
         """unpacks a mar file into dst_dir"""
         cmd = ['perl', self._unpack_script(), mar_file]
@@ -88,33 +97,38 @@ class MarMixin(object):
     def do_incremental_update(self, src_mar, dst_mar, partial_filename, prettynames):
         """create an incremental update from src_mar to dst_src.
            It stores the result in partial_filename"""
-        with TemporaryDirectory() as fromdir:
-            with TemporaryDirectory() as todir:
-                self._unpack_mar(src_mar, fromdir, prettynames)
-                self._unpack_mar(dst_mar, todir, prettynames)
-                # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
-                cmd = [self._incremental_update_script(), partial_filename,
-                       fromdir, todir]
-                tools_dir = self._mar_tool_dir()
-                env = tools_environment(tools_dir,
-                                        self._mar_binaries(),
-                                        self.query_repack_env())
-                return self.run_command(cmd, cwd=None, env=env)
+        fromdir = self._temp_mar_dir('fromdir')
+        todir = self._temp_mar_dir('todir')
+        self._unpack_mar(src_mar, fromdir, prettynames)
+        self._unpack_mar(dst_mar, todir, prettynames)
+        # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
+        cmd = [self._incremental_update_script(), partial_filename,
+               fromdir, todir]
+        tools_dir = self._mar_tool_dir()
+        env = tools_environment(tools_dir,
+                                self._mar_binaries(),
+                                self.query_repack_env())
+        result = self.run_command(cmd, cwd=None, env=env)
+        self.rmtree(fromdir)
+        self.rmtree(todir)
+        return result
 
     def query_build_id(self, mar_file, prettynames):
         """returns the buildid of the current mar file"""
-        with TemporaryDirectory() as temp_dir:
-            self._unpack_mar(mar_file=mar_file, dst_dir=temp_dir,
-                             prettynames=prettynames)
-            config = self.config
-            ini_file = config['application_ini']
-            ini_file = os.path.join(temp_dir, ini_file)
-            self.info("application.ini file: %s" % ini_file)
+        temp_dir = self._temp_mar_dir('temp_dir')
+        self._unpack_mar(mar_file=mar_file, dst_dir=temp_dir,
+                         prettynames=prettynames)
+        config = self.config
+        ini_file = config['application_ini']
+        ini_file = os.path.join(temp_dir, ini_file)
+        self.info("application.ini file: %s" % ini_file)
 
-            # log the content of application.ini
-            with self.opened(ini_file, 'r') as (ini, error):
-                if error:
-                    self.fatal('cannot open {0}'.format(ini_file))
-                self.debug(ini.read())
-            # delete temp_dir
-            return buildid_from_ini(ini_file)
+        # log the content of application.ini
+        with self.opened(ini_file, 'r') as (ini, error):
+            if error:
+                self.fatal('cannot open {0}'.format(ini_file))
+            self.debug(ini.read())
+        # delete temp_dir
+        _buildid = buildid_from_ini(ini_file)
+        self.rmtree(temp_dir)
+        return _buildid
