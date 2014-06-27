@@ -77,7 +77,7 @@ class MarMixin(object):
                                 self._mar_binaries(),
                                 self.query_repack_env())
         env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
-        self.info("unpacking %s -> %s" % mar_file, dst_dir)
+        self.info("unpacking %s" % mar_file)
         self.mkdir_p(dst_dir)
         return self.run_command(cmd,
                                 cwd=dst_dir,
