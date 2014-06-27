@@ -595,9 +595,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.error("make installers-%s failed" % (locale))
             return
 
-        if self.generate_partials(locale) != 0:
-            self.error("generate partials %s failed" % (locale))
-            return
+#        if self.generate_partials(locale) != 0:
+#            self.error("generate partials %s failed" % (locale))
+#            return
 
         return 0
 
