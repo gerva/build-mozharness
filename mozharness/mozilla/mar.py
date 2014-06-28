@@ -69,10 +69,14 @@ class MarMixin(object):
                 self.info("found %s, skipping download" % full_path)
             self.chmod(full_path, 0755)
 
+    def _temp_mar_base_dir(self):
+        """a base dir for unpacking mars"""
+        return os.path.join(self._abs_dist_dir(), 'temp_mar_dir')
+
     def _temp_mar_dir(self, name):
         """creates a temporary directory for mar unpack"""
         # tempfile.makedir() and TemporaryDir() work great outside mock envs
-        mar_dir = os.path.join(self._abs_dist_dir(), 'temp_mar_dir', name)
+        mar_dir = os.path.join(self._temp_mar_base_dir, name)
         # delete mar_dir, it prints a message if temp_dir does not exist..
         self.rmtree(mar_dir)
         self.mkdir_p(mar_dir)
@@ -109,8 +113,7 @@ class MarMixin(object):
                                 self._mar_binaries(),
                                 self.query_repack_env())
         result = self.run_command(cmd, cwd=None, env=env)
-        self.rmtree(fromdir)
-        self.rmtree(todir)
+        self.rmtree(self._temp_mar_base_dir())
         return result
 
     def query_build_id(self, mar_file, prettynames):
@@ -130,5 +133,5 @@ class MarMixin(object):
             self.debug(ini.read())
         # delete temp_dir
         _buildid = buildid_from_ini(ini_file)
-        self.rmtree(temp_dir)
+        self.rmtree(self._temp_mar_base_dir())
         return _buildid
