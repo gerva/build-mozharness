@@ -76,7 +76,7 @@ class MarMixin(object):
     def _temp_mar_dir(self, name):
         """creates a temporary directory for mar unpack"""
         # tempfile.makedir() and TemporaryDir() work great outside mock envs
-        mar_dir = os.path.join(self._temp_mar_base_dir, name)
+        mar_dir = os.path.join(self._temp_mar_base_dir(), name)
         # delete mar_dir, it prints a message if temp_dir does not exist..
         self.rmtree(mar_dir)
         self.mkdir_p(mar_dir)
