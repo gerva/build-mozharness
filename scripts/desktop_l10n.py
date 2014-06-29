@@ -598,7 +598,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if self.generate_partials(locale) != 0:
             self.error("generate partials %s failed" % (locale))
             return
-
+        # let's unpack
+        self.make_unpack()
         return 0
 
     def repack(self):
