@@ -71,14 +71,15 @@ class MarMixin(object):
 
     def _temp_mar_base_dir(self):
         """a base dir for unpacking mars"""
-        return os.path.join(self._abs_dist_dir(), 'temp_mar_dir')
+        dirs = self.query_abs_dirs()
+        return dirs['abs_objdir']
 
     def _temp_mar_dir(self, name):
         """creates a temporary directory for mar unpack"""
         # tempfile.makedir() and TemporaryDir() work great outside mock envs
         mar_dir = os.path.join(self._temp_mar_base_dir(), name)
         # delete mar_dir, it prints a message if temp_dir does not exist..
-        self.rmtree(mar_dir)
+        self.rmtree(self._temp_mar_dir())
         self.mkdir_p(mar_dir)
         self.info("temporary mar dir: %s" % (mar_dir))
         return mar_dir
@@ -101,8 +102,8 @@ class MarMixin(object):
     def do_incremental_update(self, src_mar, dst_mar, partial_filename, prettynames):
         """create an incremental update from src_mar to dst_src.
            It stores the result in partial_filename"""
-        fromdir = self._temp_mar_dir('fromdir')
-        todir = self._temp_mar_dir('todir')
+        fromdir = self._temp_mar_dir('current')
+        todir = self._temp_mar_dir('previous')
         self._unpack_mar(src_mar, fromdir, prettynames)
         self._unpack_mar(dst_mar, todir, prettynames)
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
@@ -113,7 +114,8 @@ class MarMixin(object):
                                 self._mar_binaries(),
                                 self.query_repack_env())
         result = self.run_command(cmd, cwd=None, env=env)
-        self.rmtree(self._temp_mar_base_dir())
+        self.rmtree(src_mar)
+        self.rmtree(dst_mar)
         return result
 
     def query_build_id(self, mar_file, prettynames):
@@ -133,5 +135,5 @@ class MarMixin(object):
             self.debug(ini.read())
         # delete temp_dir
         _buildid = buildid_from_ini(ini_file)
-        self.rmtree(self._temp_mar_base_dir())
+        self.rmtree(temp_dir)
         return _buildid
