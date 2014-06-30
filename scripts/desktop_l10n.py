@@ -636,7 +636,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         previous_marfile = self.get_previous_mar(locale)
         previous_mar_dir = self.previous_mar_dir()
-        result = self._unpack_mar(previous_marfile, previous_mar_dir)
+        result = self._unpack_mar(previous_marfile, previous_mar_dir, prettynames=1)
         if result != 0:
             self.error('failed to unpack %s to %s' % (previous_marfile,
                                                       previous_mar_dir))
@@ -644,7 +644,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         current_marfile = self.get_current_mar()
         current_mar_dir = self.current_mar_dir()
-        result = self._unpack_mar(current_marfile, current_mar_dir)
+        result = self._unpack_mar(current_marfile, current_mar_dir, prettynames=1)
         if result != 0:
             self.error('failed to unpack %s to %s' % (current_marfile,
                                                       current_mar_dir))
