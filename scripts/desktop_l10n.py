@@ -631,10 +631,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return os.path.join(update_mar_dir, partial_filename)
 
     def create_partial_updates(self, locale):
+        # clean up any left overs from previous locales
+        # remove current/ current.work/ previous/ directories
         self.delete_mar_dirs()
+        # and recreate current/ previous/
         self.create_mar_dirs()
-
+        # download mar and mbsdiff executables
+        self.download_mar_tools()
+        # get the previous mar file
         previous_marfile = self.get_previous_mar(locale)
+        # and unpack it
         previous_mar_dir = self.previous_mar_dir()
         result = self._unpack_mar(previous_marfile, previous_mar_dir, prettynames=1)
         if result != 0:
