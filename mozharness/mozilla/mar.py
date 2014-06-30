@@ -76,10 +76,6 @@ class MarMixin(object):
     def _unpack_mar(self, mar_file, dst_dir, prettynames):
         """unpacks a mar file into dst_dir"""
         cmd = ['perl', self._unpack_script(), mar_file]
-        tools_dir = self._mar_tool_dir()
-        env = tools_environment(tools_dir,
-                                self._mar_binaries(),
-                                self.query_repack_env())
         env = deepcopy(self.query_repack_env())
         env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
         self.info("unpacking %s" % mar_file)
