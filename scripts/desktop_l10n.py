@@ -630,7 +630,38 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                                     'to_buildid': dst_buildid}
         return os.path.join(update_mar_dir, partial_filename)
 
+    def create_partial_updates(self, locale):
+        dirs = self.query_abs_dirs()
+        self.delete_mar_dirs()
+        self.create_mar_dirs()
+
+        previous_marfile = self.get_previous_mar(locale)
+        previous_mar_dir = self.previous_mar_dir()
+        result = self._unpack_mar(previous_marfile, previous_dir)
+        if result != 0:
+            log.error('failed to unpack %s to %s' % (previous_marfile,
+                                                     previous_mar_dir))
+            return result
+
+        current_marfile = self.get_current_mar()
+        current_mar_dir = self.current_mar_dir()
+        result = self._unpack_mar(current_marfile, current_dir)
+        if result != 0:
+            log.error('failed to unpack %s to %s' % (current_marfile,
+                                                     current_mar_dir))
+            return result
+        self.delete_pgc_files()
+
+#        current_marfile = self.get_
+#        current_marfile = self.generate_partials
+
+
+
     def generate_partials(self, locale):
+
+        self.create_partial_updates(locale)
+        return 0
+
         """generate partial files"""
         localized_mar = self.localized_marfile(locale)
         if not os.path.exists(localized_mar):
@@ -726,11 +757,26 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.info("removing %s" % pcg_file)
                 self.rmtree(pcg_file)
 
+    def _current_mar_url(self):
+        config = self.config
+        base_url = config['current_mar_url']
+        return "/".join((base_url, self._localized_mar_name(locale)))
+
     def _previous_mar_url(self, locale):
         """returns the url for previous mar"""
         config = self.config
         base_url = config['previous_mar_url']
         return "/".join((base_url, self._localized_mar_name(locale)))
+
+    def get_current_mar(self):
+        """downloads the current mar file"""
+        self.mkdir_p(self.previous_mar_dir())
+        if not os.path.exists(self._current_mar_name()):
+            self.download_file(self._current_mar_url(locale),
+                               self._current_mar_filename())
+        else:
+            log.info('%s already exists, skipping download' % (self._current_mar_name()))
+        return self._current_mar_filename()
 
     def get_previous_mar(self, locale):
         """downloads the previous mar file"""
@@ -738,6 +784,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.download_file(self._previous_mar_url(locale),
                            self._previous_mar_filename())
         return self._previous_mar_filename()
+
+    def _current_mar_name(self):
+        config = self.config
+        version = self.query_version()
+        return config["current_mar"] % {'version': version}
 
     def _localized_mar_name(self, locale):
         """returns localized mar name"""

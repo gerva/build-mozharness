@@ -99,23 +99,17 @@ class MarMixin(object):
                                 env=env,
                                 halt_on_failure=True)
 
-    def do_incremental_update(self, src_mar, dst_mar, partial_filename, prettynames):
+    def do_incremental_update(self, previous_dir, current_dir, partial_filename, prettynames):
         """create an incremental update from src_mar to dst_src.
            It stores the result in partial_filename"""
-        fromdir = self._temp_mar_dir('current')
-        todir = self._temp_mar_dir('previous')
-        self._unpack_mar(src_mar, fromdir, prettynames)
-        self._unpack_mar(dst_mar, todir, prettynames)
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
         cmd = [self._incremental_update_script(), partial_filename,
-               fromdir, todir]
+               current_dir, previous_dir]
         tools_dir = self._mar_tool_dir()
         env = tools_environment(tools_dir,
                                 self._mar_binaries(),
                                 self.query_repack_env())
         result = self.run_command(cmd, cwd=None, env=env)
-        self.rmtree(src_mar)
-        self.rmtree(dst_mar)
         return result
 
     def query_build_id(self, mar_file, prettynames):

@@ -70,6 +70,7 @@ config = {
 
     #MAR
     'previous_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n',
+    'current_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central',
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
     "update_mar_dir": "dist/update",  # sure?
@@ -88,7 +89,7 @@ config = {
     "candidates_base_url": CANDIDATES_URL,
     "partials_url": "%(base_url)s/latest-mozilla-central/",
     "mar_tools_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/linux64/",
-    "complete_mar": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
+    "current_mar": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.linux-x86_64.tar.bz2",
