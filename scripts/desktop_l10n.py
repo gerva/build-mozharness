@@ -791,7 +791,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _current_mar_name(self):
         config = self.config
         version = self.query_version()
-        return config["current_mar"] % {'version': version}
+        return config["current_mar_filename"] % {'version': version}
 
     def _localized_mar_name(self, locale):
         """returns localized mar name"""
