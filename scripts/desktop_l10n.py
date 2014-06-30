@@ -554,7 +554,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # and move it again where make_installer expects it
         self.restore_en_US()
         env = self.query_repack_env()
-#        self._copy_mozconfig()
+        self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
         # make.py: error: l10n-base required when using locale-mergedir
         # adding a replace(...) because make.py doesn't like
@@ -566,7 +566,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cwd = os.path.join(dirs['abs_locales_dir'])
         cmd = ["installers-%s" % locale,
                "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"],
-               "--debug=j"]
+               "--debug=j", "VERBOSE=1"]
         return self._make(target=cmd, cwd=cwd,
                           env=env, halt_on_failure=False)
 
@@ -587,10 +587,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def repack_locale(self, locale):
         """wraps the logic for comapare locale, make installers and generate
            partials"""
+        self._copy_mozconfig()
         if self.run_compare_locales(locale) != 0:
             self.error("compare locale %s failed" % (locale))
             return
-
         if self.make_installers(locale) != 0:
             self.error("make installers-%s failed" % (locale))
             return
