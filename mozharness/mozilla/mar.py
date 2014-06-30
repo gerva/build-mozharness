@@ -34,7 +34,7 @@ def tools_environment(base_dir, binaries, env):
         # windows -> python -> perl -> sh
         # windows fix...
         env_[binary_name] = env_[binary_name].replace("\\", "/")
-    return env
+    return env_
 
 
 def query_ini_file(ini_file, section, option):
