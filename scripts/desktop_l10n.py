@@ -807,9 +807,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _current_mar_filename(self):
         """returns the complete path to current.mar"""
-        config = self.config
-        return os.path.join(self.current_mar_dir(),
-                            config['current_mar_filename'])
+        return os.path.join(self.current_mar_dir(), self._current_mar_name())
 
     def create_mar_dirs(self):
         """creates mar directories: previous/ current/"""
