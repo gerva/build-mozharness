@@ -160,7 +160,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             sign_cmd = subprocess.list2cmdline(sign_cmd)
             # windows fix
             repack_env['MOZ_SIGN_CMD'] = sign_cmd.replace('\\', '\\\\\\\\')
-        for binary in self.binaries():
+        for binary in self._mar_binaries():
             # "mar -> MAR" and 'mar.exe -> MAR' (windows)
             name = binary.replace('.exe', '')
             name = name.upper()
