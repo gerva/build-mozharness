@@ -27,12 +27,13 @@ CONFIG = {
 def tools_environment(base_dir, binaries, env):
     """returns the env setting required to run mar and/or mbsdiff"""
     # bad code here - FIXIT
+    env_ = deepcopy(env)
     for binary in binaries:
         binary_name = binary.replace(".exe", "").upper()
-        env[binary_name] = os.path.join(base_dir, binary)
+        env_[binary_name] = os.path.join(base_dir, binary)
         # windows -> python -> perl -> sh
         # windows fix...
-        env[binary_name] = env[binary_name].replace("\\", "/")
+        env_[binary_name] = env_[binary_name].replace("\\", "/")
     return env
 
 
@@ -109,7 +110,7 @@ class MarMixin(object):
         tools_dir = self._mar_tool_dir()
         env = tools_environment(tools_dir,
                                 self._mar_binaries(),
-                                deepcopy(self.query_repack_env()))
+                                self.query_repack_env())
         result = self.run_command(cmd, cwd=None, env=env)
         return result
 
