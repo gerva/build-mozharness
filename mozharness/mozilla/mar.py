@@ -24,19 +24,6 @@ CONFIG = {
 }
 
 
-def tools_environment(base_dir, binaries, env):
-    """returns the env setting required to run mar and/or mbsdiff"""
-    # bad code here - FIXIT
-    env_ = deepcopy(env)
-    for binary in binaries:
-        binary_name = binary.replace(".exe", "").upper()
-        env_[binary_name] = os.path.join(base_dir, binary)
-        # windows -> python -> perl -> sh
-        # windows fix...
-        env_[binary_name] = env_[binary_name].replace("\\", "/")
-    return env_
-
-
 def query_ini_file(ini_file, section, option):
     ini = ConfigParser.SafeConfigParser()
     ini.read(ini_file)
@@ -93,6 +80,7 @@ class MarMixin(object):
         env = tools_environment(tools_dir,
                                 self._mar_binaries(),
                                 self.query_repack_env())
+        env = deepcopy(self.query_repack_env())
         env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
         self.info("unpacking %s" % mar_file)
         self.mkdir_p(dst_dir)
@@ -107,10 +95,7 @@ class MarMixin(object):
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
         cmd = [self._incremental_update_script(), partial_filename,
                current_dir, previous_dir]
-        tools_dir = self._mar_tool_dir()
-        env = tools_environment(tools_dir,
-                                self._mar_binaries(),
-                                self.query_repack_env())
+        env = self.query_repack_env()
         result = self.run_command(cmd, cwd=None, env=env)
         return result
 
