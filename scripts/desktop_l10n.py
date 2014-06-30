@@ -502,31 +502,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
         cwd = dirs['abs_locales_dir']
-        result = self._make(target=["wget-en-US"], cwd=cwd, env=env)
-        if result == 0:
-            # success
-            # store a copy of the installer locally, we will need it later on
-            # for make installers-
-            self.store_en_US()
-
-    def store_en_US(self,):
-        """copy firefox.{bz2,dmg,zip} in a temp directory to avoid multiple
-           downloads"""
-        src_installer = self._get_installer_file_path()
-        dst_installer = self._get_installer_local_copy()
-        self.mkdir_p(os.path.dirname(dst_installer))
-        self.info("storing: %s to %s" % (src_installer, dst_installer))
-        self.copyfile(src_installer, dst_installer)
-
-    def restore_en_US(self):
-        dst_installer = self._get_installer_file_path()
-        if os.path.exists(dst_installer):
-            self.info("no need to restore %s" % (dst_installer))
-            return
-        src_installer = self._get_installer_local_copy()
-        self.mkdir_p(os.path.dirname(dst_installer))
-        self.info("restoring: %s to %s" % (src_installer, dst_installer))
-        self.copyfile(src_installer, dst_installer)
+        return self._make(target=["wget-en-US"], cwd=cwd, env=env)
 
     def _get_installer_file_path(self):
         config = self.config
@@ -561,7 +537,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """wrapper for make installers-(locale)"""
         # TODO... don't download the same file again, store it locally
         # and move it again where make_installer expects it
-        self.restore_en_US()
         env = self.query_repack_env()
         self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
@@ -574,8 +549,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
         cmd = ["installers-%s" % locale,
-               "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"],
-               "--debug=j", "VERBOSE=1"]
+               "LOCALE_MERGEDIR=%s" % env["LOCALE_MERGEDIR"], ]
         return self._make(target=cmd, cwd=cwd,
                           env=env, halt_on_failure=False)
 
