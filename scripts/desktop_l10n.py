@@ -763,7 +763,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _current_mar_url(self):
         config = self.config
         base_url = config['current_mar_url']
-        return "/".join((base_url, self._current_mar_filename()))
+        return "/".join((base_url, self._current_mar_name()))
 
     def _previous_mar_url(self, locale):
         """returns the url for previous mar"""
@@ -776,10 +776,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.mkdir_p(self.previous_mar_dir())
         if not os.path.exists(self._current_mar_name()):
             self.download_file(self._current_mar_url(),
-                               self._current_mar_filename())
+                               self._current_mar_name())
         else:
             self.info('%s already exists, skipping download' % (self._current_mar_name()))
-        return self._current_mar_filename()
+        return self._current_mar_name()
 
     def get_previous_mar(self, locale):
         """downloads the previous mar file"""
