@@ -9,6 +9,7 @@
 import os
 import sys
 import ConfigParser
+from copy import deepcopy
 
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
@@ -108,7 +109,7 @@ class MarMixin(object):
         tools_dir = self._mar_tool_dir()
         env = tools_environment(tools_dir,
                                 self._mar_binaries(),
-                                self.query_repack_env())
+                                deepcopy(self.query_repack_env()))
         result = self.run_command(cmd, cwd=None, env=env)
         return result
 
