@@ -591,11 +591,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if self.run_compare_locales(locale) != 0:
             self.error("compare locale %s failed" % (locale))
             return
+        self._copy_mozconfig()
         if self.make_installers(locale) != 0:
             self.error("make installers-%s failed" % (locale))
             return
 
         #  disable partials for now...
+        self._copy_mozconfig()
         if self.generate_partials(locale) != 0:
             self.error("generate partials %s failed" % (locale))
             return
