@@ -71,6 +71,7 @@ config = {
 
     #MAR
     'previous_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n',
+    'current_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central',
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
     "update_mar_dir": "dist/update",  # sure?
@@ -92,8 +93,7 @@ config = {
     "complete_mar": "firefox-%(version)s.en-US.linux-i686.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-i686.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
-
-
+    'installer_file': "firefox-%(version)s.en-US.linux-i686.tar.bz2",
 
     # AUS
     "build_target": "Linux_x86-gcc3",
@@ -150,22 +150,4 @@ config = {
                 ('/builds/gapi.data', '/builds/gapi.data'),
                 ('/tools/tooltool.py', '/builds/tooltool.py'),
          ],
-#    ['autoconf213', 'python', 'zip', 'mozilla-python27-mercurial', 'git', 'ccache',
-#     'glibc-static', 'libstdc++-static', 'perl-Test-Simple', 'perl-Config-General',
-#     'gtk2-devel', 'libnotify-devel', 'yasm',
-#     'alsa-lib-devel', 'libcurl-devel',
-#     'wireless-tools-devel', 'libX11-devel',
-#     'libXt-devel', 'mesa-libGL-devel',
-#     'gnome-vfs2-devel', 'GConf2-devel', 'wget',
-#     'mpfr',  # required for system compiler
-#     'xorg-x11-font*',  # fonts required for PGO
-#     'imake',  # required for makedepend!?!
-#     'gcc45_0moz3', 'gcc454_0moz1', 'gcc472_0moz1', 'yasm', 'ccache',
-#     'gcc473_0moz1', 'valgrind',
-#     'pulseaudio-libs-devel',
-#     'gstreamer-devel', 'gstreamer-plugins-base-devel', ],
-#    'mock_files': [
-#        ('/home/cltbld/.ssh', '/home/mock_mozilla/.ssh'),
-#        ('/home/cltbld/.hgrc', '/builds/.hgrc'),
-#    ],
 }
