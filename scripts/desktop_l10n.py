@@ -167,7 +167,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             binary_path = os.path.join(self._mar_tool_dir(), binary)
             # windows fix...
             binary_path.replace("\\", "/")
-            repack_env[binary] = binary_path
+            repack_env[name] = binary_path
 
         self.repack_env = repack_env
         return self.repack_env
