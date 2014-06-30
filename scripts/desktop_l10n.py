@@ -774,12 +774,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def get_current_mar(self):
         """downloads the current mar file"""
         self.mkdir_p(self.previous_mar_dir())
-        if not os.path.exists(self._current_mar_name()):
+        if not os.path.exists(self._current_mar_filename()):
             self.download_file(self._current_mar_url(),
-                               self._current_mar_name())
+                               self._current_mar_filename())
         else:
-            self.info('%s already exists, skipping download' % (self._current_mar_name()))
-        return self._current_mar_name()
+            self.info('%s already exists, skipping download' % (self._current_mar_filename()))
+        return self._current_mar_filename()
 
     def get_previous_mar(self, locale):
         """downloads the previous mar file"""
@@ -804,6 +804,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         return os.path.join(self.previous_mar_dir(),
                             config['previous_mar_filename'])
+
+    def _current_mar_filename(self):
+        """returns the complete path to current.mar"""
+        config = self.config
+        return os.path.join(self.current_mar_dir(),
+                            config['current_mar_filename'])
 
     def create_mar_dirs(self):
         """creates mar directories: previous/ current/"""
