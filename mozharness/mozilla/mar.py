@@ -92,7 +92,9 @@ class MarMixin(object):
         cmd = [self._incremental_update_script(), partial_filename,
                current_dir, previous_dir]
         env = self.query_repack_env()
-        result = self.run_command(cmd, cwd=None, env=env)
+        cwd = self._mar_dir('update_mar_dir')
+        self.mkdir_p(cwd)
+        result = self.run_command(cmd, cwd=cwd, env=env)
         return result
 
     def query_build_id(self, mar_unpack_dir, prettynames):

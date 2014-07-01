@@ -635,7 +635,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                                     'from_buildid': current_mar_buildid,
                                                     'to_buildid': previous_mar_buildid}
         self.delete_pgc_files()
-        # TODO: partial file is created in the wrong dir...
         return self.do_incremental_update(previous_mar_dir, current_mar_dir,
                                           partial_filename, prettynames=0)
 
