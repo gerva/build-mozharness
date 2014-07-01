@@ -95,14 +95,11 @@ class MarMixin(object):
         result = self.run_command(cmd, cwd=None, env=env)
         return result
 
-    def query_build_id(self, mar_file, prettynames):
+    def query_build_id(self, mar_unpack_dir, prettynames):
         """returns the buildid of the current mar file"""
-        temp_dir = self._temp_mar_dir('temp_dir')
-        self._unpack_mar(mar_file=mar_file, dst_dir=temp_dir,
-                         prettynames=prettynames)
         config = self.config
         ini_file = config['application_ini']
-        ini_file = os.path.join(temp_dir, ini_file)
+        ini_file = os.path.join(mar_unpack_dir, ini_file)
         self.info("application.ini file: %s" % ini_file)
 
         # log the content of application.ini
@@ -110,7 +107,4 @@ class MarMixin(object):
             if error:
                 self.fatal('cannot open {0}'.format(ini_file))
             self.debug(ini.read())
-        # delete temp_dir
-        _buildid = buildid_from_ini(ini_file)
-        self.rmtree(temp_dir)
-        return _buildid
+        return buildid_from_ini(ini_file)

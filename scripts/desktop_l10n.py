@@ -600,21 +600,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                      localized_mar)
         return localized_mar
 
-    def query_partial_mar_filename(self, locale):
-        """returns the path of the partial mar"""
-        config = self.config
-        update_mar_dir = self.update_mar_dir()
-        version = self.query_version()
-        src_mar = self.get_previous_mar(locale)
-        dst_mar = self.localized_marfile(locale)
-        src_buildid = self.query_build_id(src_mar, prettynames=1)
-        dst_buildid = self.query_build_id(dst_mar, prettynames=1)
-        partial_filename = config['partial_mar'] % {'version': version,
-                                                    'locale': locale,
-                                                    'from_buildid': src_buildid,
-                                                    'to_buildid': dst_buildid}
-        return os.path.join(update_mar_dir, partial_filename)
-
     def create_partial_updates(self, locale):
         # clean up any left overs from previous locales
         # remove current/ current.work/ previous/ directories
@@ -640,30 +625,22 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.error('failed to unpack %s to %s' % (current_marfile,
                                                       current_mar_dir))
             return result
+        # partial filename
+        config = self.config
+        version = self.query_version()
+        previous_mar_buildid = self.query_build_id(previous_mar_dir, prettynames=1)
+        current_mar_buildid = self.query_build_id(current_mar_dir, prettynames=1)
+        partial_filename = config['partial_mar'] % {'version': version,
+                                                    'locale': locale,
+                                                    'from_buildid': current_mar_buildid,
+                                                    'to_buildid': previous_mar_buildid}
         self.delete_pgc_files()
-
-#        current_marfile = self.get_
-#        current_marfile = self.generate_partials
+        return self.do_incremental_update(previous_mar_dir, current_mar_dir,
+                                          partial_filename, prettynames=0)
 
     def generate_partials(self, locale):
-
-        self.create_partial_updates(locale)
-        return 0
-
         """generate partial files"""
-        localized_mar = self.localized_marfile(locale)
-        if not os.path.exists(localized_mar):
-            # *.complete.mar already exists in windows but
-            # it does not exist on other platforms
-            self.info("%s does not exist. Creating it." % localized_mar)
-            self.generate_complete_mar(locale)
-
-        src_mar = self.get_previous_mar(locale)
-        dst_mar = localized_mar
-        partial_filename = self.query_partial_mar_filename(locale)
-        # let's make the incremental update
-        return self.do_incremental_update(src_mar, dst_mar, partial_filename,
-                                          prettynames=1)
+        return self.create_partial_updates(locale)
 
     def _query_objdir(self):
         if self.objdir:
