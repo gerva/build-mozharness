@@ -6,11 +6,10 @@ EN_US_BINARY_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/lates
 OBJDIR = "obj-l10n"
 MOZ_UPDATE_CHANNEL = "nightly"
 STAGE_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
-#STAGE_SERVER = "stage.mozilla.org"
 STAGE_USER = "ffxbld"
 STAGE_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
-#AUS_SERVER = "aus2-staging.mozilla.org"
+# AUS_SERVER = "aus2-staging.mozilla.org"
 AUS_USER = "ffxbld"
 AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
@@ -19,6 +18,8 @@ CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDAT
 PLATFORM = "win32"
 config = {
     'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
+    "balrog_credentials_file": "oauth.txt",
+    'balrog_username': 'stage-ffxbld',
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/win32/l10n-mozconfig" % MOZILLA_DIR,
@@ -57,11 +58,11 @@ config = {
         "UPLOAD_USER": STAGE_USER,
         "UPLOAD_SSH_KEY": STAGE_SSH_KEY,
         "UPLOAD_HOST": STAGE_SERVER,
-        #"POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-android-l10n -p mobile -i %(buildid)s --release-to-latest --release-to-dated",
+        # "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-android-l10n -p mobile -i %(buildid)s --release-to-latest --release-to-dated",
         "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
         "UPLOAD_TO_TEMP": "1",
     },
-    #l10n
+    # l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
     "l10n_stage_dir": "dist/firefox/l10n-stage",
@@ -72,7 +73,7 @@ config = {
     "merge_locales": True,
     "clobber_file": 'CLOBBER',
 
-    #MAR
+    # MAR
     'previous_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n',
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
@@ -96,10 +97,7 @@ config = {
     "localized_mar": "firefox-%(version)s.%(locale)s.win32.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
 
-
-
     # AUS
-    "build_target": "Linux_x86-gcc3",
     "aus_server": AUS_SERVER,
     "aus_user": AUS_USER,
     "aus_ssh_key": AUS_SSH_KEY,

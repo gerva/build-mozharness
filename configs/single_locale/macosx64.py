@@ -17,6 +17,8 @@ AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 config = {
     'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
+    "balrog_credentials_file": "oauth.txt",
+    'balrog_username': 'stage-ffxbld',
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig" % MOZILLA_DIR,
@@ -101,21 +103,10 @@ config = {
     'installer_file': "firefox-%(version)s.en-US.mac.dmg",
 
     # AUS
-    "build_target": "Linux_x86-gcc3",
     "aus_server": AUS_SERVER,
     "aus_user": AUS_USER,
     "aus_ssh_key": AUS_SSH_KEY,
     "aus_upload_base_dir": AUS_UPLOAD_BASE_DIR,
     "aus_base_dir": AUS_BASE_DIR,
 
-    #BALROG
-    "product": "Firefox",
-    "platform": "osx64",
-    "hashType": "sha512",
-    "balrog_credentials_file": "oauth.txt",
-    "balrog_api_root": "http://127.0.0.1:9000",
-    "balrog_username": "mgervasini@mozilla.com",
-    "balrog_usernames": {
-        "Firefox": "mgervasini@mozilla.com"
-    }
 }

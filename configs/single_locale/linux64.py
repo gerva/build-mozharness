@@ -17,6 +17,8 @@ AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 config = {
     'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
+    "balrog_credentials_file": "oauth.txt",
+    'balrog_username': 'stage-ffxbld',
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",
     "mozconfig": "%s/browser/config/mozconfigs/linux64/l10n-mozconfig" % MOZILLA_DIR,

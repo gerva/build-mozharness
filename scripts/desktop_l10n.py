@@ -37,6 +37,7 @@ from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.base.script import BaseScript
 from mozharness.mozilla.updates.balrog import BalrogMixin
+from mozharness.mozilla.building.buildbase import MakeUploadOutputParser
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
@@ -134,6 +135,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.upload_urls = {}
         self.locales_property = {}
         self.l10n_dir = None
+        self.package_urls = {}
 
         if 'mock_target' in self.config:
             self.enable_mock()
@@ -438,7 +440,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.info(line.strip())
 
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
-              halt_on_failure=True):
+              halt_on_failure=True, output_parser=None):
         """Runs make. Returns the exit code"""
         make = self.query_exe("make", return_type="list")
         self.info("**** target: {0}".format(target))
@@ -448,7 +450,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                 cwd=cwd,
                                 env=env,
                                 error_list=error_list,
-                                halt_on_failure=halt_on_failure)
+                                halt_on_failure=halt_on_failure,
+                                output_parser=output_parser)
 
     def _get_output_from_make(self, target, cwd, env, halt_on_failure=True):
         """runs make and returns the output of the command"""
@@ -529,9 +532,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             pass
         target = ['upload', 'AB_CD=%s' % (locale)]
         cwd = dirs['abs_locales_dir']
-#        result = _get_output_from_make()
-        return self._make(target=target, cwd=cwd, env=env,
-                          halt_on_failure=False)
+        parser = MakeUploadOutputParser(config=self.config,
+                                        log_obj=self.log_obj)
+        retval = self._make(target=target, cwd=cwd, env=env,
+                            halt_on_failure=False, output_parser=parser)
+        self.package_urls = parser.matches
+        if retval != 0:
+            self.error('failed to upload %s' % (locale))
+        else:
+            self.info('Upload successful (%s)' % (locale))
+        return
 
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
