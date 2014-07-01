@@ -97,7 +97,7 @@ config = {
     "mar_tools_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/macosx64/",
     "current_mar_filename": "firefox-%(version)s.en-US.mac.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.mac.complete.mar",
-    "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
+    "partial_mar": "firefox-%(version)s.%(locale)s.mac.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.mac.dmg",
 
     # AUS

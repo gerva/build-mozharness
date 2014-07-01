@@ -93,7 +93,7 @@ config = {
     "current_mar_filename": "firefox-%(version)s.en-US.linux-i686.complete.mar",
     "complete_mar": "firefox-%(version)s.en-US.linux-i686.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-i686.complete.mar",
-    "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
+    "partial_mar": "firefox-%(version)s.%(locale)s.linux-i686.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.linux-i686.tar.bz2",
 
     # AUS

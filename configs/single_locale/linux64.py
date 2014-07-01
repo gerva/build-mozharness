@@ -91,7 +91,7 @@ config = {
     "mar_tools_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/linux64/",
     "current_mar_filename": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.complete.mar",
-    "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
+    "partial_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.linux-x86_64.tar.bz2",
 
     # AUS
