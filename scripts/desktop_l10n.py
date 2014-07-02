@@ -136,7 +136,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.locales_property = {}
         self.l10n_dir = None
         self.package_urls = {}
-
+        self.read_buildbot_config()
         if 'mock_target' in self.config:
             self.enable_mock()
 

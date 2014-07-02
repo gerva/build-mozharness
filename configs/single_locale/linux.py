@@ -99,7 +99,6 @@ config = {
     'installer_file': "firefox-%(version)s.en-US.linux-i686.tar.bz2",
 
     # AUS
-    "build_target": "Linux_x86-gcc3",
     "aus_server": AUS_SERVER,
     "aus_user": AUS_USER,
     "aus_ssh_key": AUS_SSH_KEY,
