@@ -43,10 +43,11 @@ config = {
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
         "EN_US_BINARY_URL": EN_US_BINARY_URL,
+        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "DIST": "%(abs_objdir)s\\dist",
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s\\",
-        "MOZ_MAKE_COMPLETE_MAR": "1",
+        # "MOZ_MAKE_COMPLETE_MAR": "1",
     },
     "log_name": "single_locale",
     "objdir": OBJDIR,
@@ -75,6 +76,7 @@ config = {
 
     # MAR
     'previous_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n',
+    'current_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central',
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
     "update_mar_dir": "dist\\update",  # sure?
@@ -92,10 +94,11 @@ config = {
     "mbsdiff": "mbsdiff.exe",
     "candidates_base_url": CANDIDATES_URL,
     "partials_url": "%(base_url)s/latest-mozilla-central/",
-    "mar_tools_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/win32/",
+    "mar_tools_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/win32",
     "complete_mar": "firefox-%(version)s.en-US.win32.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.win32.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
+    'installer_file': "firefox-%(version)s.en-US.win32.installer.exe",
 
     # AUS
     "aus_server": AUS_SERVER,
