@@ -712,7 +712,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("appVersion", self.query_version())
         # The Balrog submitter translates this platform into a build target
         # via https://github.com/mozilla/build-tools/blob/master/lib/python/release/platforms.py#L23
-        self.set_buildbot_property("platform", self.buildbot_config["properties"]["platform"])
+        platform = self.buildbot_config["properties"]["platform"]
+        self.info("********* platform: %s ************" % (platform))
+        self.set_buildbot_property("platform", platform)
         # TODO: Is there a better way to get this?
         self.set_buildbot_property("appName", "Firefox")
         # TODO: don't hardcode
