@@ -136,7 +136,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.locales_property = {}
         self.l10n_dir = None
         self.package_urls = {}
-        self.read_buildbot_config()
         if 'mock_target' in self.config:
             self.enable_mock()
 
@@ -683,6 +682,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def submit_to_balrog(self):
         """submit to barlog"""
+        # we need some properties from buildbot e.g. platform
+        self.read_buildbot_config()
         self.summarize(self.submit_locale_to_balrog, self.query_locales())
 
     def submit_locale_to_balrog(self, locale):
