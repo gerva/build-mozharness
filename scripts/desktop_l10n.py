@@ -536,12 +536,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                         log_obj=self.log_obj)
         retval = self._make(target=target, cwd=cwd, env=env,
                             halt_on_failure=False, output_parser=parser)
-        self.package_urls = parser.matches
+        self.package_urls[locale] = parser.matches
+        self.info("parser: %s" % parser)
+        self.info("parser matches: %s" % parser.matches)
         if retval != 0:
             self.error('failed to upload %s' % (locale))
         else:
             self.info('Upload successful (%s)' % (locale))
-        return
+        return retval
 
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
@@ -580,17 +582,18 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def repack_locale(self, locale):
         """wraps the logic for comapare locale, make installers and generate
            partials"""
-        self._copy_mozconfig()
         if self.run_compare_locales(locale) != 0:
             self.error("compare locale %s failed" % (locale))
             return
-        self._copy_mozconfig()
+
         if self.make_installers(locale) != 0:
             self.error("make installers-%s failed" % (locale))
             return
 
-        #  disable partials for now...
-        self._copy_mozconfig()
+        if self.generate_complete_mar(locale) != 0:
+            self.error("generate complete %s mar failed" % (locale))
+            return
+
         if self.generate_partials(locale) != 0:
             self.error("generate partials %s failed" % (locale))
             return
@@ -689,7 +692,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         marfile = self.localized_marfile(locale)
         # Need to update the base url to point at FTP, or better yet, read post_upload.py output?
-        mar_url = self.query_complete_mar_url()
+        mar_url = self.query_complete_mar_url(locale)
 
         # Set other necessary properties for Balrog submission. None need to
         # be passed back to buildbot, so we won't write them to the properties
@@ -712,10 +715,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return 0
         return self.submit_balrog_updates()
 
-    def query_complete_mar_url(self):
+    def query_complete_mar_url(self, locale):
         if "complete_mar_url" in self.config:
             return self.config["complete_mar_url"]
-        if "completeMarUrl" in self.package_urls:
+        if "completeMarUrl" in self.package_urls[locale]:
             return self.package_urls["completeMarUrl"]
         # XXX: remove this after everything is uploading publicly
         url = self.config.get("update", {}).get("mar_base_url")
