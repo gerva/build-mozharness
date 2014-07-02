@@ -536,7 +536,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                         log_obj=self.log_obj)
         retval = self._make(target=target, cwd=cwd, env=env,
                             halt_on_failure=False, output_parser=parser)
-        self.package_urls[locale] = parser.matches
+        if locale not in self.package_urls:
+            self.package_urls[locale] = parser.matches
+        else:
+            self.package_urls[locale].update(parser.matches)
         self.info("parser: %s" % parser)
         self.info("parser matches: %s" % parser.matches)
         if retval != 0:
@@ -647,6 +650,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                                     'locale': locale,
                                                     'from_buildid': current_mar_buildid,
                                                     'to_buildid': previous_mar_buildid}
+        if locale not in self.package_urls:
+            self.package_urls[locale] = {}
         self.package_urls[locale]['partial_filename'] = partial_filename
         self.delete_pgc_files()
         return self.do_incremental_update(previous_mar_dir, current_mar_dir,
