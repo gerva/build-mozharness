@@ -647,6 +647,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                                     'locale': locale,
                                                     'from_buildid': current_mar_buildid,
                                                     'to_buildid': previous_mar_buildid}
+        self.package_urls[locale]['partial_filename'] = partial_filename
         self.delete_pgc_files()
         return self.do_incremental_update(previous_mar_dir, current_mar_dir,
                                           partial_filename, prettynames=0)
@@ -690,10 +691,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.info("balrog_api_root not set; skipping balrog submission.")
             return
 
-        marfile = self.localized_marfile(locale)
-        # Need to update the base url to point at FTP, or better yet, read post_upload.py output?
-        mar_url = self.query_complete_mar_url(locale)
+        # complete mar file
+        config = self.config
+        c_marfile = os.path.join(self.update_mar_dir(), config['complete_mar'])
+        c_mar_url = self.query_complete_mar_url(locale)
 
+        # partial mar file
+        p_marfile = self.package_urls[locale]['partial_filename']
+        p_mar_url = self.query_partial_mar_url(locale)
         # Set other necessary properties for Balrog submission. None need to
         # be passed back to buildbot, so we won't write them to the properties
         # files.
@@ -704,13 +709,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # via https://github.com/mozilla/build-tools/blob/master/lib/python/release/platforms.py#L23
         self.set_buildbot_property("platform", self.buildbot_config["properties"]["platform"])
         # TODO: Is there a better way to get this?
-        self.set_buildbot_property("appName", "B2G")
+        self.set_buildbot_property("appName", "Firefox")
         # TODO: don't hardcode
         self.set_buildbot_property("hashType", "sha512")
-        self.set_buildbot_property("completeMarSize", self.query_filesize(marfile))
-        self.set_buildbot_property("completeMarHash", self.query_sha512sum(marfile))
-        self.set_buildbot_property("completeMarUrl", mar_url)
-
+        self.set_buildbot_property("completeMarSize", self.query_filesize(c_marfile))
+        self.set_buildbot_property("completeMarHash", self.query_sha512sum(c_marfile))
+        self.set_buildbot_property("partialMarUrl", c_mar_url)
+        self.set_buildbot_property("partialMarSize", self.query_filesize(p_marfile))
+        self.set_buildbot_property("partialMarHash", self.query_sha512sum(p_marfile))
+        self.set_buildbot_property("partialMarUrl", p_mar_url)
         # do nothing, for now
         return 0
         return self.submit_balrog_updates()
@@ -719,7 +726,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if "complete_mar_url" in self.config:
             return self.config["complete_mar_url"]
         if "completeMarUrl" in self.package_urls[locale]:
-            return self.package_urls["completeMarUrl"]
+            return self.package_urls[locale]["completeMarUrl"]
+        # XXX: remove this after everything is uploading publicly
+        url = self.config.get("update", {}).get("mar_base_url")
+        if url:
+            url += os.path.basename(self.query_marfile_path())
+            return url.format(branch=self.query_branch())
+        self.fatal("Couldn't find complete mar url in config or package_urls")
+
+    def query_partial_mar_url(self, locale):
+        if "partial_mar_url" in self.config:
+            return self.config["complete_mar_url"]
+        if "partialMarUrl" in self.package_urls[locale]:
+            return self.package_urls[locale]["partialMarUrl"]
         # XXX: remove this after everything is uploading publicly
         url = self.config.get("update", {}).get("mar_base_url")
         if url:
