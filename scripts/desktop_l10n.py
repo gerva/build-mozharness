@@ -715,7 +715,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # via https://github.com/mozilla/build-tools/blob/master/lib/python/release/platforms.py#L23
         bp = self.buildbot_properties
         self.info("********* buildbot properties: %s ************" % (bp))
-        platform = config["property"]
+        platform = config["platform"]
         self.info("********* platform: %s ************" % (platform))
         self.set_buildbot_property("platform", platform)
         # TODO: Is there a better way to get this?
