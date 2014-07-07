@@ -699,7 +699,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         # complete mar file
         config = self.config
-        c_marfile = os.path.join(self.update_mar_dir(), config['complete_mar'])
+        c_marfile = self.query_complete_mar_filename(locale)
         c_mar_url = self.query_complete_mar_url(locale)
 
         # partial mar file
@@ -732,7 +732,17 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return 0
         return self.submit_balrog_updates()
 
+    def query_complete_mar_filename(self, locale):
+        """returns the full path to a localized complete mar file"""
+        config = self.config
+        version = self.query_version()
+        complete_mar_name = config['localized_mar'] % {'version': version,
+                                                       'locale': locale}
+        return os.path.join(self.update_mar_dir(), complete_mar_name)
+
     def query_complete_mar_url(self, locale):
+        """returns the complete mar url taken from self.package_urls[locale]
+           this value is available only after make_upload"""
         if "complete_mar_url" in self.config:
             return self.config["complete_mar_url"]
         if "completeMarUrl" in self.package_urls[locale]:
@@ -745,6 +755,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.fatal("Couldn't find complete mar url in config or package_urls")
 
     def query_partial_mar_url(self, locale):
+        """returns the partial mar upload url. This is valid only after
+           make upload"""
         if "partial_mar_url" in self.config:
             return self.config["complete_mar_url"]
         if "partialMarUrl" in self.package_urls[locale]:
