@@ -4,11 +4,12 @@ HG_SHARE_BASE_DIR = "/builds/hg-shared"
 EN_US_BINARY_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central"
 OBJDIR = "obj-l10n"
 MOZ_UPDATE_CHANNEL = "nightly"
-#STAGE_SERVER = "stage.mozilla.org"
+STAGE_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
+# STAGE_SERVER = "stage.mozilla.org"
 STAGE_USER = "ffxbld"
 STAGE_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
-#AUS_SERVER = "aus2-staging.mozilla.org"
+# AUS_SERVER = "aus2-staging.mozilla.org"
 AUS_USER = "ffxbld"
 AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
@@ -57,7 +58,7 @@ config = {
         "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
         "UPLOAD_TO_TEMP": "1"
     },
-    #l10n
+    # l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
     "l10n_stage_dir": "dist/firefox/l10n-stage",
