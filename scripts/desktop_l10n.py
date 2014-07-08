@@ -703,7 +703,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         c_mar_url = self.query_complete_mar_url(locale)
 
         # partial mar file
-        p_marfile = self.package_urls[locale]['partial_filename']
+        p_marfile = self.query_partial_mar_filename(locale)
         p_mar_url = self.query_partial_mar_url(locale)
         # Set other necessary properties for Balrog submission. None need to
         # be passed back to buildbot, so we won't write them to the properties
@@ -753,6 +753,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             url += os.path.basename(self.query_marfile_path())
             return url.format(branch=self.query_branch())
         self.fatal("Couldn't find complete mar url in config or package_urls")
+
+    def query_partial_mar_filename(self, locale):
+        """returns the full path to a partial, it returns a valid path only
+           after make upload"""
+        partial_mar_name = self.package_urls[locale]['partial_filename']
+        return os.path.join(self.update_mar_dir(), partial_mar_name)
 
     def query_partial_mar_url(self, locale):
         """returns the partial mar upload url. This is valid only after
