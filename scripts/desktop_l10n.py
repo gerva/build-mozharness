@@ -710,6 +710,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         appName = config['appName']
         hashType = config['hashType']
 
+        properties = self.buildbot_config.get("properties", {})
+        self.info(" ****** buildbot properties: {0}".format(properties))
+        # balrog submitter requires buildbot['properties']['product']
+        # if it does not exist the submission will fail.
+        # set it to "Firefox" if does not exist
+        if not properties or ('product' not in properties):
+            # do not hard code it, read from configuration
+            properties = {"product": "Firefox"}
+            self.set_buildbot_property('properties', properties)
+
         # Set other necessary properties for Balrog submission. None need to
         # be passed back to buildbot, so we won't write them to the properties
         # files.
