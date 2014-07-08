@@ -727,7 +727,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("partialMarSize", self.query_filesize(p_marfile))
         self.set_buildbot_property("partialMarHash", self.query_sha512sum(p_marfile))
         self.set_buildbot_property("partialMarUrl", p_mar_url)
-        return self.submit_balrog_updates()
+        result = 0
+        try:
+            self.submit_balrog_updates()
+        except Excecption as error:
+            self.error("submit to balrog failed: %s" % (str(error))
+            result = 1
+        return result
 
     def query_complete_mar_filename(self, locale):
         """returns the full path to a localized complete mar file"""
