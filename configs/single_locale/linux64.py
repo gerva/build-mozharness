@@ -4,7 +4,6 @@ HG_SHARE_BASE_DIR = "/builds/hg-shared"
 EN_US_BINARY_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central"
 OBJDIR = "obj-l10n"
 MOZ_UPDATE_CHANNEL = "nightly"
-STAGE_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
 #STAGE_SERVER = "stage.mozilla.org"
 STAGE_USER = "ffxbld"
 STAGE_SSH_KEY = "~/.ssh/ffxbld_dsa"
@@ -17,9 +16,6 @@ AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 PLATFORM = 'linux64'
 config = {
-    'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
-    "balrog_credentials_file": "oauth.txt",
-    'balrog_username': 'stage-ffxbld',
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",
     "mozconfig": "%s/browser/config/mozconfigs/linux64/l10n-mozconfig" % MOZILLA_DIR,
@@ -72,9 +68,9 @@ config = {
     "merge_locales": True,
     "clobber_file": 'CLOBBER',
 
-    #MAR
-    'previous_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n',
-    'current_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central',
+    # MAR
+    "previous_mar_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n",
+    "current_mar_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central",
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
     "update_mar_dir": "dist/update",  # sure?
@@ -82,7 +78,7 @@ config = {
     "current_work_mar_dir": "current.work",
     "package_base_dir": "dist/l10n-stage",
     "application_ini": "application.ini",
-    "buildid_section": 'App',
+    "buildid_section": "App",
     "buildid_option": "BuildID",
     "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
     "incremental_update_script": "tools/update-packaging/make_incremental_update.sh",
@@ -97,7 +93,14 @@ config = {
     "complete_mar": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.partial.%(from_buildid)s-%(to_buildid)s.mar",
-    'installer_file': "firefox-%(version)s.en-US.linux-x86_64.tar.bz2",
+    "installer_file": "firefox-%(version)s.en-US.linux-x86_64.tar.bz2",
+
+    # BALROG
+    "balrog_api_root": "https://aus4-admin-dev.allizom.org",
+    "balrog_credentials_file": "oauth.txt",
+    "balrog_username": "stage-ffxbld",
+    "appName": "Firefox",
+    "hashType": "sha512",
 
     # AUS
     "aus_server": AUS_SERVER,

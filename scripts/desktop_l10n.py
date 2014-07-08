@@ -599,7 +599,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if self.generate_partials(locale) != 0:
             self.error("generate partials %s failed" % (locale))
             return
-        self._copy_mozconfig()
         return 0
 
     def repack(self):
@@ -705,6 +704,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # partial mar file
         p_marfile = self.query_partial_mar_filename(locale)
         p_mar_url = self.query_partial_mar_url(locale)
+
+        # get platform, appName and hashType from configuration
+        platform = config["platform"]
+        appName = config['appName']
+        hashType = config['hashType']
+
         # Set other necessary properties for Balrog submission. None need to
         # be passed back to buildbot, so we won't write them to the properties
         # files.
@@ -713,23 +718,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("appVersion", self.query_version())
         # The Balrog submitter translates this platform into a build target
         # via https://github.com/mozilla/build-tools/blob/master/lib/python/release/platforms.py#L23
-        bp = self.buildbot_properties
-        self.info("********* buildbot properties: %s ************" % (bp))
-        platform = config["platform"]
-        self.info("********* platform: %s ************" % (platform))
         self.set_buildbot_property("platform", platform)
-        # TODO: Is there a better way to get this?
-        self.set_buildbot_property("appName", "Firefox")
-        # TODO: don't hardcode
-        self.set_buildbot_property("hashType", "sha512")
+        self.set_buildbot_property("appName", appName)
+        self.set_buildbot_property("hashType", hashType)
         self.set_buildbot_property("completeMarSize", self.query_filesize(c_marfile))
         self.set_buildbot_property("completeMarHash", self.query_sha512sum(c_marfile))
         self.set_buildbot_property("partialMarUrl", c_mar_url)
         self.set_buildbot_property("partialMarSize", self.query_filesize(p_marfile))
         self.set_buildbot_property("partialMarHash", self.query_sha512sum(p_marfile))
         self.set_buildbot_property("partialMarUrl", p_mar_url)
-        # do nothing, for now
-        return 0
         return self.submit_balrog_updates()
 
     def query_complete_mar_filename(self, locale):
