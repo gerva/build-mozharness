@@ -730,7 +730,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         result = 0
         try:
             self.submit_balrog_updates()
-        except Excecption as error:
+        except Exception as error:
             self.error("submit to balrog failed: %s" % (str(error)))
             result = 1
         return result
