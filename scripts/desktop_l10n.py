@@ -710,7 +710,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         appName = config['appName']
         hashType = config['hashType']
 
-        properties = self.buildbot_config.get("properties", {})
+        properties = self.query_buildbot_property("properties")
         self.info(" ****** buildbot properties: {0}".format(properties))
         # balrog submitter requires buildbot['properties']['product']
         # if it does not exist the submission will fail.
@@ -722,7 +722,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         # Set other necessary properties for Balrog submission. None need to
         # be passed back to buildbot, so we won't write them to the properties
-        # files.
+        # files
         # Locale is hardcoded to en-US, for silly reasons
         self.set_buildbot_property("locale", "en-US")
         self.set_buildbot_property("appVersion", self.query_version())
