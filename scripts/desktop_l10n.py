@@ -710,7 +710,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         appName = config['appName']
         hashType = config['hashType']
 
-        properties = self.query_buildbot_property("properties")
+        # try to read buildbot props, if any
+        self.info("Reading buildbot build properties...")
+        self.read_buildbot_config()
+
+        try:
+            properties = self.query_buildbot_property("properties")
+        except AttributeError:
+            # no properties set for buildbot, initialize to empty dict
+            self.buildbot_properties = {}
+
         self.info(" ****** buildbot properties: {0}".format(properties))
         # balrog submitter requires buildbot['properties']['product']
         # if it does not exist the submission will fail.
