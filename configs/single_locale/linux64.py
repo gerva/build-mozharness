@@ -101,6 +101,9 @@ config = {
     "balrog_api_root": "https://aus4-admin-dev.allizom.org",
     "balrog_credentials_file": "oauth.txt",
     "balrog_username": "stage-ffxbld",
+    'balrog_usernames': {
+        'firefox': 'stage-ffxbld',
+    }
     "appName": "Firefox",
     "hashType": "sha512",
 
