@@ -742,7 +742,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("hashType", hashType)
         self.set_buildbot_property("completeMarSize", self.query_filesize(c_marfile))
         self.set_buildbot_property("completeMarHash", self.query_sha512sum(c_marfile))
-        self.set_buildbot_property("partialMarUrl", c_mar_url)
+        self.set_buildbot_property("completeMarUrl", c_mar_url)
         self.set_buildbot_property("partialMarSize", self.query_filesize(p_marfile))
         self.set_buildbot_property("partialMarHash", self.query_sha512sum(p_marfile))
         self.set_buildbot_property("partialMarUrl", p_mar_url)
