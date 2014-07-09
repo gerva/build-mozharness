@@ -739,6 +739,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # via https://github.com/mozilla/build-tools/blob/master/lib/python/release/platforms.py#L23
         self.set_buildbot_property("platform", platform)
         self.set_buildbot_property("appName", appName)
+        self.set_buildbot_property("buildid", self.query_buildid())
         self.set_buildbot_property("hashType", hashType)
         self.set_buildbot_property("completeMarSize", self.query_filesize(c_marfile))
         self.set_buildbot_property("completeMarHash", self.query_sha512sum(c_marfile))
