@@ -46,6 +46,7 @@ config = {
         # "DIST": "%(abs_objdir)s",
         # "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
     },
+    "buildbot_json_path": "buildprops.json",
     "log_name": "single_locale",
     "objdir": OBJDIR,
     "js_src_dir": "js/src",

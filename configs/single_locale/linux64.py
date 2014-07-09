@@ -44,6 +44,7 @@ config = {
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "IS_NIGHTLY": "yes",
     },
+    "buildbot_json_path": "buildprops.json",
     "log_name": "single_locale",
     "objdir": OBJDIR,
     "js_src_dir": "js/src",
