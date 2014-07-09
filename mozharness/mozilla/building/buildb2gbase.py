@@ -74,6 +74,11 @@ class B2GBuildBaseScript(BuildbotMixin, MockMixin,
             "dest": "checkout_revision",
             "help": "checkout a specific gecko revision.",
         }],
+        [["--disable-mock"], {
+            "dest": "disable_mock",
+            "action": "store_true",
+            "help": "do not run under mock despite what gecko-config says",
+        }],
     ]
 
     def __init__(self,
@@ -156,17 +161,18 @@ class B2GBuildBaseScript(BuildbotMixin, MockMixin,
 
     def query_revision(self):
         if 'revision' in self.buildbot_properties:
-            return self.buildbot_properties['revision']
+            revision = self.buildbot_properties['revision']
+        elif self.buildbot_config and 'sourcestamp' in self.buildbot_config:
+            revision = self.buildbot_config['sourcestamp']['revision']
+        else:
+            # Look at what we have checked out
+            dirs = self.query_abs_dirs()
+            hg = self.query_exe('hg', return_type='list')
+            revision = self.get_output_from_command(
+                hg + ['parent', '--template', '{node|short}'], cwd=dirs['gecko_src']
+            )
 
-        if self.buildbot_config and 'sourcestamp' in self.buildbot_config:
-            return self.buildbot_config['sourcestamp']['revision']
-
-        # Look at what we have checked out
-        dirs = self.query_abs_dirs()
-        hg = self.query_exe('hg', return_type='list')
-        return self.get_output_from_command(
-            hg + ['parent', '--template', '{node|short}'], cwd=dirs['gecko_src']
-        )
+        return revision[0:12] if revision else None
 
     def query_gecko_config_path(self):
         conf_file = self.config.get('gecko_config')
@@ -235,6 +241,9 @@ class B2GBuildBaseScript(BuildbotMixin, MockMixin,
             v = v.format(workdir=dirs['abs_work_dir'],
                          srcdir=os.path.abspath(dirs['gecko_src']))
             env[k] = v
+        if self.config.get('env', {}).get('B2G_UPDATE_CHANNEL'):
+            v = str(self.config['env']['B2G_UPDATE_CHANNEL'])
+            env['B2G_UPDATE_CHANNEL'] = v
         if self.config.get('variant'):
             v = str(self.config['variant'])
             env['VARIANT'] = v

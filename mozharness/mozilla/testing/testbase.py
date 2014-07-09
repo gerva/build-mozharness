@@ -59,6 +59,13 @@ testing_config_options = [
      "choices": ['ondemand', 'true'],
      "help": "Download and extract crash reporter symbols.",
       }],
+    [["--structured-output"],
+     {"action": "store_true",
+      "dest": "structured_output",
+      "default": False,
+      "help": "The structured output parser should be used to interpret "
+              "output from the test run."
+      }],
 ] + copy.deepcopy(virtualenv_config_options)
 
 
@@ -133,12 +140,16 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
                 self.test_url = c['test_url']
             try:
                 files = self.buildbot_config['sourcestamp']['changes'][-1]['files']
+                buildbot_prop_branch = self.buildbot_config['properties']['branch']
+
                 # Bug 868490 - Only require exactly two files if require_test_zip;
                 # otherwise accept either 1 or 2, since we'll be getting a
                 # test_zip url that we don't need.
                 expected_length = [1, 2, 3]
                 if c.get("require_test_zip") and not self.test_url:
                     expected_length = [2, 3]
+                if buildbot_prop_branch.startswith('gaia-try'):
+                    expected_length = range(1,6)
                 actual_length = len(files)
                 if actual_length not in expected_length:
                     self.fatal("Unexpected number of files in buildbot config %s.\nExpected these number(s) of files: %s, but got: %d" %
@@ -193,6 +204,14 @@ You can set this by:
 """
         if message:
             self.fatal(message + "Can't run download-and-extract... exiting")
+
+        # If our URLs look like files, prefix them with file:// so they can
+        # be loaded like URLs.
+        if self.installer_url[0] == '/':
+            self.installer_url = 'file://%s' % self.installer_url
+
+        if self.test_url and self.test_url[0] == '/':
+            self.test_url = 'file://%s' % self.test_url
 
     def _download_test_zip(self):
         dirs = self.query_abs_dirs()
