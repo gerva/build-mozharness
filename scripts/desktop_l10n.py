@@ -643,7 +643,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         version = self.query_version()
         previous_mar_buildid = self.query_build_id(previous_mar_dir, prettynames=1)
-        current_mar_buildid = self.query_build_id(current_mar_dir, prettynames=1)
+        current_mar_buildid = self.query_buildid()
         partial_filename = config['partial_mar'] % {'version': version,
                                                     'locale': locale,
                                                     'from_buildid': current_mar_buildid,
@@ -651,6 +651,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if locale not in self.package_urls:
             self.package_urls[locale] = {}
         self.package_urls[locale]['partial_filename'] = partial_filename
+        self.package_urls[locale]['previous_buildid'] = previous_mar_buildid
         self.delete_pgc_files()
         return self.do_incremental_update(previous_mar_dir, current_mar_dir,
                                           partial_filename, prettynames=0)
@@ -704,6 +705,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # partial mar file
         p_marfile = self.query_partial_mar_filename(locale)
         p_mar_url = self.query_partial_mar_url(locale)
+        p_buildid = self.query_previous_mar_buildid(locale)
 
         # get platform, appName and hashType from configuration
         platform = config["platform"]
@@ -720,7 +722,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             # no properties set for buildbot, initialize to empty dict
             self.buildbot_properties = {}
 
-        self.info(" ****** buildbot properties: {0}".format(properties))
+#        self.info(" ****** buildbot properties: {0}".format(properties))
         # balrog submitter requires buildbot['properties']['product']
         # if it does not exist the submission will fail.
         # set it to "Firefox" if does not exist
@@ -740,6 +742,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("platform", platform)
         self.set_buildbot_property("appName", appName)
         self.set_buildbot_property("buildid", self.query_buildid())
+        self.set_buildbot_property("previous_buildid", p_buildid)
         self.set_buildbot_property("hashType", hashType)
         self.set_buildbot_property("completeMarSize", self.query_filesize(c_marfile))
         self.set_buildbot_property("completeMarHash", self.query_sha512sum(c_marfile))
@@ -747,6 +750,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("partialMarSize", self.query_filesize(p_marfile))
         self.set_buildbot_property("partialMarHash", self.query_sha512sum(p_marfile))
         self.set_buildbot_property("partialMarUrl", p_mar_url)
+        self.set_buildbot_property("locale", locale)
+
         result = 0
         try:
             self.submit_balrog_updates()
@@ -796,6 +801,17 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             url += os.path.basename(self.query_marfile_path())
             return url.format(branch=self.query_branch())
         self.fatal("Couldn't find complete mar url in config or package_urls")
+
+    def query_previous_mar_buildid(self, locale):
+        """return the partial mar buildid,
+        this method returns a valid buildid only after generate partials,
+        it raises an exception when buildid is not available
+        """
+        try:
+            return self.package_urls[locale]["previous_buildid"]
+        except KeyError:
+            self.error("no previous mar buildid")
+            raise
 
     def delete_pgc_files(self):
         """deletes pgc files"""
