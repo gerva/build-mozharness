@@ -103,7 +103,7 @@ config = {
     "balrog_username": "stage-ffxbld",
     'balrog_usernames': {
         'firefox': 'stage-ffxbld',
-    }
+    },
     "appName": "Firefox",
     "hashType": "sha512",
 
