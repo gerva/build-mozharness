@@ -574,7 +574,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
            partials"""
         self.info("========================")
         self.info("========================")
-        self.info("base package name: %s" % (query_base_package_name(locale)))
+        self.info("base package name: %s" % (self.query_base_package_name(locale)))
         self.info("========================")
         self.info("========================")
         if self.run_compare_locales(locale) != 0:
@@ -781,7 +781,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         partial_mar_name = self.package_urls[locale]['partial_filename']
         return os.path.join(self._update_mar_dir(), partial_mar_name)
 
-    def _query_previous_mar_buildid(self, locale):
+    def _query_previous_mar_buildid2(self, locale):
         """returns the partial mar upload url. This is valid only after
            make upload"""
         if "partial_mar_url" in self.config:
