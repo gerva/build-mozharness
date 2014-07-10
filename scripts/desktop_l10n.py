@@ -726,13 +726,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("partialMarUrl", p_mar_url)
         self.set_buildbot_property("previous_buildid", p_buildid)
         try:
-            r = self.submit_balrog_updates()
-            self.info("balrog return code: %s" % (r))
+            result = self.submit_balrog_updates()
+            self.info("balrog return code: %s" % (result))
         except Exception as error:
             self.error("submit partial to balrog failed: %s" % (str(error)))
             result = 1
         return result
-
 
     def submit_repack_to_balrog(self, locale):
         """submit a single locale to balrog"""
@@ -742,7 +741,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             # return
 
         # complete mar file
-        config = self.config
         c_marfile = self._query_complete_mar_filename(locale)
         c_mar_url = self._query_complete_mar_url(locale)
 
