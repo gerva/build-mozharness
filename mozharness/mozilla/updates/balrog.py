@@ -3,15 +3,14 @@ import os
 
 from mozharness.base.log import INFO
 
+
 # BalrogMixin {{{1
 class BalrogMixin(object):
     def submit_balrog_updates(self, release_type="nightly"):
         c = self.config
         dirs = self.query_abs_dirs()
 
-        self.info('**** before ["properties"]["product"]')
         product = self.buildbot_config["properties"]["product"]
-        self.info('**** after ["properties"]["product"]')
         props_path = os.path.join(dirs["base_work_dir"], "balrog_props.json")
         credentials_file = os.path.join(
             dirs["base_work_dir"], c["balrog_credentials_file"]
@@ -41,10 +40,5 @@ class BalrogMixin(object):
             cmd.append("--verbose")
 
         self.info("Calling Balrog submission script")
-        self.retry(
-            self.run_command, args=(cmd,),
-            kwargs={
-                "halt_on_failure": False,
-                "fatal_exit_code": 3,
-            },
-        )
+        kwargs = {"halt_on_failure": False, "fatal_exit_code": 3, }
+        return self.retry(self.run_command, args=(cmd,), kwargs=kwargs)
