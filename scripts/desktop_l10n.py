@@ -101,20 +101,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
          "dest": "total_locale_chunks",
          "type": "int",
          "help": "Specify the total number of chunks of locales"}
-    ], [
-        ['--partials-from', ],
-        {"action": "store",
-         "dest": "partials_from",
-         "type": "string",
-         "help": "Specify the total number of chunks of locales"}
     ]]
 
     def __init__(self, require_config_file=True):
-        LocalesMixin.__init__(self)
-        BaseScript.__init__(
-            self,
-            config_options=self.config_options,
-            all_actions=[
+        # fxbuild style:
+        buildscript_kwargs = {
+            'all_actions': [
                 "clobber",
                 "pull",
                 "list-locales",
@@ -124,7 +116,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "submit-to-balrog",
                 "summary",
             ],
-            require_config_file=require_config_file
+            'config': {'option': 'value'}
+
+        }
+        LocalesMixin.__init__(self)
+        BaseScript.__init__(
+            self,
+            config_options=self.config_options,
+            require_config_file=require_config_file,
+            **buildscript_kwargs
         )
         self.buildid = None
         self.make_ident_output = None
