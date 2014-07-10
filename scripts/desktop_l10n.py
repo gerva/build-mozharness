@@ -755,10 +755,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("completeMarUrl", c_mar_url)
         self.set_buildbot_property("locale", locale)
 
-        result = 0
         try:
-            r = self.submit_balrog_updates()
-            self.info("balrog return code: %s" % (r))
+            result = self.submit_balrog_updates()
+            self.info("balrog return code: %s" % (result))
         except Exception as error:
             self.error("submit repack to balrog failed: %s" % (str(error)))
             result = 1
