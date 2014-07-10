@@ -8,12 +8,29 @@
 
 This script manages Desktop repacks for nightly builds
 """
-
-from copy import deepcopy
 import os
 import re
-import subprocess
 import sys
+
+import subprocess
+from copy import deepcopy
+
+# load modules from parent dir
+sys.path.insert(1, os.path.dirname(sys.path[0]))
+
+from mozharness.base.errors import BaseErrorList, MakefileErrorList
+from mozharness.base.script import BaseScript
+from mozharness.base.transfer import TransferMixin
+from mozharness.base.vcs.vcsbase import VCSMixin
+from mozharness.mozilla.buildbot import BuildbotMixin
+from mozharness.mozilla.building.buildbase import MakeUploadOutputParser
+from mozharness.mozilla.l10n.locales import LocalesMixin
+from mozharness.mozilla.mar import MarMixin
+from mozharness.mozilla.mock import MockMixin
+from mozharness.mozilla.purge import PurgeMixin
+from mozharness.mozilla.release import ReleaseMixin
+from mozharness.mozilla.signing import MobileSigningMixin, SigningMixin
+from mozharness.mozilla.updates.balrog import BalrogMixin
 
 try:
     import simplejson as json
@@ -21,23 +38,6 @@ try:
 except ImportError:
     import json
 
-# load modules from parent dir
-sys.path.insert(1, os.path.dirname(sys.path[0]))
-
-from mozharness.base.transfer import TransferMixin
-from mozharness.mozilla.mar import MarMixin
-from mozharness.base.errors import BaseErrorList, MakefileErrorList
-from mozharness.mozilla.release import ReleaseMixin
-from mozharness.mozilla.signing import MobileSigningMixin
-from mozharness.mozilla.signing import SigningMixin
-from mozharness.base.vcs.vcsbase import VCSMixin
-from mozharness.mozilla.l10n.locales import LocalesMixin
-from mozharness.mozilla.buildbot import BuildbotMixin
-from mozharness.mozilla.purge import PurgeMixin
-from mozharness.mozilla.mock import MockMixin
-from mozharness.base.script import BaseScript
-from mozharness.mozilla.updates.balrog import BalrogMixin
-from mozharness.mozilla.building.buildbase import MakeUploadOutputParser
 
 # when running get_output_form_command, pymake has some extra output
 # that needs to be filtered out
