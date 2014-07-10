@@ -177,7 +177,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if self.upload_env:
             return self.upload_env
         c = self.config
-        buildid = self.query_buildid()
+        buildid = self._query_buildid()
         version = self.query_version()
         upload_env = self.query_env(partial_env=c.get("upload_env"),
                                     replace_dict={'buildid': buildid,
@@ -200,7 +200,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             env=self.query_repack_env())
         return self.make_ident_output
 
-    def query_buildid(self):
+    def _query_buildid(self):
         """Get buildid from the objdir.
         Only valid after setup is run.
        """
@@ -280,18 +280,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.version = self._query_make_variable("MOZ_APP_VERSION")
         return self.version
 
-    def query_upload_url(self, locale):
-        """returns the upload url for a given locale"""
-        if locale in self.upload_urls:
-            return self.upload_urls[locale]
-        if 'snippet_base_url' in self.config:
-            return self.config['snippet_base_url'] % {'locale': locale}
-        self.error("Can't determine the upload url for %s!" % locale)
-        msg = "You either need to run --upload-repacks before "
-        msg += "--create-nightly-snippets, or specify "
-        msg += "the 'snippet_base_url' in self.config!"
-        self.error(msg)
-
     def upload_repacks(self):
         """iterates through the list of locales and calls make upload"""
         self.summarize(self.make_upload, self.query_locales())
@@ -311,10 +299,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             else:
                 #  func failed...
                 message = 'failure: %s(%s)' % (name, item)
-                self.add_failure(item, message)
+                self._add_failure(item, message)
         return (success_count, total_count)
 
-    def add_failure(self, locale, message, **kwargs):
+    def _add_failure(self, locale, message, **kwargs):
         self.locales_property[locale] = "Failed"
         prop_key = "%s_failure" % locale
         prop_value = self.query_buildbot_property(prop_key)
@@ -326,7 +314,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         BaseScript.add_failure(self, locale, message=message, **kwargs)
 
     def summary(self):
-        """generates a summmary"""
+        """generates a summary"""
         BaseScript.summary(self)
         # TODO we probably want to make this configurable on/off
         locales = self.query_locales()
@@ -366,9 +354,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _setup_configure(self, buildid=None):
         """configuration setup"""
-        if self.make_configure():
+        if self._make_configure():
             self.fatal("Configure failed!")
-        if self.make_dirs():
+        if self._make_dirs():
             self.fatal("make dir failed!")
         # do we need it?
         if self.make_export(buildid):
@@ -399,7 +387,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if os.path.exists(_clobber_file):
             self._touch_file(_clobber_file)
         # Configure again since the hg update may have invalidated it.
-        buildid = self.query_buildid()
+        buildid = self._query_buildid()
         self._setup_configure(buildid=buildid)
 
     def _clobber_file(self):
@@ -461,7 +449,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                                             silent=True,
                                             halt_on_failure=halt_on_failure)
 
-    def make_configure(self):
+    def _make_configure(self):
         """calls make -f client.mk configure"""
         env = self.query_repack_env()
         dirs = self.query_abs_dirs()
@@ -469,7 +457,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         target = ["-f", "client.mk", "configure"]
         return self._make(target=target, cwd=cwd, env=env)
 
-    def make_dirs(self):
+    def _make_dirs(self):
         """calls make <dirs>
            dirs is defined in configuration"""
         config = self.config
@@ -523,7 +511,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         env = self.query_upload_env()
         dirs = self.query_abs_dirs()
-        buildid = self.query_buildid()
+        buildid = self._query_buildid()
         try:
             env['POST_UPLOAD_CMD'] = config['base_post_upload_cmd'] % {'buildid': buildid}
         except KeyError:
@@ -571,7 +559,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """creates a complete mar file"""
         config = self.config
         dirs = self.query_abs_dirs()
-        self.create_mar_dirs()
+        self._create_mar_dirs()
         self.download_mar_tools()
         package_basedir = os.path.join(dirs['abs_objdir'],
                                        config['package_base_dir'])
@@ -584,6 +572,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def repack_locale(self, locale):
         """wraps the logic for comapare locale, make installers and generate
            partials"""
+        self.info("========================")
+        self.info("========================")
+        self.info("base package name: %s" % (query_base_package_name(locale)))
+        self.info("========================")
+        self.info("========================")
         if self.run_compare_locales(locale) != 0:
             self.error("compare locale %s failed" % (locale))
             return
@@ -617,23 +610,23 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def create_partial_updates(self, locale):
         # clean up any left overs from previous locales
         # remove current/ current.work/ previous/ directories
-        self.delete_mar_dirs()
+        self._delete_mar_dirs()
         # and recreate current/ previous/
-        self.create_mar_dirs()
+        self._create_mar_dirs()
         # download mar and mbsdiff executables
         self.download_mar_tools()
         # get the previous mar file
-        previous_marfile = self.get_previous_mar(locale)
+        previous_marfile = self._get_previous_mar(locale)
         # and unpack it
-        previous_mar_dir = self.previous_mar_dir()
+        previous_mar_dir = self._previous_mar_dir()
         result = self._unpack_mar(previous_marfile, previous_mar_dir, prettynames=1)
         if result != 0:
             self.error('failed to unpack %s to %s' % (previous_marfile,
                                                       previous_mar_dir))
             return result
 
-        current_marfile = self.get_current_mar()
-        current_mar_dir = self.current_mar_dir()
+        current_marfile = self._get_current_mar()
+        current_mar_dir = self._current_mar_dir()
         result = self._unpack_mar(current_marfile, current_mar_dir, prettynames=1)
         if result != 0:
             self.error('failed to unpack %s to %s' % (current_marfile,
@@ -643,7 +636,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         version = self.query_version()
         previous_mar_buildid = self.query_build_id(previous_mar_dir, prettynames=1)
-        current_mar_buildid = self.query_buildid()
+        current_mar_buildid = self._query_buildid()
         partial_filename = config['partial_mar'] % {'version': version,
                                                     'locale': locale,
                                                     'from_buildid': current_mar_buildid,
@@ -652,7 +645,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.package_urls[locale] = {}
         self.package_urls[locale]['partial_filename'] = partial_filename
         self.package_urls[locale]['previous_buildid'] = previous_mar_buildid
-        self.delete_pgc_files()
+        self._delete_pgc_files()
         return self.do_incremental_update(previous_mar_dir, current_mar_dir,
                                           partial_filename, prettynames=0)
 
@@ -699,13 +692,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         # complete mar file
         config = self.config
-        c_marfile = self.query_complete_mar_filename(locale)
-        c_mar_url = self.query_complete_mar_url(locale)
+        c_marfile = self._query_complete_mar_filename(locale)
+        c_mar_url = self._query_complete_mar_url(locale)
 
         # partial mar file
-        p_marfile = self.query_partial_mar_filename(locale)
-        p_mar_url = self.query_partial_mar_url(locale)
-        p_buildid = self.query_previous_mar_buildid(locale)
+        p_marfile = self._query_partial_mar_filename(locale)
+        p_mar_url = self._query_previous_mar_buildid(locale)
+        p_buildid = self._query_previous_mar_buildid(locale)
 
         # get platform, appName and hashType from configuration
         platform = config["platform"]
@@ -741,7 +734,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # via https://github.com/mozilla/build-tools/blob/master/lib/python/release/platforms.py#L23
         self.set_buildbot_property("platform", platform)
         self.set_buildbot_property("appName", appName)
-        self.set_buildbot_property("buildid", self.query_buildid())
+        self.set_buildbot_property("buildid", self._query_buildid())
         self.set_buildbot_property("previous_buildid", p_buildid)
         self.set_buildbot_property("hashType", hashType)
         self.set_buildbot_property("completeMarSize", self.query_filesize(c_marfile))
@@ -760,15 +753,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             result = 1
         return result
 
-    def query_complete_mar_filename(self, locale):
+    def _query_complete_mar_filename(self, locale):
         """returns the full path to a localized complete mar file"""
         config = self.config
         version = self.query_version()
         complete_mar_name = config['localized_mar'] % {'version': version,
                                                        'locale': locale}
-        return os.path.join(self.update_mar_dir(), complete_mar_name)
+        return os.path.join(self._update_mar_dir(), complete_mar_name)
 
-    def query_complete_mar_url(self, locale):
+    def _query_complete_mar_url(self, locale):
         """returns the complete mar url taken from self.package_urls[locale]
            this value is available only after make_upload"""
         if "complete_mar_url" in self.config:
@@ -782,13 +775,13 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return url.format(branch=self.query_branch())
         self.fatal("Couldn't find complete mar url in config or package_urls")
 
-    def query_partial_mar_filename(self, locale):
+    def _query_partial_mar_filename(self, locale):
         """returns the full path to a partial, it returns a valid path only
            after make upload"""
         partial_mar_name = self.package_urls[locale]['partial_filename']
-        return os.path.join(self.update_mar_dir(), partial_mar_name)
+        return os.path.join(self._update_mar_dir(), partial_mar_name)
 
-    def query_partial_mar_url(self, locale):
+    def _query_previous_mar_buildid(self, locale):
         """returns the partial mar upload url. This is valid only after
            make upload"""
         if "partial_mar_url" in self.config:
@@ -802,7 +795,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return url.format(branch=self.query_branch())
         self.fatal("Couldn't find complete mar url in config or package_urls")
 
-    def query_previous_mar_buildid(self, locale):
+    def _query_previous_mar_buildid(self, locale):
         """return the partial mar buildid,
         this method returns a valid buildid only after generate partials,
         it raises an exception when buildid is not available
@@ -813,10 +806,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.error("no previous mar buildid")
             raise
 
-    def delete_pgc_files(self):
+    def _delete_pgc_files(self):
         """deletes pgc files"""
-        for directory in (self.previous_mar_dir(),
-                          self.current_mar_dir()):
+        for directory in (self._previous_mar_dir(),
+                          self._current_mar_dir()):
             for pcg_file in self._pgc_files(directory):
                 self.info("removing %s" % pcg_file)
                 self.rmtree(pcg_file)
@@ -832,9 +825,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         base_url = config['previous_mar_url']
         return "/".join((base_url, self._localized_mar_name(locale)))
 
-    def get_current_mar(self):
+    def _get_current_mar(self):
         """downloads the current mar file"""
-        self.mkdir_p(self.previous_mar_dir())
+        self.mkdir_p(self._previous_mar_dir())
         if not os.path.exists(self._current_mar_filename()):
             self.download_file(self._current_mar_url(),
                                self._current_mar_filename())
@@ -842,9 +835,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.info('%s already exists, skipping download' % (self._current_mar_filename()))
         return self._current_mar_filename()
 
-    def get_previous_mar(self, locale):
+    def _get_previous_mar(self, locale):
         """downloads the previous mar file"""
-        self.mkdir_p(self.previous_mar_dir())
+        self.mkdir_p(self._previous_mar_dir())
         self.download_file(self._previous_mar_url(locale),
                            self._previous_mar_filename())
         return self._previous_mar_filename()
@@ -863,25 +856,25 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _previous_mar_filename(self):
         """returns the complete path to previous.mar"""
         config = self.config
-        return os.path.join(self.previous_mar_dir(),
+        return os.path.join(self._previous_mar_dir(),
                             config['previous_mar_filename'])
 
     def _current_mar_filename(self):
         """returns the complete path to current.mar"""
-        return os.path.join(self.current_mar_dir(), self._current_mar_name())
+        return os.path.join(self._current_mar_dir(), self._current_mar_name())
 
-    def create_mar_dirs(self):
+    def _create_mar_dirs(self):
         """creates mar directories: previous/ current/"""
-        for directory in (self.previous_mar_dir(),
-                          self.current_mar_dir()):
+        for directory in (self._previous_mar_dir(),
+                          self._current_mar_dir()):
             self.info("creating: %s" % directory)
             self.mkdir_p(directory)
 
-    def delete_mar_dirs(self):
+    def _delete_mar_dirs(self):
         """delete mar directories: previous, current"""
-        for directory in (self.previous_mar_dir(),
-                          self.current_mar_dir(),
-                          self.current_work_mar_dir()):
+        for directory in (self._previous_mar_dir(),
+                          self._current_mar_dir(),
+                          self._current_work_mar_dir()):
             self.info("deleting: %s" % directory)
             if os.path.exists(directory):
                 self.rmtree(directory)
@@ -905,7 +898,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_mozilla_dir'], config['unpack_script'])
 
-    def previous_mar_dir(self):
+    def _previous_mar_dir(self):
         """returns the full path of the previous/ directory"""
         return self._mar_dir('previous_mar_dir')
 
@@ -914,15 +907,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], 'dist')
 
-    def update_mar_dir(self):
+    def _update_mar_dir(self):
         """returns the full path of the update/ directory"""
         return self._mar_dir('update_mar_dir')
 
-    def current_mar_dir(self):
+    def _current_mar_dir(self):
         """returns the full path of the current/ directory"""
         return self._mar_dir('current_mar_dir')
 
-    def current_work_mar_dir(self):
+    def _current_work_mar_dir(self):
         """returns the full path to current.work"""
         return self._mar_dir('current_work_mar_dir')
 
@@ -935,9 +928,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """returns the full path of dirname;
             dirname is an entry in configuration"""
         config = self.config
-        return os.path.join(self.get_objdir(), config.get(dirname))
+        return os.path.join(self._get_objdir(), config.get(dirname))
 
-    def get_objdir(self):
+    def _get_objdir(self):
         """returns full path to objdir"""
         dirs = self.query_abs_dirs()
         return dirs['abs_objdir']
