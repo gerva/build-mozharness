@@ -598,11 +598,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def repack_locale(self, locale):
         """wraps the logic for comapare locale, make installers and generate
            partials"""
-        self.info("========================")
-        self.info("========================")
-        self.info("base package name: %s" % (self.query_base_package_name(locale)))
-        self.info("========================")
-        self.info("========================")
         if self.run_compare_locales(locale) != 0:
             self.error("compare locale %s failed" % (locale))
             return
@@ -615,10 +610,18 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             self.error("generate complete %s mar failed" % (locale))
             return
 
-        if self.generate_partials(locale) != 0:
-            self.error("generate partials %s failed" % (locale))
-            return
+        if self.has_partials():
+            if self.create_partial_updates(locale) != 0:
+                self.error("generate partials %s failed" % (locale))
+                return
+        else:
+            self.info("partial updates are not enabled, skipping")
         return 0
+
+    def has_partials(self):
+        """returns True if partials are enabled, False elsewhere"""
+        config = self.config
+        return config.get("enable_partials", False)
 
     def repack(self):
         """creates the repacks and udpates"""
@@ -675,10 +678,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self.do_incremental_update(previous_mar_dir, current_mar_dir,
                                           partial_filename, prettynames=0)
 
-    def generate_partials(self, locale):
-        """generate partial files"""
-        return self.create_partial_updates(locale)
-
     def _query_objdir(self):
         if self.objdir:
             return self.objdir
@@ -732,12 +731,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             properties = {"product": "Firefox"}
             self.set_buildbot_property('properties', properties)
 
-        self.set_buildbot_property("partialMarSize", None)
-        self.set_buildbot_property("partialMarHash", None)
-        self.set_buildbot_property("partialMarUrl", None)
-        self.set_buildbot_property("previous_buildid", None)
-        self.summarize(self.submit_repack_to_balrog, self.query_locales())
+        if self.has_partials():
+            # submit partials to balrog
+            self.set_buildbot_property("partialMarSize", None)
+            self.set_buildbot_property("partialMarHash", None)
+            self.set_buildbot_property("partialMarUrl", None)
+            self.set_buildbot_property("previous_buildid", None)
+            self.summarize(self.submit_repack_to_balrog, self.query_locales())
 
+        # submit complete mar to balrog
         self.set_buildbot_property("completeMarSize", None)
         self.set_buildbot_property("completeMarHash", None)
         self.set_buildbot_property("completeMarUrl", None)
