@@ -680,8 +680,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if locale not in self.partials:
                 self.partials[locale] = {}
 
-            if previous_mar_buildid not in self.artials[locale]:
-                self.partial[locale][previous_mar_buildid] = []
+            if previous_mar_buildid not in self.partials[locale]:
+                self.partials[locale][previous_mar_buildid] = []
 
             # append partialInfo
             self.partials[locale][previous_mar_buildid].append(partialInfo)
