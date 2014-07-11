@@ -152,6 +152,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.locales_property = {}
         self.l10n_dir = None
         self.package_urls = {}
+        self.partials = {}
         if 'mock_target' in self.config:
             self.enable_mock()
 
@@ -664,8 +665,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.package_urls[locale]['partial_filename'] = partial_filename
         self.package_urls[locale]['previous_buildid'] = previous_mar_buildid
         self._delete_pgc_files()
-        return self.do_incremental_update(previous_mar_dir, current_mar_dir,
-                                          partial_filename, prettynames=0)
+        result = self.do_incremental_update(previous_mar_dir, current_mar_dir,
+                                            partial_filename, prettynames=0)
+        if result == 0:
+            # incremental updates succeded
+            # prepare partialInfo for balrog submission
+            partialInfo = {}
+            partialInfo['from_buildid'] = previous_mar_buildid
+            partialInfo['size'] = self.query_filesize(partial_filename)
+            partialInfo['hash'] = self.query_sha512sum(partial_filename)
+            partialInfo['url'] = self._query_previous_mar_buildid(locale)
+            if locale not in self.partials:
+                self.partials[locale] = []
+            self.partials[locale].append(partialInfo)
 
     def _query_objdir(self):
         if self.objdir:
@@ -728,31 +740,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("previous_buildid", None)
         self.summarize(self.submit_repack_to_balrog, self.query_locales())
 
-        if self.has_partials():
-            # submit partials to balrog
-            # clean up buildbot_properties
-            self.set_buildbot_property("completeMarSize", None)
-            self.set_buildbot_property("completeMarHash", None)
-            self.set_buildbot_property("completeMarUrl", None)
-            self.summarize(self.submit_partial_to_balrog, self.query_locales())
-
-    def submit_partial_to_balrog(self, locale):
-        # partial mar file
-        p_marfile = self._query_partial_mar_filename(locale)
-        p_mar_url = self._query_previous_mar_buildid(locale)
-        p_buildid = self._query_previous_mar_buildid(locale)
-        self.set_buildbot_property("partialMarSize", self.query_filesize(p_marfile))
-        self.set_buildbot_property("partialMarHash", self.query_sha512sum(p_marfile))
-        self.set_buildbot_property("partialMarUrl", p_mar_url)
-        self.set_buildbot_property("previous_buildid", p_buildid)
-        try:
-            result = self.submit_balrog_updates()
-            self.info("balrog return code: %s" % (result))
-        except Exception as error:
-            self.error("submit partial to balrog failed: %s" % (str(error)))
-            result = 1
-        return result
-
     def submit_repack_to_balrog(self, locale):
         """submit a single locale to balrog"""
         if not self.query_is_nightly():
@@ -774,6 +761,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("completeMarHash", self.query_sha512sum(c_marfile))
         self.set_buildbot_property("completeMarUrl", c_mar_url)
         self.set_buildbot_property("locale", locale)
+        # partialInfo survive across locale iterations, delete them
+        self.set_buildbot_property("partialInfo", None)
+        if locale in self.partials:
+            self.set_buildbot_property("partialInfo", self.partials[locale])
 
         try:
             result = self.submit_balrog_updates()
