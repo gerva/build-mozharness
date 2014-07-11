@@ -116,8 +116,35 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "submit-to-balrog",
                 "summary",
             ],
-            'config': {'option': 'value'}
+            'config': {
+                "buildbot_json_path": "buildprops.json",
+                "ignore_locales": ["en-US"],
+                "locales_dir": "browser/locales",
+                "previous_mar_dir": "previous",
+                "current_mar_dir": "current",
+                "update_mar_dir": "dist/update",
+                "previous_mar_filename": "previous.mar",
+                "current_work_mar_dir": "current.work",
+                "buildid_section": "App",
+                "buildid_option": "BuildID",
+                "application_ini": "application.ini",
+                "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
+                "log_name": "single_locale",
+                "clobber_file": 'CLOBBER',
+                "appName": "Firefox",
+                "hashType": "sha512",
+                'repos': [{
+                    "vcs": "hg",
+                    "repo": "https://hg.mozilla.org/build/tools",
+                    "revision": "default",
+                    "dest": "tools",
+                }, {
+                    "vcs": "hg",
+                    "repo": "https://hg.mozilla.org/build/compare-locales",
+                    "revision": "RELEASE_AUTOMATION"
+                }],
 
+            },
         }
         LocalesMixin.__init__(self)
         BaseScript.__init__(

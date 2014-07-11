@@ -18,7 +18,6 @@ CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDAT
 PLATFORM = 'linux64'
 config = {
     "mozilla_dir": MOZILLA_DIR,
-    "snippet_base_url": "http://example.com",
     "mozconfig": "%s/browser/config/mozconfigs/linux64/l10n-mozconfig" % MOZILLA_DIR,
     "binary_url": EN_US_BINARY_URL,
     "platform": PLATFORM,
@@ -27,15 +26,6 @@ config = {
         "repo": "https://hg.mozilla.org/mozilla-central",
         "revision": "default",
         "dest": MOZILLA_DIR,
-    }, {
-        "vcs": "hg",
-        "repo": "https://hg.mozilla.org/build/tools",
-        "revision": "default",
-        "dest": "tools",
-    }, {
-        "vcs": "hg",
-        "repo": "https://hg.mozilla.org/build/compare-locales",
-        "revision": "RELEASE_AUTOMATION"
     }],
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
@@ -44,8 +34,6 @@ config = {
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "IS_NIGHTLY": "yes",
     },
-    "buildbot_json_path": "buildprops.json",
-    "log_name": "single_locale",
     "objdir": OBJDIR,
     "js_src_dir": "js/src",
     "make_dirs": ['config'],
@@ -55,34 +43,21 @@ config = {
         "UPLOAD_USER": STAGE_USER,
         "UPLOAD_SSH_KEY": STAGE_SSH_KEY,
         "UPLOAD_HOST": STAGE_SERVER,
-        #"POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-android-l10n -p mobile -i %(buildid)s --release-to-latest --release-to-dated",
         "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
         "UPLOAD_TO_TEMP": "1"
     },
     # l10n
-    "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
     "l10n_stage_dir": "dist/firefox/l10n-stage",
     "locales_file": "%s/browser/locales/all-locales" % MOZILLA_DIR,
-    "locales_dir": "browser/locales",
     "hg_l10n_base": "https://hg.mozilla.org/l10n-central",
     "hg_l10n_tag": "default",
     "merge_locales": True,
-    "clobber_file": 'CLOBBER',
 
     # MAR
     "previous_mar_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n",
     "current_mar_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central",
-    "previous_mar_dir": "previous",
-    "current_mar_dir": "current",
-    "update_mar_dir": "dist/update",  # sure?
-    "previous_mar_filename": "previous.mar",
-    "current_work_mar_dir": "current.work",
     "package_base_dir": "dist/l10n-stage",
-    "application_ini": "application.ini",
-    "buildid_section": "App",
-    "buildid_option": "BuildID",
-    "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
     "incremental_update_script": "tools/update-packaging/make_incremental_update.sh",
     "update_packaging_dir": "tools/update-packaging",
     "local_mar_tool_dir": "dist/host/bin",
@@ -104,8 +79,6 @@ config = {
     'balrog_usernames': {
         'firefox': 'stage-ffxbld',
     },
-    "appName": "Firefox",
-    "hashType": "sha512",
 
     # AUS
     "aus_server": AUS_SERVER,
