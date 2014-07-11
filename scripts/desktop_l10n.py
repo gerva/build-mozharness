@@ -814,8 +814,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.fatal("Couldn't find complete mar url in config or package_urls")
 
     def _query_partial_mar_url(self, locale, buildid):
-        if "partialUrl" in self.package_urls[locale][buildid]:
+        self.log(self.package_urls[locale])
+        try:
             return self.package_urls[locale][buildid]["partialMarUrl"]
+        except KeyError as error:
+            self.error(error)
 
     def _query_partial_mar_filename(self, locale):
         """returns the full path to a partial, it returns a valid path only
