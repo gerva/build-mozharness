@@ -19,7 +19,10 @@ PLATFORM = 'macosx64'
 config = {
     'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
     "balrog_credentials_file": "oauth.txt",
-    'balrog_username': 'stage-ffxbld',
+    "balrog_username": "stage-ffxbld",
+    'balrog_usernames': {
+        'firefox': 'stage-ffxbld',
+    },
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig" % MOZILLA_DIR,
