@@ -17,6 +17,7 @@ AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 PLATFORM = 'linux64'
 config = {
+    "enable_partials": True,
     "mozilla_dir": MOZILLA_DIR,
     "mozconfig": "%s/browser/config/mozconfigs/linux64/l10n-mozconfig" % MOZILLA_DIR,
     "binary_url": EN_US_BINARY_URL,
