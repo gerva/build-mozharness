@@ -706,33 +706,35 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("hashType", hashType)
         self.set_buildbot_property("appVersion", self.query_version())
 
+        # balrog submitter requires buildbot['properties']['product']
+        # if it does not exist the submission will fail.
         try:
             properties = self.query_buildbot_property("properties")
         except AttributeError:
             # no properties set for buildbot, initialize to empty dict
             self.buildbot_properties = {}
 
-        # balrog submitter requires buildbot['properties']['product']
-        # if it does not exist the submission will fail.
         # set it to "Firefox" if does not exist
         if not properties or ('product' not in properties):
             # do not hard code it, read from configuration
             properties = {"product": "Firefox"}
             self.set_buildbot_property('properties', properties)
 
+        # submit complete mar to balrog
+        # clean up buildbot_properties
+        self.set_buildbot_property("partialMarSize", None)
+        self.set_buildbot_property("partialMarHash", None)
+        self.set_buildbot_property("partialMarUrl", None)
+        self.set_buildbot_property("previous_buildid", None)
+        self.summarize(self.submit_repack_to_balrog, self.query_locales())
+
         if self.has_partials():
             # submit partials to balrog
-            self.set_buildbot_property("partialMarSize", None)
-            self.set_buildbot_property("partialMarHash", None)
-            self.set_buildbot_property("partialMarUrl", None)
-            self.set_buildbot_property("previous_buildid", None)
-            self.summarize(self.submit_repack_to_balrog, self.query_locales())
-
-        # submit complete mar to balrog
-        self.set_buildbot_property("completeMarSize", None)
-        self.set_buildbot_property("completeMarHash", None)
-        self.set_buildbot_property("completeMarUrl", None)
-        self.summarize(self.submit_partial_to_balrog, self.query_locales())
+            # clean up buildbot_properties
+            self.set_buildbot_property("completeMarSize", None)
+            self.set_buildbot_property("completeMarHash", None)
+            self.set_buildbot_property("completeMarUrl", None)
+            self.summarize(self.submit_partial_to_balrog, self.query_locales())
 
     def submit_partial_to_balrog(self, locale):
         # partial mar file
