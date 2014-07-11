@@ -26,6 +26,15 @@ config = {
         "repo": "https://hg.mozilla.org/mozilla-central",
         "revision": "default",
         "dest": MOZILLA_DIR,
+    }, {
+        "vcs": "hg",
+        "repo": "https://hg.mozilla.org/build/tools",
+        "revision": "default",
+        "dest": "tools",
+    }, {
+        "vcs": "hg",
+        "repo": "https://hg.mozilla.org/build/compare-locales",
+        "revision": "RELEASE_AUTOMATION"
     }],
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,

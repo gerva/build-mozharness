@@ -133,17 +133,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "clobber_file": 'CLOBBER',
                 "appName": "Firefox",
                 "hashType": "sha512",
-                'repos': [{
-                    "vcs": "hg",
-                    "repo": "https://hg.mozilla.org/build/tools",
-                    "revision": "default",
-                    "dest": "tools",
-                }, {
-                    "vcs": "hg",
-                    "repo": "https://hg.mozilla.org/build/compare-locales",
-                    "revision": "RELEASE_AUTOMATION"
-                }],
-
             },
         }
         LocalesMixin.__init__(self)
