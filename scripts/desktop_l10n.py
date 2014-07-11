@@ -676,7 +676,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             partialInfo['from_buildid'] = previous_mar_buildid
             partialInfo['size'] = self.query_filesize(p_marfile)
             partialInfo['hash'] = self.query_sha512sum(p_marfile)
-            partialInfo['url'] = self._query_objdir
+            partialInfo['url'] = self._query_partial_mar_url(locale, previous_mar_buildid)
             if locale not in self.partials:
                 self.partials[locale] = {}
 
@@ -783,11 +783,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return []
 
         partialInfos = self.partials[locale]
-        self.info("partialInfo: (%s) %s" % (partialInfos, locale))
+        self.info("partialInfo: (%s) %s" % (locale, partialInfos))
         partialInfo = []
-        for item, value in partialInfos:
-            partialInfo.append(value)
+        for item in partialInfos:
+            partialInfo.append(item)
 
+        self.info("partialInfo: (%s) %s" % (locale, partialInfo))
         return partialInfo
 
     def _query_complete_mar_filename(self, locale):
