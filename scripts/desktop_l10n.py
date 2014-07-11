@@ -610,7 +610,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def has_partials(self):
         """returns True if partials are enabled, False elsewhere"""
         config = self.config
-        return config.get("enable_partials", False)
+        return config["enable_partials"]
 
     def repack(self):
         """creates the repacks and udpates"""
