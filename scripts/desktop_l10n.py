@@ -671,9 +671,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             # incremental updates succeded
             # prepare partialInfo for balrog submission
             partialInfo = {}
+            p_marfile = self._query_partial_mar_filename(locale)
             partialInfo['from_buildid'] = previous_mar_buildid
-            partialInfo['size'] = self.query_filesize(partial_filename)
-            partialInfo['hash'] = self.query_sha512sum(partial_filename)
+            partialInfo['size'] = self.query_filesize(p_marfile)
+            partialInfo['hash'] = self.query_sha512sum(p_marfile)
             partialInfo['url'] = self._query_previous_mar_buildid(locale)
             if locale not in self.partials:
                 self.partials[locale] = []
