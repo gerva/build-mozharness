@@ -68,6 +68,7 @@ config = {
         "UPLOAD_HOST": STAGE_SERVER,
         "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
         "UPLOAD_TO_TEMP": "1",
+        "MOZ_PKG_PLATFORM": "mac",
     },
     #l10n
     "ignore_locales": ["en-US"],
