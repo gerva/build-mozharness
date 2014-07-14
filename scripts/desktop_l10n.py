@@ -678,13 +678,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             partialInfo['hash'] = self.query_sha512sum(p_marfile)
             partialInfo['url'] = self._query_partial_mar_url(locale, previous_mar_buildid)
             if locale not in self.partials:
-                self.partials[locale] = {}
-
-            if previous_mar_buildid not in self.partials[locale]:
-                self.partials[locale][previous_mar_buildid] = []
+                self.partials[locale] = []
 
             # append partialInfo
-            self.partials[locale][previous_mar_buildid].append(partialInfo)
+            self.partials[locale].append(partialInfo)
         return result
 
     def _query_objdir(self):
@@ -782,14 +779,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if locale not in self.partials:
             return []
 
-        partialInfos = self.partials[locale]
-        self.info("partialInfo: (%s) %s" % (locale, partialInfos))
-        partialInfo = []
-        for item in partialInfos:
-            partialInfo.append(item)
-
-        self.info("partialInfo: (%s) %s" % (locale, partialInfo))
-        return partialInfo
+        return self.partials[locale]
 
     def _query_complete_mar_filename(self, locale):
         """returns the full path to a localized complete mar file"""
@@ -816,7 +806,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def _query_partial_mar_url(self, locale, buildid):
         try:
             return self.package_urls[locale][buildid]["partialMarUrl"]
-        except KeyError as error:
+        except KeyError:
             msg = "package_urls: {0} {1} {2}".format(locale, buildid, self.package_urls)
             self.info(msg)
 
