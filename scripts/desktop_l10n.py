@@ -807,8 +807,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         try:
             return self.package_urls[locale]["partialMarUrl"]
         except KeyError:
-            msg = "package_urls: {0} {1} {2}".format(locale, buildid, self.package_urls)
-            self.info(msg)
+            msg = "Couldn't find package_urls: {0} {1} {2}".format(locale, buildid, self.package_urls)
+            self.error("package_urls: %s" % (self.package_urls))
+            self.fatal(msg)
 
     def _query_partial_mar_filename(self, locale):
         """returns the full path to a partial, it returns a valid path only
