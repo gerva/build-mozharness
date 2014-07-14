@@ -805,7 +805,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _query_partial_mar_url(self, locale, buildid):
         try:
-            return self.package_urls[locale][buildid]["partialMarUrl"]
+            return self.package_urls[locale]["partialMarUrl"]
         except KeyError:
             msg = "package_urls: {0} {1} {2}".format(locale, buildid, self.package_urls)
             self.info(msg)
@@ -820,7 +820,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """returns the partial mar upload url. This is valid only after
            make upload"""
         if "partial_mar_url" in self.config:
-            return self.config["complete_mar_url"]
+            return self.config["partial_mar_url"]
         if "partialMarUrl" in self.package_urls[locale]:
             return self.package_urls[locale]["partialMarUrl"]
         # XXX: remove this after everything is uploading publicly
