@@ -541,9 +541,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         retval = self._make(target=target, cwd=cwd, env=env,
                             halt_on_failure=False, output_parser=parser)
         if locale not in self.package_urls:
-            self.package_urls[locale] = parser.matches
-        else:
-            self.package_urls[locale].update(parser.matches)
+            self.package_urls[locale] = {}
+        self.package_urls[locale].update(parser.matches)
         self.info("parser: %s" % parser)
         self.info("parser matches: %s" % parser.matches)
         if retval != 0:
@@ -676,7 +675,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             partialInfo['from_buildid'] = previous_mar_buildid
             partialInfo['size'] = self.query_filesize(p_marfile)
             partialInfo['hash'] = self.query_sha512sum(p_marfile)
-            partialInfo['url'] = self._query_partial_mar_url(locale, previous_mar_buildid)
+            # url will be available only after make upload
+            # self._query_partial_mar_url(locale)
+            # and of course we need to generate partials befrore uploading them
+            partialInfo['url'] = None
             if locale not in self.partials:
                 self.partials[locale] = []
 
@@ -779,6 +781,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if locale not in self.partials:
             return []
 
+        # we have only a single partial for now
+        partial_url = self.package_urls[locale]["partialMarUrl"]
+        self.partials[locale][0]["url"] = partial_url
         return self.partials[locale]
 
     def _query_complete_mar_filename(self, locale):
@@ -803,11 +808,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return url.format(branch=self.query_branch())
         self.fatal("Couldn't find complete mar url in config or package_urls")
 
-    def _query_partial_mar_url(self, locale, buildid):
+    def _query_partial_mar_url(self, locale):
         try:
             return self.package_urls[locale]["partialMarUrl"]
         except KeyError:
-            msg = "Couldn't find package_urls: {0} {1} {2}".format(locale, buildid, self.package_urls)
+            msg = "Couldn't find package_urls: {0} {1}".format(locale, self.package_urls)
             self.error("package_urls: %s" % (self.package_urls))
             self.fatal(msg)
 
@@ -816,20 +821,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
            after make upload"""
         partial_mar_name = self.package_urls[locale]['partial_filename']
         return os.path.join(self._update_mar_dir(), partial_mar_name)
-
-    def _query_previous_mar_buildid2(self, locale):
-        """returns the partial mar upload url. This is valid only after
-           make upload"""
-        if "partial_mar_url" in self.config:
-            return self.config["partial_mar_url"]
-        if "partialMarUrl" in self.package_urls[locale]:
-            return self.package_urls[locale]["partialMarUrl"]
-        # XXX: remove this after everything is uploading publicly
-        url = self.config.get("update", {}).get("mar_base_url")
-        if url:
-            url += os.path.basename(self.query_marfile_path())
-            return url.format(branch=self.query_branch())
-        self.fatal("Couldn't find complete mar url in config or package_urls")
 
     def _query_previous_mar_buildid(self, locale):
         """return the partial mar buildid,
