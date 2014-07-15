@@ -782,6 +782,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return []
 
         # we have only a single partial for now
+        # MakeUploadOutputParser can match a single parser
         partial_url = self.package_urls[locale]["partialMarUrl"]
         self.partials[locale][0]["url"] = partial_url
         return self.partials[locale]
