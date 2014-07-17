@@ -192,6 +192,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self.repack_env
 
     def query_upload_env(self):
+        """returns the enviorment used for the upload step"""
         if self.upload_env:
             return self.upload_env
         c = self.config
@@ -321,6 +322,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return (success_count, total_count)
 
     def _add_failure(self, locale, message, **kwargs):
+        """marks current step as failed"""
         self.locales_property[locale] = "Failed"
         prop_key = "%s_failure" % locale
         prop_value = self.query_buildbot_property(prop_key)
@@ -511,18 +513,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         cwd = dirs['abs_locales_dir']
         return self._make(target=["wget-en-US"], cwd=cwd, env=env)
 
-    def _get_installer_file_path(self):
-        config = self.config
-        version = self.query_version()
-        installer_file = config['installer_file'] % {'version': version}
-        return os.path.join(self._abs_dist_dir(), installer_file)
-
-    def _get_installer_local_copy(self):
-        config = self.config
-        version = self.query_version()
-        installer_file = config['installer_file'] % {'version': version}
-        return os.path.join(self._abs_dist_dir(), 'tmp', installer_file)
-
     def make_upload(self, locale):
         """wrapper for make upload command"""
         config = self.config
@@ -618,6 +608,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.summarize(self.repack_locale, self.query_locales())
 
     def localized_marfile(self, locale):
+        """returns the localized mar file name"""
         config = self.config
         version = self.query_version()
         localized_mar = config['localized_mar'] % {'version': version,
@@ -627,6 +618,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return localized_mar
 
     def create_partial_updates(self, locale):
+        """create partial updates for locale"""
         # clean up any left overs from previous locales
         # remove current/ current.work/ previous/ directories
         self._delete_mar_dirs()
@@ -687,11 +679,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return result
 
     def _query_objdir(self):
-        if self.objdir:
-            return self.objdir
-
-        self.objdir = self.config['objdir']
-        return self.objdir
+        """returns objdir name from configuration"""
+        return self.config['objdir']
 
     def query_abs_dirs(self):
         if self.abs_dirs:
@@ -810,6 +799,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.fatal("Couldn't find complete mar url in config or package_urls")
 
     def _query_partial_mar_url(self, locale):
+        """returns partial mar url"""
         try:
             return self.package_urls[locale]["partialMarUrl"]
         except KeyError:
@@ -843,6 +833,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 self.rmtree(pcg_file)
 
     def _current_mar_url(self):
+        """returns current mar url"""
         config = self.config
         base_url = config['current_mar_url']
         return "/".join((base_url, self._current_mar_name()))
@@ -871,6 +862,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self._previous_mar_filename()
 
     def _current_mar_name(self):
+        """returns current mar file name"""
         config = self.config
         version = self.query_version()
         return config["current_mar_filename"] % {'version': version}
