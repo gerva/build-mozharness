@@ -4,11 +4,11 @@ HG_SHARE_BASE_DIR = "/builds/hg-shared"
 EN_US_BINARY_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central"
 OBJDIR = "obj-l10n"
 MOZ_UPDATE_CHANNEL = "nightly"
-STAGE_SERVER = "127.0.0.1"
+STAGE_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
 #STAGE_SERVER = "stage.mozilla.org"
-STAGE_USER = "mgerva"
-STAGE_SSH_KEY = "~/.ssh/id_rsa.pub"
-AUS_SERVER = "127.0.0.1"
+STAGE_USER = "ffxbld"
+STAGE_SSH_KEY = "~/.ssh/ffxbld_dsa"
+AUS_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
 #AUS_SERVER = "aus2-staging.mozilla.org"
 AUS_USER = "ffxbld"
 AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
@@ -17,7 +17,6 @@ AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 config = {
     "mozilla_dir": MOZILLA_DIR,
-    "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig" % MOZILLA_DIR,
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
     "binary_url": EN_US_BINARY_URL,
@@ -59,7 +58,6 @@ config = {
         "UPLOAD_HOST": STAGE_SERVER,
         "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
         "UPLOAD_TO_TEMP": "1",
-        "UPLOAD_PATH": "/tmp/"
     },
     #l10n
     "ignore_locales": ["en-US"],
@@ -97,6 +95,7 @@ config = {
     "complete_mar": "firefox-%(version)s.en-US.mac.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.mac.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
+    'installer_file': "firefox-%(version)s.en-US.mac.dmg",
 
     # AUS
     "build_target": "Linux_x86-gcc3",
@@ -106,14 +105,14 @@ config = {
     "aus_upload_base_dir": AUS_UPLOAD_BASE_DIR,
     "aus_base_dir": AUS_BASE_DIR,
 
-    #BALROG
+    # BALROG
     "product": "Firefox",
     "platform": "osx64",
     "hashType": "sha512",
     "balrog_credentials_file": "oauth.txt",
     "balrog_api_root": "http://127.0.0.1:9000",
-    "balrog_username": "mgervasini@mozilla.com",
+    "balrog_username": "stage-ffxbld",
     "balrog_usernames": {
-        "Firefox": "mgervasini@mozilla.com"
+        "Firefox": "pass"
     }
 }
