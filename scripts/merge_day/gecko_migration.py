@@ -29,7 +29,7 @@ from mozharness.base.vcs.vcsbase import MercurialScript
 from mozharness.base.vcs.mercurial import MercurialVCS
 
 VALID_MIGRATION_BEHAVIORS = (
-    "beta_to_release", "aurora_to_beta", "central_to_aurora"
+    "beta_to_release", "aurora_to_beta", "central_to_aurora", "release_to_esr"
 )
 
 
@@ -158,10 +158,11 @@ class GeckoMigration(MercurialScript):
                force=None, halt_on_failure=True):
         if isinstance(tags, basestring):
             tags = [tags]
-        message = "Tagging %s" % cwd
+        message = "Tagging %s" % os.path.basename(cwd)
         if revision:
             message = "%s %s" % (message, revision)
         message = "%s with %s" % (message, ', '.join(tags))
+        message += " a=release DONTBUILD CLOSED TREE"
         self.info(message)
         cmd = self.query_exe('hg', return_type='list') + ['tag']
         if user:
@@ -440,6 +441,41 @@ class GeckoMigration(MercurialScript):
             )
         self.touch_clobber_file(dirs['abs_to_dir'])
 
+    def release_to_esr(self, *args, **kwargs):
+        """ mozilla-release -> mozilla-esrNN behavior. """
+        dirs = self.query_abs_dirs()
+        for to_transplant in self.config.get("transplant_patches", []):
+            self.transplant(repo=to_transplant["repo"],
+                            changeset=to_transplant["changeset"],
+                            cwd=dirs['abs_to_dir'])
+        self.replace(
+            os.path.join(dirs['abs_to_dir'], "browser/confvars.sh"),
+            "ACCEPTED_MAR_CHANNEL_IDS=firefox-mozilla-release",
+            "ACCEPTED_MAR_CHANNEL_IDS=firefox-mozilla-esr"
+        )
+        self.replace(
+            os.path.join(
+                dirs['abs_to_dir'], "browser/confvars.sh"),
+            "MAR_CHANNEL_ID=firefox-mozilla-release",
+            "MAR_CHANNEL_ID=firefox-mozilla-esr"
+        )
+        self.touch_clobber_file(dirs['abs_to_dir'])
+
+    def transplant(self, repo, changeset, cwd):
+        """Transplant a Mercurial changeset from a remote repository."""
+        hg = self.query_exe("hg", return_type="list")
+        cmd = hg + ["--config", "extensions.transplant=", "transplant",
+                    "--source", repo, changeset]
+        self.info("Transplanting %s from %s" % (changeset, repo))
+        status = self.run_command(
+            cmd,
+            cwd=cwd,
+            error_list=HgErrorList,
+        )
+        if status != 0:
+            self.fatal("Cannot transplant %s from %s properly" %
+                       (changeset, repo))
+
 # Actions {{{1
     def clean_repos(self):
         """ We may end up with contaminated local repos at some point, but
@@ -521,10 +557,11 @@ class GeckoMigration(MercurialScript):
         self.info("New revision %s" % new_from_rev)
         m = MercurialVCS(log_obj=self.log_obj, config=self.config)
         m.pull(dirs['abs_from_dir'], dirs['abs_to_dir'])
-        self.hg_merge_via_debugsetparents(
-            dirs['abs_to_dir'], old_head=base_to_rev, new_head=new_from_rev,
-            user=self.config['hg_user'],
-        )
+        if self.config.get("requires_head_merge") is not False:
+            self.hg_merge_via_debugsetparents(
+                dirs['abs_to_dir'], old_head=base_to_rev, new_head=new_from_rev,
+                user=self.config['hg_user'],
+            )
         self.hg_tag(
             dirs['abs_to_dir'], end_tag, user=self.config['hg_user'],
             message="Added %s tag for changeset %s. IGNORE BROKEN CHANGESETS DONTBUILD CLOSED TREE NO BUG a=release" %
@@ -561,8 +598,11 @@ the script (--clean-repos --pull --migrate).  The second run will be faster."""
         dirs = self.query_abs_dirs()
         hg = self.query_exe("hg", return_type="list")
         for cwd in (dirs['abs_from_dir'], dirs['abs_to_dir']):
+            push_cmd = hg + ['push']
+            if cwd == dirs['abs_to_dir'] and self.config['migration_behavior'] == 'beta_to_release':
+                push_cmd.append('--new-branch')
             status = self.run_command(
-                hg + ['push'],
+                push_cmd,
                 cwd=cwd,
                 error_list=HgErrorList,
                 success_codes=[0, 1],
