@@ -3,7 +3,6 @@ import os
 
 from mozharness.base.log import INFO
 
-
 # BalrogMixin {{{1
 class BalrogMixin(object):
     def submit_balrog_updates(self, release_type="nightly"):
