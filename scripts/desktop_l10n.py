@@ -311,8 +311,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         total_count = len(items)
         name = func.__name__
         for item in items:
-            result = func(item)
-            if result == 0:
+            func(item)
+            if self.return_code == 0:
                 #  success!
                 success_count += 1
             else:
