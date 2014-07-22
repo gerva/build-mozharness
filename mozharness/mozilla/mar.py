@@ -104,7 +104,7 @@ class MarMixin(object):
         # log the content of application.ini
         with self.opened(ini_file, 'r') as (ini, error):
             if error:
-                self.fatal('cannot open {0}'.format(ini_file))
+                self.fatal('cannot open %s' % ini_file)
             self.debug(ini.read())
         return buildid_from_ini(ini_file)
 
