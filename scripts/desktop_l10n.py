@@ -899,13 +899,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if os.path.exists(directory):
                 self.rmtree(directory)
 
-    def _incremental_update_script(self):
-        """incremental update script"""
-        config = self.config
-        dirs = self.query_abs_dirs()
-        return os.path.join(dirs['abs_mozilla_dir'],
-                            config['incremental_update_script'])
-
     def _unpack_script(self):
         """unpack script full path"""
         config = self.config

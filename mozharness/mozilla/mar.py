@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 # ***** BEGIN LICENSE BLOCK *****
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -115,3 +116,10 @@ class MarMixin(object):
         config = self.config
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], config["local_mar_tool_dir"])
+
+    def _incremental_update_script(self):
+        """incremental update script"""
+        config = self.config
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['abs_mozilla_dir'],
+                            config['incremental_update_script'])
