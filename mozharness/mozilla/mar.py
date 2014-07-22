@@ -77,7 +77,7 @@ class MarMixin(object):
         env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
         # let's see if it makes any difference
         # REMOVE ME
-        env["MOZ_PKG_PRETTYNAMES"] = 0
+        env["MOZ_PKG_PRETTYNAMES"] = '0'
         self.info("unpacking %s" % mar_file)
         self.mkdir_p(dst_dir)
         return self.run_command(cmd,
