@@ -646,7 +646,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # partial filename
         config = self.config
         version = self.query_version()
-        previous_mar_buildid = self.query_build_id(previous_mar_dir, prettynames=1)
+        previous_mar_buildid = self.get_buildid_from_marfile(previous_mar_dir, prettynames=1)
         current_mar_buildid = self._query_buildid()
         partial_filename = config['partial_mar'] % {'version': version,
                                                     'locale': locale,

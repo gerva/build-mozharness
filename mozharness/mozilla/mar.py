@@ -75,6 +75,9 @@ class MarMixin(object):
         cmd = ['perl', self._unpack_script(), mar_file]
         env = deepcopy(self.query_repack_env())
         env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
+        # let's see if it makes any difference
+        # REMOVE ME
+        env["MOZ_PKG_PRETTYNAMES"] = 0
         self.info("unpacking %s" % mar_file)
         self.mkdir_p(dst_dir)
         return self.run_command(cmd,
@@ -94,8 +97,8 @@ class MarMixin(object):
         result = self.run_command(cmd, cwd=cwd, env=env)
         return result
 
-    def query_build_id(self, mar_unpack_dir, prettynames):
-        """returns the buildid of the current mar file"""
+    def get_buildid_from_marfile(self, mar_unpack_dir, prettynames):
+        """returns the buildid of an unpacked marfile"""
         config = self.config
         ini_file = config['application_ini']
         ini_file = os.path.join(mar_unpack_dir, ini_file)
