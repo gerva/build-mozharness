@@ -18,9 +18,6 @@ sys.path.insert(1, os.path.dirname(sys.path[0]))
 CONFIG = {
     "buildid_section": 'App',
     "buildid_option": "BuildID",
-    "unpack_script": "unwrap_full_update.pl",
-    "incremental_update_script": "make_incremental_update.sh",
-    "update_packaging_dir": "tools/update-packaging",
 }
 
 
