@@ -14,7 +14,6 @@ from copy import deepcopy
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
 
-
 CONFIG = {
     "buildid_section": 'App',
     "buildid_option": "BuildID",
@@ -110,3 +109,9 @@ class MarMixin(object):
                 self.fatal('cannot open {0}'.format(ini_file))
             self.debug(ini.read())
         return buildid_from_ini(ini_file)
+
+    def _mar_tool_dir(self):
+        """full path to the tools/ directory"""
+        config = self.config
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['abs_objdir'], config["local_mar_tool_dir"])

@@ -899,12 +899,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if os.path.exists(directory):
                 self.rmtree(directory)
 
-    def _mar_tool_dir(self):
-        """full path to the tools/ directory"""
-        config = self.config
-        dirs = self.query_abs_dirs()
-        return os.path.join(dirs['abs_objdir'], config["local_mar_tool_dir"])
-
     def _incremental_update_script(self):
         """incremental update script"""
         config = self.config
