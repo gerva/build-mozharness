@@ -10,10 +10,12 @@ import os
 import platform
 import urllib2
 import getpass
+import urlparse
+import socket
 
 from mozharness.base.config import ReadOnlyDict, parse_config_file
 from mozharness.base.errors import BaseErrorList
-from mozharness.base.log import FATAL
+from mozharness.base.log import FATAL, ERROR
 from mozharness.base.python import (
     ResourceMonitoringMixin,
     VirtualenvMixin,
@@ -71,8 +73,97 @@ testing_config_options = [
 ] + copy.deepcopy(virtualenv_config_options)
 
 
+class ProxxyMixin:
+    """
+    Support downloading files from HTTP caching proxies
+
+    Current supports 'proxxy' instances, in which the caching proxy at
+    proxxy.domain.com will cache requests for ftp.mozilla.org when passed requests to
+    http://ftp.mozilla.org.proxxy.domain.com/...
+
+    proxy_urls defines the list of backend hosts we are currently caching, and
+    the hostname prefix to use for proxxy
+    proxxy_instances lists current hostnames for proxxy instances. wildcard DNS
+    is set up so that *.proxxy.domain.com is a CNAME to the proxxy instance
+
+    TODO:
+        Handle failures better. If we fail to fetch a file from a proxxy
+        instance, we should fail over to another instance, or the canonical
+        URL. Current behaviour is to retry the proxxy url multiple times, and
+        then abort if we can't get it from there.
+    """
+    # List of urls we can proxy for, and their corresponding hostname
+    # prefix
+    # TODO: Put in configs
+    proxy_urls = [
+        ('http://ftp.mozilla.org', 'ftp.mozilla.org'),
+        ('https://ftp.mozilla.org', 'ftp.mozilla.org'),
+        ('https://ftp-ssl.mozilla.org', 'ftp.mozilla.org'),
+    ]
+    proxxy_instances = [
+        'proxxy-us-east-1-dev.srv.releng.use1.mozilla.com',
+        'proxxy-us-west-2-dev.srv.releng.usw2.mozilla.com',
+    ]
+
+    def query_proxy_urls(self, url):
+        """Return a list of proxy URLs to try, in sorted order. The original
+        url is included in this list."""
+        urls = [url]
+        url_parts = urlparse.urlsplit(url)
+        url_path = url_parts.path
+        if url_parts.query:
+            url_path += "?" + url_parts.query
+        if url_parts.fragment:
+            url_path += "#" + url_parts.fragment
+
+        for prefix, target in self.proxy_urls:
+            if url.startswith(prefix):
+                self.info("%s matches %s" % (url, prefix))
+                for instance in self.proxxy_instances:
+                    new_url = "http://{target}.{instance}{url_path}".format(
+                        target=target, instance=instance, url_path=url_path)
+                    urls.append(new_url)
+        # Sort them according to locality
+        urls = sorted(urls, key=self._sort_proxied_url)
+        for u in urls:
+            self.info("URL Candidate: %s" % u)
+        return urls
+
+    def _sort_proxied_url(self, url):
+        """Sorting function for urls"""
+        # TODO: Don't hardcode these regions
+        fqdn = socket.getfqdn()
+        if ".use1." in fqdn and ".use1." in url:
+            return 0
+        elif ".usw2." in fqdn and ".usw2." in url:
+            return 0
+        elif "proxxy" in url:
+            return 1
+        else:
+            return 2
+
+    def download_proxied_file(self, url, file_name=None, parent_dir=None,
+                              create_parent_dir=True, error_level=ERROR,
+                              exit_code=3):
+        """
+        Wrapper around BaseScript.download_file that understands proxies
+        """
+        urls = self.query_proxy_urls(url)
+
+        for u in urls:
+            self.info("trying %s" % u)
+            retval = self.download_file(
+                u, file_name=file_name, parent_dir=parent_dir,
+                create_parent_dir=create_parent_dir, error_level=ERROR,
+                exit_code=exit_code)
+            if retval:
+                return retval
+
+        self.log("Failed to download from all available URLs, aborting", level=error_level, exit_code=exit_code)
+        return retval
+
 # TestingMixin {{{1
-class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
+class TestingMixin(ProxxyMixin, VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
     """
     The steps to identify + download the proper bits for [browser] unit
     tests and Talos.
@@ -283,7 +374,7 @@ You can set this by:
         file_name = None
         if self.test_zip_path:
             file_name = self.test_zip_path
-        source = self.download_file(self.test_url, file_name=file_name,
+        source = self.download_proxied_file(self.test_url, file_name=file_name,
                                     parent_dir=dirs['abs_work_dir'],
                                     error_level=FATAL)
         self.test_zip_path = os.path.realpath(source)
@@ -293,7 +384,7 @@ You can set this by:
         This is hardcoded to halt on failure.
         We should probably change some other methods to call this."""
         dirs = self.query_abs_dirs()
-        zipfile = self.download_file(url, parent_dir=dirs['abs_work_dir'],
+        zipfile = self.download_proxied_file(url, parent_dir=dirs['abs_work_dir'],
                                      error_level=FATAL)
         command = self.query_exe('unzip', return_type='list')
         command.extend(['-q', '-o', zipfile])
@@ -349,7 +440,7 @@ You can set this by:
         if self.installer_path:
             file_name = self.installer_path
         dirs = self.query_abs_dirs()
-        source = self.download_file(self.installer_url, file_name=file_name,
+        source = self.download_proxied_file(self.installer_url, file_name=file_name,
                                     parent_dir=dirs['abs_work_dir'],
                                     error_level=FATAL)
         self.installer_path = os.path.realpath(source)
@@ -364,7 +455,7 @@ You can set this by:
         if not self.symbols_path:
             self.symbols_path = os.path.join(dirs['abs_work_dir'], 'symbols')
         self.mkdir_p(self.symbols_path)
-        source = self.download_file(self.symbols_url,
+        source = self.download_proxied_file(self.symbols_url,
                                     parent_dir=self.symbols_path,
                                     error_level=FATAL)
         self.set_buildbot_property("symbols_url", self.symbols_url,

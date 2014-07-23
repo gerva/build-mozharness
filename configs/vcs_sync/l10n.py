@@ -1,4 +1,5 @@
 from copy import deepcopy
+import os
 import socket
 hostname = socket.gethostname()
 
@@ -8,21 +9,11 @@ GECKO_BRANCHES = {
 }
 
 GECKO_CONFIG_TEMPLATE = {
-
     'mozilla-release': {
-        'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-        'mapper': {
-            'project': 'gitmo-gecko-l10n',
-            'url': 'https://api.pub.build.mozilla.org/mapper'
-        },
         'locales_file_url': 'https://hg.mozilla.org/releases/mozilla-release/raw-file/default/b2g/locales/all-locales',
         'hg_url': 'https://hg.mozilla.org/releases/l10n/mozilla-release/%(locale)s',
         'targets': [{
-            'target_dest': 'releases-l10n-%(locale)s-gecko/.git',
-            'test_push': True,
-            'vcs': 'git'
-        }, {
-            'target_dest': 'gitmo-gecko-l10n-%(locale)s',
+            "target_dest": "gitmo-gecko-l10n",
         }],
         'tag_config': {
             'tag_regexes': [
@@ -30,21 +21,11 @@ GECKO_CONFIG_TEMPLATE = {
             ],
         },
     },
-
     'mozilla-beta': {
-        'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-        'mapper': {
-            'project': 'gitmo-gecko-l10n',
-            'url': 'https://api.pub.build.mozilla.org/mapper'
-        },
         'locales_file_url': 'https://hg.mozilla.org/releases/mozilla-beta/raw-file/default/b2g/locales/all-locales',
         'hg_url': 'https://hg.mozilla.org/releases/l10n/mozilla-beta/%(locale)s',
         'targets': [{
-            'target_dest': 'releases-l10n-%(locale)s-gecko/.git',
-            'test_push': True,
-            'vcs': 'git'
-        }, {
-            'target_dest': 'gitmo-gecko-l10n-%(locale)s',
+            "target_dest": "gitmo-gecko-l10n",
         }],
         'tag_config': {
             'tag_regexes': [
@@ -52,21 +33,11 @@ GECKO_CONFIG_TEMPLATE = {
             ],
         },
     },
-
     'mozilla-aurora': {
-        'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-        'mapper': {
-            'project': 'gitmo-gecko-l10n',
-            'url': 'https://api.pub.build.mozilla.org/mapper'
-        },
         'locales_file_url': 'https://hg.mozilla.org/releases/mozilla-aurora/raw-file/default/b2g/locales/all-locales',
         'hg_url': 'https://hg.mozilla.org/releases/l10n/mozilla-aurora/%(locale)s',
         'targets': [{
-            'target_dest': 'releases-l10n-%(locale)s-gecko/.git',
-            'test_push': True,
-            'vcs': 'git'
-        }, {
-            'target_dest': 'gitmo-gecko-l10n-%(locale)s',
+            "target_dest": "gitmo-gecko-l10n",
         }],
         'tag_config': {
             'tag_regexes': [
@@ -74,21 +45,11 @@ GECKO_CONFIG_TEMPLATE = {
             ],
         },
     },
-
     'mozilla-central': {
-        'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-        'mapper': {
-            'project': 'gitmo-gecko-l10n',
-            'url': 'https://api.pub.build.mozilla.org/mapper'
-        },
         'locales_file_url': 'https://hg.mozilla.org/mozilla-central/raw-file/default/b2g/locales/all-locales',
         'hg_url': 'https://hg.mozilla.org/l10n-central/%(locale)s',
         'targets': [{
-            'target_dest': 'releases-l10n-%(locale)s-gecko/.git',
-            'test_push': True,
-            'vcs': 'git'
-        }, {
-            'target_dest': 'gitmo-gecko-l10n-%(locale)s',
+            "target_dest": "gitmo-gecko-l10n",
         }],
         'tag_config': {
             'tag_regexes': [
@@ -111,26 +72,22 @@ config = {
     "env": {
         "PATH": "%(PATH)s:/usr/libexec/git-core",
     },
+    "exes": {
+        # bug 828140 - shut https warnings up.
+        # http://kiln.stackexchange.com/questions/2816/mercurial-certificate-warning-certificate-not-verified-web-cacerts
+        "hg": [os.path.join(os.getcwd(), "build", "venv", "bin", "hg"), "--config", "web.cacerts=/etc/pki/tls/certs/ca-bundle.crt"],
+    },
     "conversion_type": "b2g-l10n",
     "combined_mapfile": "l10n-mapfile",
     "l10n_config": {
         "gecko_config": GECKO_CONFIG,
         "gaia_config": {
             'v2_0': {
-                'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-                'mapper': {
-                    'project': 'gitmo-gaia-l10n',
-                    'url': 'https://api.pub.build.mozilla.org/mapper'
-                },
                 'locales_file_url': 'https://raw.github.com/mozilla-b2g/gaia/v2.0/locales/languages_all.json',
                 'hg_url': 'https://hg.mozilla.org/releases/gaia-l10n/v2_0/%(locale)s',
                 'git_branch_name': 'v2.0',
                 'targets': [{
-                    'target_dest': 'releases-l10n-%(locale)s-gaia/.git',
-                    'test_push': True,
-                    'vcs': 'git'
-                }, {
-                    'target_dest': 'gitmo-gaia-l10n-%(locale)s',
+                    "target_dest": "gitmo-gaia-l10n",
                 }],
                 'tag_config': {
                     'tag_regexes': [
@@ -139,20 +96,11 @@ config = {
                 },
             },
             'v1_4': {
-                'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-                'mapper': {
-                    'project': 'gitmo-gaia-l10n',
-                    'url': 'https://api.pub.build.mozilla.org/mapper'
-                },
                 'locales_file_url': 'https://raw.github.com/mozilla-b2g/gaia/v1.4/locales/languages_all.json',
                 'hg_url': 'https://hg.mozilla.org/releases/gaia-l10n/v1_4/%(locale)s',
                 'git_branch_name': 'v1.4',
                 'targets': [{
-                    'target_dest': 'releases-l10n-%(locale)s-gaia/.git',
-                    'test_push': True,
-                    'vcs': 'git'
-                }, {
-                    'target_dest': 'gitmo-gaia-l10n-%(locale)s',
+                    "target_dest": "gitmo-gaia-l10n",
                 }],
                 'tag_config': {
                     'tag_regexes': [
@@ -161,20 +109,11 @@ config = {
                 },
             },
             'v1_3': {
-                'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-                'mapper': {
-                    'project': 'gitmo-gaia-l10n',
-                    'url': 'https://api.pub.build.mozilla.org/mapper'
-                },
-                'locales_file_url': 'https://raw.github.com/mozilla-b2g/gaia/v1.3/locales/languages_dev.json',
+                'locales_file_url': 'https://raw.github.com/mozilla-b2g/gaia/v1.3/locales/languages_all.json',
                 'hg_url': 'https://hg.mozilla.org/releases/gaia-l10n/v1_3/%(locale)s',
                 'git_branch_name': 'v1.3',
                 'targets': [{
-                    'target_dest': 'releases-l10n-%(locale)s-gaia/.git',
-                    'test_push': True,
-                    'vcs': 'git'
-                }, {
-                    'target_dest': 'gitmo-gaia-l10n-%(locale)s',
+                    "target_dest": "gitmo-gaia-l10n",
                 }],
                 'tag_config': {
                     'tag_regexes': [
@@ -183,20 +122,37 @@ config = {
                 },
             },
             'v1_2': {
-                'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-                'mapper': {
-                    'project': 'gitmo-gaia-l10n',
-                    'url': 'https://api.pub.build.mozilla.org/mapper'
-                },
                 'locales_file_url': 'https://raw.github.com/mozilla-b2g/gaia/v1.2/locales/languages_all.json',
                 'hg_url': 'https://hg.mozilla.org/releases/gaia-l10n/v1_2/%(locale)s',
                 'git_branch_name': 'v1.2',
                 'targets': [{
-                    'target_dest': 'releases-l10n-%(locale)s-gaia/.git',
-                    'test_push': True,
-                    'vcs': 'git'
-                }, {
-                    'target_dest': 'gitmo-gaia-l10n-%(locale)s',
+                    "target_dest": "gitmo-gaia-l10n",
+                }],
+                'tag_config': {
+                    'tag_regexes': [
+                        '^B2G_',
+                    ],
+                },
+            },
+            'v1-train': {
+                'locales_file_url': 'https://raw.github.com/mozilla-b2g/gaia/v1-train/locales/languages_all.json',
+                'hg_url': 'https://hg.mozilla.org/releases/gaia-l10n/v1_1/%(locale)s',
+                'git_branch_name': 'v1.1',
+                'targets': [{
+                    "target_dest": "gitmo-gaia-l10n",
+                }],
+                'tag_config': {
+                    'tag_regexes': [
+                        '^B2G_',
+                    ],
+                },
+            },
+            'v1_0_1': {
+                'locales_file_url': 'https://raw.github.com/mozilla-b2g/gaia/v1.0.1/locales/languages_all.json',
+                'hg_url': 'https://hg.mozilla.org/releases/gaia-l10n/v1_0_1/%(locale)s',
+                'git_branch_name': 'v1.0.1',
+                'targets': [{
+                    "target_dest": "gitmo-gaia-l10n",
                 }],
                 'tag_config': {
                     'tag_regexes': [
@@ -205,20 +161,11 @@ config = {
                 },
             },
             'master': {
-                'generate_git_notes': False, # we can change this when bug 1034725 is resolved
-                'mapper': {
-                    'project': 'gitmo-gaia-l10n',
-                    'url': 'https://api.pub.build.mozilla.org/mapper'
-                },
                 'locales_file_url': 'https://raw.github.com/mozilla-b2g/gaia/master/locales/languages_all.json',
                 'hg_url': 'https://hg.mozilla.org/gaia-l10n/%(locale)s',
                 'git_branch_name': 'master',
                 'targets': [{
-                    'target_dest': 'releases-l10n-%(locale)s-gaia/.git',
-                    'test_push': True,
-                    'vcs': 'git'
-                }, {
-                    'target_dest': 'gitmo-gaia-l10n-%(locale)s',
+                    "target_dest": "gitmo-gaia-l10n",
                 }],
                 'tag_config': {
                     'tag_regexes': [
@@ -230,14 +177,14 @@ config = {
     },
 
     "remote_targets": {
-        "gitmo-gecko-l10n-%(locale)s": {
-            "repo": 'gitolite3@git.mozilla.org:releases/l10n/%(locale)s/gecko.git',
-            "ssh_key": "~/.ssh/vcs-sync_rsa",
+        "gitmo-gecko-l10n": {
+            "repo": 'git+ssh://git.mozilla.org/releases/l10n/%(locale)s/gecko.git',
+            "ssh_key": "~/.ssh/blah",
             "vcs": "git",
         },
-        "gitmo-gaia-l10n-%(locale)s": {
-            "repo": 'gitolite3@git.mozilla.org:releases/l10n/%(locale)s/gaia.git',
-            "ssh_key": "~/.ssh/vcs-sync_rsa",
+        "gitmo-gaia-l10n": {
+            "repo": 'git+ssh://git.mozilla.org/releases/l10n/%(locale)s/gaia.git',
+            "ssh_key": "~/.ssh/blah",
             "vcs": "git",
         },
     },
@@ -252,23 +199,23 @@ config = {
         "mozfile==0.9",
         "mozinfo==0.5",
         "mozprocess==0.11",
-        "requests==2.2.1",
     ],
     "find_links": [
+        "http://pypi.pvt.build.mozilla.org/pub",
         "http://pypi.pub.build.mozilla.org/pub",
     ],
     "pip_index": False,
 
     "upload_config": [{
-        "ssh_key": "~/.ssh/vcs-sync_rsa",
+        "ssh_key": "~/.ssh/id_rsa",
         "ssh_user": "asasaki",
-        "remote_host": "people.mozilla.org",
-        "remote_path": "/home/asasaki/public_html/vcs2vcs/l10n",
+        "remote_host": "github-sync2",
+        "remote_path": "/home/asasaki/upload/l10n",
     }],
 
     "default_notify_from": "vcs2vcs@%s" % hostname,
     "notify_config": [{
-        "to": "release+vcs2vcs@mozilla.com",
+        "to": "aki@mozilla.com",
         "failure_only": False,
         "skip_empty_messages": True,
     }],
@@ -276,22 +223,4 @@ config = {
     # Disallow sharing, since we want pristine .hg and .git directories.
     "vcs_share_base": None,
     "hg_share_base": None,
-
-    # any hg command line options
-    "hg_options": (
-        "--config",
-        "web.cacerts=/etc/pki/tls/certs/ca-bundle.crt"
-    ),
-
-    "default_actions": [
-        'list-repos',
-        'create-virtualenv',
-        'update-stage-mirror',
-        'update-work-mirror',
-        'publish-to-mapper',
-        'push',
-        'combine-mapfiles',
-        'upload',
-        'notify',
-    ],
 }
