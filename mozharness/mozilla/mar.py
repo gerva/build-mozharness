@@ -70,14 +70,14 @@ class MarMixin(object):
         self.info("temporary mar dir: %s" % (mar_dir))
         return mar_dir
 
-    def _unpack_mar(self, mar_file, dst_dir, prettynames):
+    def _unpack_mar(self, mar_file, dst_dir):
         """unpacks a mar file into dst_dir"""
         cmd = ['perl', self._unpack_script(), mar_file]
         env = deepcopy(self.query_repack_env())
-        env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
+        #env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
         # let's see if it makes any difference
         # REMOVE ME
-        env["MOZ_PKG_PRETTYNAMES"] = '0'
+        #env["MOZ_PKG_PRETTYNAMES"] = '0'
         self.info("unpacking %s" % mar_file)
         self.mkdir_p(dst_dir)
         return self.run_command(cmd,
@@ -85,7 +85,7 @@ class MarMixin(object):
                                 env=env,
                                 halt_on_failure=True)
 
-    def do_incremental_update(self, previous_dir, current_dir, partial_filename, prettynames):
+    def do_incremental_update(self, previous_dir, current_dir, partial_filename):
         """create an incremental update from src_mar to dst_src.
            It stores the result in partial_filename"""
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
@@ -97,7 +97,7 @@ class MarMixin(object):
         result = self.run_command(cmd, cwd=cwd, env=env)
         return result
 
-    def get_buildid_from_marfile(self, mar_unpack_dir, prettynames):
+    def get_buildid_from_marfile(self, mar_unpack_dir):
         """returns the buildid of an unpacked marfile"""
         config = self.config
         ini_file = config['application_ini']

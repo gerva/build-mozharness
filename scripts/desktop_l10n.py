@@ -630,7 +630,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         previous_marfile = self._get_previous_mar(locale)
         # and unpack it
         previous_mar_dir = self._previous_mar_dir()
-        result = self._unpack_mar(previous_marfile, previous_mar_dir, prettynames=1)
+        result = self._unpack_mar(previous_marfile, previous_mar_dir)
         if result != 0:
             self.error('failed to unpack %s to %s' % (previous_marfile,
                                                       previous_mar_dir))
@@ -638,7 +638,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
         current_marfile = self._get_current_mar()
         current_mar_dir = self._current_mar_dir()
-        result = self._unpack_mar(current_marfile, current_mar_dir, prettynames=1)
+        result = self._unpack_mar(current_marfile, current_mar_dir)
         if result != 0:
             self.error('failed to unpack %s to %s' % (current_marfile,
                                                       current_mar_dir))
@@ -646,7 +646,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # partial filename
         config = self.config
         version = self.query_version()
-        previous_mar_buildid = self.get_buildid_from_marfile(previous_mar_dir, prettynames=1)
+        previous_mar_buildid = self.get_buildid_from_marfile(previous_mar_dir)
         current_mar_buildid = self._query_buildid()
         partial_filename = config['partial_mar'] % {'version': version,
                                                     'locale': locale,
@@ -658,7 +658,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.package_urls[locale]['previous_buildid'] = previous_mar_buildid
         self._delete_pgc_files()
         result = self.do_incremental_update(previous_mar_dir, current_mar_dir,
-                                            partial_filename, prettynames=0)
+                                            partial_filename)
         if result == 0:
             # incremental updates succeded
             # prepare partialInfo for balrog submission
