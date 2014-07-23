@@ -18,9 +18,6 @@ sys.path.insert(1, os.path.dirname(sys.path[0]))
 CONFIG = {
     "buildid_section": 'App',
     "buildid_option": "BuildID",
-    "unpack_script": "unwrap_full_update.pl",
-    "incremental_update_script": "make_incremental_update.sh",
-    "update_packaging_dir": "tools/update-packaging",
 }
 
 
@@ -39,6 +36,19 @@ def buildid_from_ini(ini_file):
 
 # MarMixin {{{1
 class MarMixin(object):
+    def _mar_tool_dir(self):
+        """returns the path or the mar tool directory"""
+        config = self.config
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['abs_objdir'], config["local_mar_tool_dir"])
+
+    def _incremental_update_script(self):
+        """returns the path of incremental update script"""
+        config = self.config
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['abs_mozilla_dir'],
+                            config['incremental_update_script'])
+
     def download_mar_tools(self):
         """downloads mar tools executables (mar,mbsdiff)
            and stores them local_dir()"""
@@ -73,11 +83,10 @@ class MarMixin(object):
         self.info("temporary mar dir: %s" % (mar_dir))
         return mar_dir
 
-    def _unpack_mar(self, mar_file, dst_dir, prettynames):
+    def _unpack_mar(self, mar_file, dst_dir):
         """unpacks a mar file into dst_dir"""
         cmd = ['perl', self._unpack_script(), mar_file]
         env = deepcopy(self.query_repack_env())
-        env["MOZ_PKG_PRETTYNAMES"] = str(prettynames)
         self.info("unpacking %s" % mar_file)
         self.mkdir_p(dst_dir)
         return self.run_command(cmd,
@@ -85,7 +94,7 @@ class MarMixin(object):
                                 env=env,
                                 halt_on_failure=True)
 
-    def do_incremental_update(self, previous_dir, current_dir, partial_filename, prettynames):
+    def do_incremental_update(self, previous_dir, current_dir, partial_filename):
         """create an incremental update from src_mar to dst_src.
            It stores the result in partial_filename"""
         # Usage: make_incremental_update.sh [OPTIONS] ARCHIVE FROMDIR TODIR
@@ -97,7 +106,7 @@ class MarMixin(object):
         result = self.run_command(cmd, cwd=cwd, env=env)
         return result
 
-    def query_build_id(self, mar_unpack_dir, prettynames):
+    def get_buildid_from_mar_dir(self, mar_unpack_dir, prettynames):
         """returns the buildid of the current mar file"""
         config = self.config
         ini_file = config['application_ini']
@@ -107,6 +116,6 @@ class MarMixin(object):
         # log the content of application.ini
         with self.opened(ini_file, 'r') as (ini, error):
             if error:
-                self.fatal('cannot open {0}'.format(ini_file))
+                self.fatal('cannot open %s' % ini_file)
             self.debug(ini.read())
         return buildid_from_ini(ini_file)
