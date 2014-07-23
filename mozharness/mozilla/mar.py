@@ -9,7 +9,6 @@
 import os
 import sys
 import ConfigParser
-from copy import deepcopy
 
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
@@ -86,7 +85,7 @@ class MarMixin(object):
     def _unpack_mar(self, mar_file, dst_dir):
         """unpacks a mar file into dst_dir"""
         cmd = ['perl', self._unpack_script(), mar_file]
-        env = deepcopy(self.query_repack_env())
+        env = self.query_repack_env()
         self.info("unpacking %s" % mar_file)
         self.mkdir_p(dst_dir)
         return self.run_command(cmd,
