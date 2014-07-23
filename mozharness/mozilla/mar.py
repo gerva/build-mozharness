@@ -105,7 +105,7 @@ class MarMixin(object):
         result = self.run_command(cmd, cwd=cwd, env=env)
         return result
 
-    def get_buildid_from_mar_dir(self, mar_unpack_dir, prettynames):
+    def get_buildid_from_mar_dir(self, mar_unpack_dir):
         """returns the buildid of the current mar file"""
         config = self.config
         ini_file = config['application_ini']
