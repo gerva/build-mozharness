@@ -373,13 +373,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def _setup_configure(self, buildid=None):
         """configuration setup"""
-        if self._make_configure():
-            self.fatal("Configure failed!")
-        if self._make_dirs():
-            self.fatal("make dir failed!")
-        # do we need it?
-        if self.make_export(buildid):
-            self.fatal("make export failed!")
+        # no need to catch failures as _make() halts on failure by default
+        self._make_configure()
+        self._make_dirs()
+        self.make_export(buildid)  # not sure we need it
 
     def setup(self):
         """setup step"""
@@ -449,9 +446,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
               halt_on_failure=True, output_parser=None):
         """Runs make. Returns the exit code"""
         make = self.query_exe("make", return_type="list")
-        self.info("**** target: {0}".format(target))
-        self.info("**** cwd: {0}".format(cwd))
-        self.info("**** env: {0}".format(env))
         return self.run_command(make + target,
                                 cwd=cwd,
                                 env=env,
@@ -491,6 +485,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """calls make export <buildid>"""
         #  is it really needed ???
         if buildid is None:
+            self.info('buildid is set to None, skipping make export')
             return
         dirs = self.query_abs_dirs()
         cwd = dirs['abs_locales_dir']
@@ -543,17 +538,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
 
     def make_installers(self, locale):
         """wrapper for make installers-(locale)"""
-        # TODO... don't download the same file again, store it locally
-        # and move it again where make_installer expects it
         env = self.query_repack_env()
         self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
-        # make.py: error: l10n-base required when using locale-mergedir
-        # adding a replace(...) because make.py doesn't like
-        # --locale-mergedir=e:\...\...\...
-        # replacing \ with /
-        # this kind of hacks makes me sad
-        # env['LOCALE_MERGEDIR'] = env['LOCALE_MERGEDIR'].replace("\\", "/")
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
         cmd = ["installers-%s" % locale,
