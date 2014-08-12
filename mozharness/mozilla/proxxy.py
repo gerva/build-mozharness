@@ -29,7 +29,7 @@ class ProxxyMixin:
             # tooltool
             ('http://tooltool.pub.build.mozilla.org', 'tooltool.pub.build.mozilla.org'),
             ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.pvt.build.mozilla.org'),
-            ('http://secure.pub.build.mozilla.org/tooltool/pvt/build', 'secure.pub.build.mozilla.org'),
+            ('http://secure.pub.build.mozilla.org', 'secure.pub.build.mozilla.org'),
         ],
         "instances": [
             'proxxy.srv.releng.use1.mozilla.com',
