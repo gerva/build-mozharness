@@ -1,3 +1,4 @@
+"""Proxxy module"""
 import urlparse
 import socket
 from mozharness.base.log import ERROR
@@ -25,6 +26,10 @@ class ProxxyMixin:
             ('https://ftp.mozilla.org', 'ftp.mozilla.org'),
             ('https://ftp-ssl.mozilla.org', 'ftp.mozilla.org'),
             ('http://pvtbuilds.pvt.build.mozilla.org', 'pvtbuilds.mozilla.org'),
+            # tooltool
+            ('http://tooltool.pub.build.mozilla.org', 'tooltool.pub.build.mozilla.org'),
+            ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.pvt.build.mozilla.org'),
+            ('http://secure.pub.build.mozilla.org/tooltool/pvt/build', 'secure.pub.build.mozilla.org'),
         ],
         "instances": [
             'proxxy.srv.releng.use1.mozilla.com',
@@ -34,6 +39,8 @@ class ProxxyMixin:
     }
 
     def query_proxxy_config(self):
+        """returns the 'proxxy' configuration from config. If 'proxxy' is not
+        defined, returns PROXXY_CONFIG instead"""
         cfg = self.config.get('proxxy', self.PROXXY_CONFIG)
         self.debug("proxxy config: %s" % cfg)
         return cfg
@@ -65,8 +72,8 @@ class ProxxyMixin:
                     new_url = "http://%s.%s%s" % (target, instance, url_path)
                     urls.insert(0, new_url)
 
-        for u in urls:
-            self.info("URL Candidate: %s" % u)
+        for url in urls:
+            self.info("URL Candidate: %s" % url)
         return urls
 
     def query_is_proxxy_local(self, url):
@@ -84,10 +91,10 @@ class ProxxyMixin:
         """
         urls = self.query_proxy_urls(url)
 
-        for u in urls:
-            self.info("trying %s" % u)
+        for url in urls:
+            self.info("trying %s" % url)
             retval = self.download_file(
-                u, file_name=file_name, parent_dir=parent_dir,
+                url, file_name=file_name, parent_dir=parent_dir,
                 create_parent_dir=create_parent_dir, error_level=ERROR,
                 exit_code=exit_code,
                 retry_config=dict(
