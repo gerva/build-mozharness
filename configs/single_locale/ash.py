@@ -1,6 +1,6 @@
 config = {
     "branch": "ash",
-    "en_binary_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/%(branch)s-%(platform)s/latest/",
+    "en_us_binary_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/%(branch)s-%(platform)s/latest/",
     "branch_repo": "https://hg.mozilla.org/projects/%(branch)s",
     "extra_upload_env": {
         "POST_UPLOAD_CMD": "post_upload.py -b %(branch)s-l10n -p firefox -i %(buildid)s --release-to-latest --release-to-dated",
