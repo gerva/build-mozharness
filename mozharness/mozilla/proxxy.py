@@ -27,9 +27,9 @@ class ProxxyMixin:
             ('https://ftp-ssl.mozilla.org', 'ftp.mozilla.org'),
             ('http://pvtbuilds.pvt.build.mozilla.org', 'pvtbuilds.mozilla.org'),
             # tooltool
-            ('http://tooltool.pub.build.mozilla.org', 'tooltool.pub.build.mozilla.org'),
-            ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.pvt.build.mozilla.org'),
-            ('http://secure.pub.build.mozilla.org', 'secure.pub.build.mozilla.org'),
+            ('http://tooltool.pub.build.mozilla.org', 'tooltool.mozilla.org'),
+            ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.mozilla.org'),
+            ('http://secure.pub.build.mozilla.org', 'secure.mozilla.org'),
         ],
         "instances": [
             'proxxy.srv.releng.use1.mozilla.com',
@@ -45,10 +45,11 @@ class ProxxyMixin:
         self.debug("proxxy config: %s" % cfg)
         return cfg
 
-    def query_proxy_urls(self, url):
-        """Return a list of proxy URLs to try, in sorted order. The original
-        url is included in this list."""
-        urls = [url]
+    def _get_proxies_for_url(self, url):
+        """A generic method to map a url and its proxy urls
+           Returns a list of proxy URLs to try, in sorted order. The original
+           url is NOT included in this list."""
+        urls = []
 
         cfg = self.query_proxxy_config()
         self.info("proxxy config: %s" % cfg)
@@ -76,6 +77,20 @@ class ProxxyMixin:
             self.info("URL Candidate: %s" % url)
         return urls
 
+    def query_proxy_url(self, url):
+        """Returns a list of proxy urls and the given url. If there are no
+           proxyes, it returns a single element list with url"""
+        proxy_list = self._get_proxies_for_url(url)
+        proxy_list.append(url)
+        return proxy_list
+
+    def query_proxy_urls(self, urls):
+        """Gets a list of urls and returns a list of proxied urls, the list
+           of input urls is appended at the return values"""
+        proxxy_list = [self._get_proxies_for_url(url) for url in urls]
+        proxxy_list.extend(urls)
+        return proxxy_list
+
     def query_is_proxxy_local(self, url):
         """Returns a list of base proxxy urls local to the machine"""
         fqdn = socket.getfqdn()
@@ -89,7 +104,7 @@ class ProxxyMixin:
         """
         Wrapper around BaseScript.download_file that understands proxies
         """
-        urls = self.query_proxy_urls(url)
+        urls = self.query_proxy_url(url)
 
         for url in urls:
             self.info("trying %s" % url)
