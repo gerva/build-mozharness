@@ -170,12 +170,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         replace_dict = self.query_abs_dirs()
         replace_dict['en_us_binary_url'] = config['en_us_binary_url']
-        if config.get('release_config_file'):
-            release_config = self.query_release_config()
-            replace_dict['version'] = release_config['version']
-            replace_dict['buildnum'] = release_config['buildnum']
+        replace_dict['platform'] = config['platform']
+        replace_dict['branch'] = config['branch']
         repack_env = self.query_env(partial_env=config.get("repack_env"),
                                     replace_dict=replace_dict)
+        repack_env['EN_US_BINARY_URL'] = config['en_us_binary_url'] % replace_dict
         if config.get('en_us_binary_url') and \
            config.get('release_config_file'):
             binary_url = config['en_us_binary_url'] % replace_dict
