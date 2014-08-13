@@ -55,6 +55,24 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           MarMixin):
     """Manages desktop repacks"""
     config_options = [[
+        ['--branch-configuration', ],
+        {"action": "store",
+         "dest": "branch_configuration_file",
+         "type": "string",
+         "help": "Specify the branch configuration file"}
+    ], [
+        ['--environment-configuration', ],
+        {"action": "store",
+         "dest": "environment_configuration_file",
+         "type": "string",
+         "help": "Specify the environment configuration file (staging|production)"}
+    ], [
+        ['--balrog-configuration', ],
+        {"action": "store",
+         "dest": "balrog_configuration_file",
+         "type": "string",
+         "help": "Specify the platform configuration file"}
+    ], [
         ['--locale', ],
         {"action": "extend",
          "dest": "locales",
@@ -359,14 +377,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         repos = []
         replace_dict = {}
+        replace_dict['branch'] = config['branch']
+        replace_dict['branch_repo'] = config['branch_repo'] % config['branch']
         if config.get("user_repo_override"):
             replace_dict['user_repo_override'] = config['user_repo_override']
-            # deepcopy() needed because of self.config lock bug :(
-            for repo_dict in deepcopy(config['repos']):
-                repo_dict['repo'] = repo_dict['repo'] % replace_dict
-                repos.append(repo_dict)
-        else:
-            repos = config['repos']
+        # deepcopy() needed because of self.config lock bug :(
+        self.info("**** replace dict: %s" % replace_dict)
+        for repo_dict in deepcopy(config['repos']):
+            repo_dict['repo'] = repo_dict['repo'] % replace_dict
+            repos.append(repo_dict)
+        sys.exit()
         self.vcs_checkout_repos(repos, parent_dir=dirs['abs_work_dir'],
                                 tag_override=config.get('tag_override'))
         self.pull_locale_source()

@@ -1,40 +1,18 @@
-BRANCH = "mozilla-central"
-MOZILLA_DIR = BRANCH
-HG_SHARE_BASE_DIR = "/builds/hg-shared"
-EN_US_BINARY_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central"
-OBJDIR = "obj-l10n"
-MOZ_UPDATE_CHANNEL = "nightly"
-STAGE_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
-#STAGE_SERVER = "stage.mozilla.org"
-STAGE_USER = "ffxbld"
-STAGE_SSH_KEY = "~/.ssh/ffxbld_dsa"
-AUS_SERVER = "dev-stage01.srv.releng.scl3.mozilla.com"
-#AUS_SERVER = "aus2-staging.mozilla.org"
-AUS_USER = "ffxbld"
-AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
-AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
-AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
-CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 PLATFORM = 'macosx64'
+HG_SHARE_BASE_DIR = "/builds/hg-shared"
+OBJDIR = "obj-l10n"
+MOZILLA_DIR = "%(branch)s",
+MOZ_UPDATE_CHANNEL = "nightly"
 config = {
-    "enable_partials": True,
-    'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
-    "balrog_credentials_file": "oauth.txt",
-    "balrog_username": "stage-ffxbld",
-    'balrog_usernames': {
-        'firefox': 'stage-ffxbld',
-    },
-    "mozilla_dir": MOZILLA_DIR,
-    "snippet_base_url": "http://example.com",  # fix it
-    "mozconfig": "%s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig" % MOZILLA_DIR,
+    "mozilla_dir": "%(branch)s",
+    "mozconfig": "%(branch)s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig",
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
-    "binary_url": EN_US_BINARY_URL,
+    "binary_url": "%(en_us_binary_url)s",
     "platform": PLATFORM,
     "repos": [{
         "vcs": "hg",
-        "repo": "https://hg.mozilla.org/mozilla-central",
-        "revision": "default",
-        "dest": MOZILLA_DIR,
+        "repo": "%(branch_repo)s",
+        "dest": "%(branch)s",
     }, {
         "vcs": "hg",
         "repo": "https://hg.mozilla.org/build/tools",
@@ -48,7 +26,7 @@ config = {
     "repack_env": {
         "SHELL": '/bin/bash',
         "MOZ_OBJDIR": OBJDIR,
-        "EN_US_BINARY_URL": EN_US_BINARY_URL,
+        "EN_US_BINARY_URL": "%(en_us_binary_url)s",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "MOZ_SYMBOLS_EXTRA_BUILDID": "macosx64",
         "MOZ_PKG_PLATFORM": "mac",
@@ -62,29 +40,22 @@ config = {
     "make_dirs": ['config'],
     "vcs_share_base": HG_SHARE_BASE_DIR,
 
-    "upload_env": {
-        "UPLOAD_USER": STAGE_USER,
-        "UPLOAD_SSH_KEY": STAGE_SSH_KEY,
-        "UPLOAD_HOST": STAGE_SERVER,
-        "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
-        "UPLOAD_TO_TEMP": "1",
+    "upload_env_extra": {
         "MOZ_PKG_PLATFORM": "mac",
     },
-    #l10n
+
+    # l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
     "l10n_stage_dir": "dist/firefox/l10n-stage",
-    "locales_file": "%s/browser/locales/all-locales" % MOZILLA_DIR,
+    "locales_file": "%(branch)s/browser/locales/all-locales",
     "locales_dir": "browser/locales",
     "hg_l10n_base": "https://hg.mozilla.org/l10n-central",
     "hg_l10n_tag": "default",
     "merge_locales": True,
     "clobber_file": 'CLOBBER',
 
-
-    #MAR
-    'previous_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central-l10n',
-    'current_mar_url': 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central',
+    # MAR
     "previous_mar_dir": "previous",
     "current_mar_dir": "current",
     "update_mar_dir": "dist/update",  # sure?
@@ -101,19 +72,8 @@ config = {
     "local_mar_tool_dir": "dist/host/bin",
     "mar": "mar",
     "mbsdiff": "mbsdiff",
-    "candidates_base_url": CANDIDATES_URL,
-    "partials_url": "%(base_url)s/latest-mozilla-central/",
-    "mar_tools_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/mar-tools/macosx64/",
     "current_mar_filename": "firefox-%(version)s.en-US.mac.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.mac.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.mac.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.mac.dmg",
-
-    # AUS
-    "aus_server": AUS_SERVER,
-    "aus_user": AUS_USER,
-    "aus_ssh_key": AUS_SSH_KEY,
-    "aus_upload_base_dir": AUS_UPLOAD_BASE_DIR,
-    "aus_base_dir": AUS_BASE_DIR,
-
 }
