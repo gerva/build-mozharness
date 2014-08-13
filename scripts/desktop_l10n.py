@@ -14,7 +14,6 @@ import re
 import sys
 
 import subprocess
-from copy import deepcopy
 
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
@@ -55,18 +54,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           MarMixin):
     """Manages desktop repacks"""
     config_options = [[
-        ['--branch-configuration', ],
-        {"action": "store",
-         "dest": "branch_configuration_file",
-         "type": "string",
-         "help": "Specify the branch configuration file"}
-    ], [
-        ['--environment-configuration', ],
-        {"action": "store",
-         "dest": "environment_configuration_file",
-         "type": "string",
-         "help": "Specify the environment configuration file (staging|production)"}
-    ], [
         ['--balrog-configuration', ],
         {"action": "store",
          "dest": "balrog_configuration_file",
@@ -182,15 +169,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return self.repack_env
         config = self.config
         replace_dict = self.query_abs_dirs()
+        replace_dict['en_us_binary_url'] = config['en_us_binary_url']
         if config.get('release_config_file'):
             release_config = self.query_release_config()
             replace_dict['version'] = release_config['version']
             replace_dict['buildnum'] = release_config['buildnum']
         repack_env = self.query_env(partial_env=config.get("repack_env"),
                                     replace_dict=replace_dict)
-        if config.get('base_en_us_binary_url') and \
+        if config.get('en_us_binary_url') and \
            config.get('release_config_file'):
-            binary_url = config['base_en_us_binary_url'] % replace_dict
+            binary_url = config['en_us_binary_url'] % replace_dict
             repack_env['EN_US_BINARY_URL'] = binary_url
         if 'MOZ_SIGNING_SERVERS' in os.environ:
             sign_cmd = self.query_moz_sign_cmd(formats=None)
@@ -367,7 +355,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """clobber"""
         dirs = self.query_abs_dirs()
         config = self.config
-        objdir = os.path.join(dirs['abs_work_dir'], config['mozilla_dir'],
+        replace_dict = {'branch': config['branch']}
+        objdir = os.path.join(dirs['abs_work_dir'], config['mozilla_dir'] % replace_dict,
                               config['objdir'])
         PurgeMixin.clobber(self, always_clobber_dirs=[objdir])
 
@@ -376,17 +365,23 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         dirs = self.query_abs_dirs()
         repos = []
+        # replace dictionary for repos
+        # we need to interpolate some values:
+        # branch, branch_repo
+        # and user_repo_override if exists
         replace_dict = {}
-        replace_dict['branch'] = config['branch']
-        replace_dict['branch_repo'] = config['branch_repo'] % config['branch']
+        branch = config['branch']
+        replace_dict['branch'] = branch
+        replace_dict['branch_repo'] = config['branch_repo'] % {'branch': branch}
         if config.get("user_repo_override"):
             replace_dict['user_repo_override'] = config['user_repo_override']
-        # deepcopy() needed because of self.config lock bug :(
-        self.info("**** replace dict: %s" % replace_dict)
-        for repo_dict in deepcopy(config['repos']):
-            repo_dict['repo'] = repo_dict['repo'] % replace_dict
-            repos.append(repo_dict)
-        sys.exit()
+
+        for repository in config['repos']:
+            current_repo = {}
+            for key, value in repository.iteritems():
+                current_repo[key] = value % replace_dict
+            repos.append(current_repo)
+        self.info("repositories: %s" % repos)
         self.vcs_checkout_repos(repos, parent_dir=dirs['abs_work_dir'],
                                 tag_override=config.get('tag_override'))
         self.pull_locale_source()
@@ -438,7 +433,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """
         config = self.config
         dirs = self.query_abs_dirs()
-        src = os.path.join(dirs['abs_work_dir'], config['mozconfig'])
+        replace_dict = {'branch': config['branch']}
+        mozconfig = config['mozconfig'] % replace_dict
+        src = os.path.join(dirs['abs_work_dir'], mozconfig)
         dst = os.path.join(dirs['abs_mozilla_dir'], '.mozconfig')
         self.copyfile(src, dst)
 
@@ -535,7 +532,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         dirs = self.query_abs_dirs()
         buildid = self._query_buildid()
         try:
-            env['POST_UPLOAD_CMD'] = config['base_post_upload_cmd'] % {'buildid': buildid}
+            env['POST_UPLOAD_CMD'] = config['base_post_upload_cmd'] % {'buildid': buildid,
+                                                                       'branch': config['branch']}
         except KeyError:
             # no base_post_upload_cmd in configuration, just skip it
             pass
@@ -692,7 +690,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def query_abs_dirs(self):
         if self.abs_dirs:
             return self.abs_dirs
+        config = self.config
         abs_dirs = super(DesktopSingleLocale, self).query_abs_dirs()
+        replace_dict = {'branch': config['branch']}
+        for directory in abs_dirs:
+            value = abs_dirs[directory] % replace_dict
+            abs_dirs[directory] = value
         dirs = {}
         dirs['abs_tools_dir'] = os.path.join(abs_dirs['abs_work_dir'], 'tools')
 
@@ -810,7 +813,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         try:
             return self.package_urls[locale]["partialMarUrl"]
         except KeyError:
-            msg = "Couldn't find package_urls: {0} {1}".format(locale, self.package_urls)
+            msg = "Couldn't find package_urls: %s %s" % (locale, self.package_urls)
             self.error("package_urls: %s" % (self.package_urls))
             self.fatal(msg)
 
