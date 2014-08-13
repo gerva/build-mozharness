@@ -20,28 +20,11 @@ class TooltoolMixin(ProxxyMixin):
         tooltool = self.query_exe('tooltool.py', return_type='list')
         cmd = tooltool
         # get the tooltools servers from configuration
-        default_urls = set([s for s in self.config['tooltool_servers']])
-        # to take full advantage of proxies, we need to calculate the proxied
-        # urls and use this list to create the --url options.
-        # proxied urls must be at the beginning of the --url options
-        # default_urls must go at the end of the --url options
+        default_urls = [s for s in self.config['tooltool_servers']]
+        proxxy_urls = self.query_proxy_urls(default_urls)
 
-        # find the proxyied url, if any
-        proxxy_urls = []
-        for url in default_urls:
-            proxxy_urls.extend(self.query_proxy_urls(url))
-
-        # remove default_urls from the list of proxied urls
-        # note: query_proxy_url returns a list and "url" is always in it
-        proxxy_urls = set(proxxy_urls) - default_urls
-
-        # extend the --url options
-        # adding the proxied urls in first place
         for proxyied_url in proxxy_urls:
             cmd.extend(['--url', proxyied_url])
-        # ... followed by urls from configuration
-        for url in default_urls:
-            cmd.extend(['--url', url])
 
         cmd.extend(['fetch', '-m', manifest, '-o'])
         self.retry(
