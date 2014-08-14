@@ -100,7 +100,7 @@ class ProxxyMixin:
         """
         Wrapper around BaseScript.download_file that understands proxies
         """
-        urls = self.get_proxies_for_url([url]) + [url]
+        urls = self.get_proxies_for_url(url) + [url]
 
         for url in urls:
             self.info("trying %s" % url)
