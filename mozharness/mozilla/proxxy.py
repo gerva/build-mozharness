@@ -45,7 +45,7 @@ class ProxxyMixin:
         self.debug("proxxy config: %s" % cfg)
         return cfg
 
-    def _get_proxies_for_url(self, url):
+    def get_proxies_for_url(self, url):
         """A generic method to map a url and its proxy urls
            Returns a list of proxy URLs to try, in sorted order. The original
            url is NOT included in this list."""
@@ -71,23 +71,19 @@ class ProxxyMixin:
                     if not self.query_is_proxxy_local(instance):
                         continue
                     new_url = "http://%s.%s%s" % (target, instance, url_path)
-                    urls.insert(0, new_url)
+                    urls.append(new_url)
 
         for url in urls:
             self.info("URL Candidate: %s" % url)
         return urls
 
-    def query_proxy_url(self, url):
-        """Returns a list of proxy urls and the given url. If there are no
-           proxyes, it returns a single element list with url"""
-        proxy_list = self._get_proxies_for_url(url)
-        proxy_list.append(url)
-        return proxy_list
-
-    def query_proxy_urls(self, urls):
+    def get_proxies_and_urls(self, urls):
         """Gets a list of urls and returns a list of proxied urls, the list
            of input urls is appended at the return values"""
-        proxxy_list = [self._get_proxies_for_url(url) for url in urls]
+        proxxy_list = self.get_proxies_for_url(urls)
+        for url in urls:
+            # get_proxies_for_url returns always a list...
+            proxxy_list.extend(self.get_proxies_for_url(url))
         proxxy_list.extend(urls)
         return proxxy_list
 
@@ -104,7 +100,7 @@ class ProxxyMixin:
         """
         Wrapper around BaseScript.download_file that understands proxies
         """
-        urls = self.query_proxy_url(url)
+        urls = self._get_proxies_for_url([url]) + [url]
 
         for url in urls:
             self.info("trying %s" % url)
