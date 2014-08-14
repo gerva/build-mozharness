@@ -1,4 +1,3 @@
-"""Proxxy module"""
 import urlparse
 import socket
 from mozharness.base.log import ERROR
@@ -26,9 +25,6 @@ class ProxxyMixin:
             ('https://ftp.mozilla.org', 'ftp.mozilla.org'),
             ('https://ftp-ssl.mozilla.org', 'ftp.mozilla.org'),
             ('http://pvtbuilds.pvt.build.mozilla.org', 'pvtbuilds.mozilla.org'),
-            # tooltool
-            ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.mozilla.org'),
-            ('http://secure.pub.build.mozilla.org', 'secure.mozilla.org'),
         ],
         "instances": [
             'proxxy.srv.releng.use1.mozilla.com',
@@ -38,17 +34,14 @@ class ProxxyMixin:
     }
 
     def query_proxxy_config(self):
-        """returns the 'proxxy' configuration from config. If 'proxxy' is not
-        defined, returns PROXXY_CONFIG instead"""
         cfg = self.config.get('proxxy', self.PROXXY_CONFIG)
         self.debug("proxxy config: %s" % cfg)
         return cfg
 
-    def get_proxies_for_url(self, url):
-        """A generic method to map a url and its proxy urls
-           Returns a list of proxy URLs to try, in sorted order. The original
-           url is NOT included in this list."""
-        urls = []
+    def query_proxy_urls(self, url):
+        """Return a list of proxy URLs to try, in sorted order. The original
+        url is included in this list."""
+        urls = [url]
 
         cfg = self.query_proxxy_config()
         self.info("proxxy config: %s" % cfg)
@@ -70,21 +63,11 @@ class ProxxyMixin:
                     if not self.query_is_proxxy_local(instance):
                         continue
                     new_url = "http://%s.%s%s" % (target, instance, url_path)
-                    urls.append(new_url)
+                    urls.insert(0, new_url)
 
-        for url in urls:
-            self.info("URL Candidate: %s" % url)
+        for u in urls:
+            self.info("URL Candidate: %s" % u)
         return urls
-
-    def get_proxies_and_urls(self, urls):
-        """Gets a list of urls and returns a list of proxied urls, the list
-           of input urls is appended at the return values"""
-        proxxy_list = []
-        for url in urls:
-            # get_proxies_for_url returns always a list...
-            proxxy_list.extend(self.get_proxies_for_url(url))
-        proxxy_list.extend(urls)
-        return proxxy_list
 
     def query_is_proxxy_local(self, url):
         """Returns a list of base proxxy urls local to the machine"""
@@ -99,12 +82,12 @@ class ProxxyMixin:
         """
         Wrapper around BaseScript.download_file that understands proxies
         """
-        urls = self.get_proxies_and_urls([url])
+        urls = self.query_proxy_urls(url)
 
-        for url in urls:
-            self.info("trying %s" % url)
+        for u in urls:
+            self.info("trying %s" % u)
             retval = self.download_file(
-                url, file_name=file_name, parent_dir=parent_dir,
+                u, file_name=file_name, parent_dir=parent_dir,
                 create_parent_dir=create_parent_dir, error_level=ERROR,
                 exit_code=exit_code,
                 retry_config=dict(
