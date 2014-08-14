@@ -27,7 +27,6 @@ class ProxxyMixin:
             ('https://ftp-ssl.mozilla.org', 'ftp.mozilla.org'),
             ('http://pvtbuilds.pvt.build.mozilla.org', 'pvtbuilds.mozilla.org'),
             # tooltool
-            ('http://tooltool.pub.build.mozilla.org', 'tooltool.mozilla.org'),
             ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.mozilla.org'),
             ('http://secure.pub.build.mozilla.org', 'secure.mozilla.org'),
         ],
