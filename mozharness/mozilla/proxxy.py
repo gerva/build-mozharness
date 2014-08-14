@@ -79,7 +79,7 @@ class ProxxyMixin:
     def get_proxies_and_urls(self, urls):
         """Gets a list of urls and returns a list of proxied urls, the list
            of input urls is appended at the return values"""
-        proxxy_list = self.get_proxies_for_url(urls)
+        proxxy_list = []
         for url in urls:
             # get_proxies_for_url returns always a list...
             proxxy_list.extend(self.get_proxies_for_url(url))
