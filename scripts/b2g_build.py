@@ -176,11 +176,11 @@ class B2GBuild(LocalesMixin, PurgeMixin,
         dirs = self.query_abs_dirs()
         self.objdir = os.path.join(dirs['work_dir'], 'objdir-gecko')
         if self.config.get("update_type", "ota") == "fota":
-            self.make_updates_cmd = ['./build.sh', 'gecko-update-fota']
+            self.make_updates_cmd = ['./build.sh', 'gecko-update-fota', 'showcommands']
             self.extra_update_attrs = 'isOsUpdate="true"'
             self.isOSUpdate = True
         else:
-            self.make_updates_cmd = ['./build.sh', 'gecko-update-full']
+            self.make_updates_cmd = ['./build.sh', 'gecko-update-full', 'showcommands']
             self.extra_update_attrs = None
             self.isOSUpdate = False
         self.package_urls = {}
@@ -465,8 +465,9 @@ class B2GBuild(LocalesMixin, PurgeMixin,
 
     def _generate_git_locale_manifest(self, locale, url, git_repo,
                                       revision, git_base_url, local_path):
+        # increase timeout from 15m to 60m until bug 1044515 is resolved (attempts = 120)
         l10n_git_sha = self.query_mapper_git_revision(url, 'l10n', revision, project_name="l10n %s" % locale,
-                                                      require_answer=self.config.get('require_git_rev', True))
+                                                      require_answer=self.config.get('require_git_rev', True), attempts=120)
         return '  <project name="%s" path="%s" remote="mozillaorg" revision="%s"/>' % (git_repo.replace(git_base_url, ''), local_path, l10n_git_sha)
 
     def _generate_locale_manifest(self, git_base_url="https://git.mozilla.org/release/"):
@@ -552,10 +553,12 @@ class B2GBuild(LocalesMixin, PurgeMixin,
 
             manifest.appendChild(dom.createTextNode("\n  "))
             url = manifest_config['translate_base_url']
+            # increase timeout from 15m to 60m until bug 1044515 is resolved (attempts = 120)
             gecko_git = self.query_mapper_git_revision(url, 'gecko',
                                                        self.query_revision(),
                                                        require_answer=self.config.get('require_git_rev',
-                                                                                      True))
+                                                                                      True),
+                                                       attempts=120)
             project_name = "https://git.mozilla.org/releases/gecko.git".replace(git_base_url, '')
             # XXX This assumes that we have a mozillaorg remote
             add_project(dom, name=project_name, path="gecko", remote="mozillaorg", revision=gecko_git)
@@ -565,7 +568,7 @@ class B2GBuild(LocalesMixin, PurgeMixin,
         self.run_command(["diff", "-u", sourcesfile_orig, sourcesfile], success_codes=[1])
 
     def generate_build_command(self, target=None):
-        cmd = ['./build.sh']
+        cmd = ['./build.sh', 'showcommands']
         if target is not None:
             # Workaround bug 984061
             if target == 'package-tests':
@@ -618,7 +621,7 @@ class B2GBuild(LocalesMixin, PurgeMixin,
             self.info("Skipping build_symbols for old configuration")
             return
 
-        cmd = ['./build.sh', 'buildsymbols']
+        cmd = ['./build.sh', 'buildsymbols', 'showcommands']
         env = self.query_build_env()
 
         self.enable_mock()
@@ -631,7 +634,7 @@ class B2GBuild(LocalesMixin, PurgeMixin,
         if self.query_is_nightly():
             # Upload symbols
             self.info("Uploading symbols")
-            cmd = ['./build.sh', 'uploadsymbols']
+            cmd = ['./build.sh', 'uploadsymbols', 'showcommands']
             self.enable_mock()
             retval = self.run_command(cmd, cwd=dirs['work_dir'], env=env, error_list=B2GMakefileErrorList)
             self.disable_mock()

@@ -33,6 +33,7 @@ class PurgeMixin(object):
     def purge_builds(self, basedirs=None, min_size=None, skip=None, max_age=None):
         # Try clobbering first
         c = self.config
+        dirs = self.query_abs_dirs()
         if 'clobberer_url' in c:
             self.clobberer()
 
@@ -44,15 +45,20 @@ class PurgeMixin(object):
             # some platforms using this method (like linux) supply more than
             # one basedir
             basedirs = []
-            assert self.buildbot_config
-            basedirs.append(os.path.dirname(self.buildbot_config['properties']['basedir']))
+            basedirs.append(os.path.dirname(dirs['base_work_dir']))
             if self.config.get('purge_basedirs'):
                 basedirs.extend(self.config.get('purge_basedirs'))
 
+        cmd = []
+        if self._is_windows():
+            # add the python interpreter explicitly
+            try:
+                cmd.append(self.query_python_path())
+            except AttributeError:
+                # we are not inheriting from VirtualenvMixin
+                cmd.append(self.query_exe('python'))
         # Add --dry-run if you don't want to do this for realz
-        cmd = [self.purge_tool,
-               '-s', str(min_size),
-               ]
+        cmd.extend([self.purge_tool, '-s', str(min_size)])
 
         if max_age:
             cmd.extend(['--max-age', str(max_age)])
@@ -74,20 +80,29 @@ class PurgeMixin(object):
 
     def clobberer(self):
         c = self.config
+        dirs = self.query_abs_dirs()
         if not self.buildbot_config:
             self.fatal("clobberer requires self.buildbot_config (usually from $PROPERTIES_FILE)")
 
         periodic_clobber = c.get('periodic_clobber') or self.default_periodic_clobber
         clobberer_url = c['clobberer_url']
 
-        builddir = os.path.basename(self.buildbot_config['properties']['basedir'])
+        builddir = os.path.basename(dirs['base_work_dir'])
         branch = self.buildbot_config['properties']['branch']
         buildername = self.buildbot_config['properties']['buildername']
         slave = self.buildbot_config['properties']['slavename']
         master = self.buildbot_config['properties']['master']
 
+        cmd = []
+        if self._is_windows():
+            # add the python interpreter explicitly
+            try:
+                cmd.append(self.query_python_path())
+            except AttributeError:
+                # we are not inheriting from VirtualenvMixin
+                cmd.append(self.query_exe('python'))
         # Add --dry-run if you don't want to do this for realz
-        cmd = [self.clobber_tool]
+        cmd.extend([self.clobber_tool])
         # TODO configurable list
         cmd.extend(['-s', 'scripts'])
         cmd.extend(['-s', 'logs'])
@@ -104,7 +119,7 @@ class PurgeMixin(object):
         }]
 
         retval = self.retry(self.run_command, attempts=3, good_statuses=(0,), args=[cmd],
-                 kwargs={'cwd':os.path.dirname(self.buildbot_config['properties']['basedir']),
+                 kwargs={'cwd':os.path.dirname(dirs['base_work_dir']),
                          'error_list':error_list})
         if retval != 0:
             self.fatal("failed to clobber build", exit_code=2)

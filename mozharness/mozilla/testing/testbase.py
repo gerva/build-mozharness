@@ -8,20 +8,17 @@
 import copy
 import os
 import platform
-import urllib2
-import getpass
-import urlparse
-import socket
 
 from mozharness.base.config import ReadOnlyDict, parse_config_file
 from mozharness.base.errors import BaseErrorList
-from mozharness.base.log import FATAL, ERROR
+from mozharness.base.log import FATAL
 from mozharness.base.python import (
     ResourceMonitoringMixin,
     VirtualenvMixin,
     virtualenv_config_options,
 )
 from mozharness.mozilla.buildbot import BuildbotMixin
+from mozharness.mozilla.proxxy import ProxxyMixin
 
 INSTALLER_SUFFIXES = ('.tar.bz2', '.zip', '.dmg', '.exe', '.apk', '.tar.gz')
 
@@ -72,95 +69,6 @@ testing_config_options = [
       }],
 ] + copy.deepcopy(virtualenv_config_options)
 
-
-class ProxxyMixin:
-    """
-    Support downloading files from HTTP caching proxies
-
-    Current supports 'proxxy' instances, in which the caching proxy at
-    proxxy.domain.com will cache requests for ftp.mozilla.org when passed requests to
-    http://ftp.mozilla.org.proxxy.domain.com/...
-
-    proxy_urls defines the list of backend hosts we are currently caching, and
-    the hostname prefix to use for proxxy
-    proxxy_instances lists current hostnames for proxxy instances. wildcard DNS
-    is set up so that *.proxxy.domain.com is a CNAME to the proxxy instance
-
-    TODO:
-        Handle failures better. If we fail to fetch a file from a proxxy
-        instance, we should fail over to another instance, or the canonical
-        URL. Current behaviour is to retry the proxxy url multiple times, and
-        then abort if we can't get it from there.
-    """
-    # List of urls we can proxy for, and their corresponding hostname
-    # prefix
-    # TODO: Put in configs
-    proxy_urls = [
-        ('http://ftp.mozilla.org', 'ftp.mozilla.org'),
-        ('https://ftp.mozilla.org', 'ftp.mozilla.org'),
-        ('https://ftp-ssl.mozilla.org', 'ftp.mozilla.org'),
-    ]
-    proxxy_instances = [
-        'proxxy-us-east-1-dev.srv.releng.use1.mozilla.com',
-        'proxxy-us-west-2-dev.srv.releng.usw2.mozilla.com',
-    ]
-
-    def query_proxy_urls(self, url):
-        """Return a list of proxy URLs to try, in sorted order. The original
-        url is included in this list."""
-        urls = [url]
-        url_parts = urlparse.urlsplit(url)
-        url_path = url_parts.path
-        if url_parts.query:
-            url_path += "?" + url_parts.query
-        if url_parts.fragment:
-            url_path += "#" + url_parts.fragment
-
-        for prefix, target in self.proxy_urls:
-            if url.startswith(prefix):
-                self.info("%s matches %s" % (url, prefix))
-                for instance in self.proxxy_instances:
-                    new_url = "http://{target}.{instance}{url_path}".format(
-                        target=target, instance=instance, url_path=url_path)
-                    urls.append(new_url)
-        # Sort them according to locality
-        urls = sorted(urls, key=self._sort_proxied_url)
-        for u in urls:
-            self.info("URL Candidate: %s" % u)
-        return urls
-
-    def _sort_proxied_url(self, url):
-        """Sorting function for urls"""
-        # TODO: Don't hardcode these regions
-        fqdn = socket.getfqdn()
-        if ".use1." in fqdn and ".use1." in url:
-            return 0
-        elif ".usw2." in fqdn and ".usw2." in url:
-            return 0
-        elif "proxxy" in url:
-            return 1
-        else:
-            return 2
-
-    def download_proxied_file(self, url, file_name=None, parent_dir=None,
-                              create_parent_dir=True, error_level=ERROR,
-                              exit_code=3):
-        """
-        Wrapper around BaseScript.download_file that understands proxies
-        """
-        urls = self.query_proxy_urls(url)
-
-        for u in urls:
-            self.info("trying %s" % u)
-            retval = self.download_file(
-                u, file_name=file_name, parent_dir=parent_dir,
-                create_parent_dir=create_parent_dir, error_level=ERROR,
-                exit_code=exit_code)
-            if retval:
-                return retval
-
-        self.log("Failed to download from all available URLs, aborting", level=error_level, exit_code=exit_code)
-        return retval
 
 # TestingMixin {{{1
 class TestingMixin(ProxxyMixin, VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
@@ -216,69 +124,6 @@ class TestingMixin(ProxxyMixin, VirtualenvMixin, BuildbotMixin, ResourceMonitori
                 return self.symbols_url
         else:
             self.fatal("Can't figure out symbols_url from installer_url %s!" % self.installer_url)
-
-    def _query_outside_vpn(self, url):
-        ''' This function determines if the file needs basic http authentication.
-            If it needs it is because we're retrieving the file outside of the releng vpn.
-        '''
-        try:
-            urllib2.urlopen(url)
-            return False
-        except urllib2.URLError, e:
-            self.debug("We are running outside the releng network: %s" % str(e))
-            return True
-
-    def _urlopen(self, url, **kwargs):
-        '''
-        This function helps dealing with downloading files while outside
-        of the releng network.
-        '''
-        def _get_credentials():
-            if not hasattr(self, "https_username"):
-                self.https_username = raw_input("Please enter your full LDAP email address: ")
-                self.info("Please enter your LDAP password: ")
-                self.https_password = getpass.getpass()
-            return self.https_username, self.https_password
-
-        # Code based on http://code.activestate.com/recipes/305288-http-basic-authentication
-        def _urlopen_basic_auth(url, **kwargs):
-            self.info("NOTICE: Files downloaded from Release Engineering network require LDAP credentials.")
-            self.info("        We want to download this file %s" % url)
-            username, password = _get_credentials()
-            # This creates a password manager
-            passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
-            # Because we have put None at the start it will use this username/password combination from here on
-            passman.add_password(None, url, username, password)
-            authhandler = urllib2.HTTPBasicAuthHandler(passman)
-
-            return urllib2.build_opener(authhandler).open(url, **kwargs)
-
-        # We first try urlopen() normally; If we have http authentication failure,
-        # we will ask for credentials
-        try:
-            return urllib2.urlopen(url, **kwargs)
-        except urllib2.HTTPError, e:
-            if e.code == 401:
-                return _urlopen_basic_auth(url, **kwargs)
-            raise
-
-    def download_file(self, url, *args, **kwargs):
-        ''' To be able to reach pvtbuilds files we need to hit a different domain
-        '''
-        if url.startswith("http://pvtbuilds.pvt.build") and self._query_outside_vpn(url):
-            url = url.replace("http://pvtbuilds.pvt.build", "https://pvtbuilds")
-        if url.startswith("http://runtime-binaries.pvt.build.mozilla.org/tooltool") and self._query_outside_vpn(url):
-            url = url.replace("http://runtime-binaries.pvt.build.mozilla.org/tooltool", "https://secure.pub.build.mozilla.org/tooltool/pvt/build")
-        return super(TestingMixin, self).download_file(url, *args, **kwargs)
-
-    def _download_file(self, url, filename):
-        ''' To be able to reach pvtbuilds files we need to hit a different domain
-        '''
-        if url.startswith("http://pvtbuilds.pvt.build") and self._query_outside_vpn(url):
-            url = url.replace("http://pvtbuilds.pvt.build", "https://pvtbuilds")
-        if url.startswith("http://runtime-binaries.pvt.build.mozilla.org/tooltool") and self._query_outside_vpn(url):
-            url = url.replace("http://runtime-binaries.pvt.build.mozilla.org/tooltool", "https://secure.pub.build.mozilla.org/tooltool/pvt/build")
-        return super(TestingMixin, self)._download_file(url, filename)
 
     # read_buildbot_config is in BuildbotMixin.
 

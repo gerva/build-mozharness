@@ -47,7 +47,7 @@ config = {
     "backup_dir": "/mnt/netapp/github_sync/aki/%s" % hostname,
     "cvs_manifest": CVS_MANIFEST,
     "tooltool_servers": ["http://runtime-binaries.pvt.build.mozilla.org/tooltool/"],
-    "cvs_history_tarball": "/home/asasaki/mozilla-cvs-history.tar.bz2",
+    "cvs_history_tarball": "/home/pmoore/mozilla-cvs-history.tar.bz2",
     "env": {
         "PATH": "%(PATH)s:/usr/libexec/git-core",
     },
@@ -483,6 +483,35 @@ config = {
             ],
         },
     }, {
+        "repo": "https://hg.mozilla.org/releases/mozilla-esr31",
+        "revision": "default",
+        "repo_name": "mozilla-esr31",
+        "targets": [{
+            "target_dest": "beagle/.git",
+            "vcs": "git",
+            "test_push": True,
+        }, {
+            "target_dest": "gitmo-beagle",
+        }, {
+            "target_dest": "gitmo-staging",
+        }, {
+            "target_dest": "github-beagle",
+        }],
+        "vcs": "hg",
+        "branch_config": {
+            "branches": {
+                "default": "esr31",
+            },
+            "branch_regexes": [
+                "^GECKO[0-9]+esr_[0-9]+_RELBRANCH$",
+            ],
+        },
+        "tag_config": {
+            "tag_regexes": [
+                "^B2G_",
+            ],
+        },
+    }, {
         "repo": "https://hg.mozilla.org/integration/mozilla-inbound",
         "revision": "default",
         "repo_name": "mozilla-inbound",
@@ -596,9 +625,9 @@ config = {
 
     "upload_config": [{
         "ssh_key": "~/.ssh/vcs-sync_rsa",
-        "ssh_user": "asasaki",
+        "ssh_user": "pmoore",
         "remote_host": "people.mozilla.org",
-        "remote_path": "/home/asasaki/public_html/vcs2vcs/gecko-dev",
+        "remote_path": "/home/pmoore/public_html/vcs2vcs/gecko-dev",
     }],
 
     "default_notify_from": "vcs2vcs@%s" % hostname,

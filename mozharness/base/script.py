@@ -26,6 +26,7 @@ import sys
 import time
 import traceback
 import urllib2
+import httplib
 import urlparse
 if os.name == 'nt':
     try:
@@ -177,18 +178,12 @@ class ScriptMixin(object):
         else:
             return parsed.netloc
 
-    def _urlopen(self, url, **kwargs):
-        """ This method can be overwritten to extend its complexity
-        """
-        return urllib2.urlopen(url, **kwargs)
-
     def _download_file(self, url, file_name):
         """ Helper script for download_file()
-        """
+            """
         try:
             f_length = None
-            f = self._urlopen(url, timeout=30)
-
+            f = urllib2.urlopen(url, timeout=30)
             if f.info().get('content-length') is not None:
                 f_length = int(f.info()['content-length'])
                 got_length = 0
@@ -233,27 +228,35 @@ class ScriptMixin(object):
             self.warning("Socket error when accessing %s: %s" % (url, str(e)))
             raise
 
-    def _retry_download_file(self, url, file_name, error_level):
+    def _retry_download_file(self, url, file_name, error_level, retry_config=None):
         """ Helper method to retry _download_file().
 
             Split out so we can alter the retry logic in
             mozharness.mozilla.testing.gaia_test.
             """
-        return self.retry(
-            self._download_file,
-            args=(url, file_name),
+        retry_args = dict(
             failure_status=None,
             retry_exceptions=(urllib2.HTTPError, urllib2.URLError,
+                              httplib.BadStatusLine,
                               socket.timeout, socket.error),
             error_message="Can't download from %s to %s!" % (url, file_name),
             error_level=error_level,
+        )
+
+        if retry_config:
+            retry_args.update(retry_config)
+
+        return self.retry(
+            self._download_file,
+            args=(url, file_name),
+            **retry_args
         )
 
     # http://www.techniqal.com/blog/2008/07/31/python-file-read-write-with-urllib2/
     # TODO thinking about creating a transfer object.
     def download_file(self, url, file_name=None, parent_dir=None,
                       create_parent_dir=True, error_level=ERROR,
-                      exit_code=3):
+                      exit_code=3, retry_config=None):
         """ Python wget.
         """
         if not file_name:
@@ -268,7 +271,7 @@ class ScriptMixin(object):
             if create_parent_dir:
                 self.mkdir_p(parent_dir, error_level=error_level)
         self.info("Downloading %s to %s" % (url, file_name))
-        status = self._retry_download_file(url, file_name, error_level)
+        status = self._retry_download_file(url, file_name, error_level, retry_config=retry_config)
         if status == file_name:
             self.info("Downloaded %d bytes." % os.path.getsize(file_name))
         return status
