@@ -12,6 +12,7 @@ config = {
     "repos": [{
         "vcs": "hg",
         "repo": "%(branch_repo)s",
+        "revision": "default",
         "dest": "%(branch)s",
     }, {
         "vcs": "hg",
@@ -73,6 +74,7 @@ config = {
     "mar": "mar",
     "mbsdiff": "mbsdiff",
     "current_mar_filename": "firefox-%(version)s.en-US.mac.complete.mar",
+    "complete_mar": "firefox-%(version)s.en-US.mac.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.mac.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.mac.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.mac.dmg",

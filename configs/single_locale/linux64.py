@@ -1,18 +1,21 @@
+PLATFORM = 'linux64'
 BRANCH = "mozilla-central"
-MOZILLA_DIR = BRANCH
 HG_SHARE_BASE_DIR = "/builds/hg-shared"
 OBJDIR = "obj-l10n"
+MOZILLA_DIR = "%(branch)s"
 MOZ_UPDATE_CHANNEL = "nightly"
-# STAGE_SERVER = "stage.mozilla.org"
-CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
-PLATFORM = 'linux64'
 config = {
-    "enable_partials": True,
-    "mozilla_dir": MOZILLA_DIR,
-    "mozconfig": "%s/browser/config/mozconfigs/linux64/l10n-mozconfig" % MOZILLA_DIR,
-    "binary_url": EN_US_BINARY_URL,
+    "mozilla_dir": "%(branch)s",
+    "mozconfig": "%(branch)s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig",
+    "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
+    "binary_url": "%(en_us_binary_url)s",
     "platform": PLATFORM,
     "repos": [{
+        "vcs": "hg",
+        "repo": "%(branch_repo)s",
+        "revision": "default",
+        "dest": "%(branch)s",
+    }, {
         "vcs": "hg",
         "repo": "https://hg.mozilla.org/build/tools",
         "revision": "default",
@@ -24,7 +27,7 @@ config = {
     }],
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
-        "EN_US_BINARY_URL": EN_US_BINARY_URL,
+        "EN_US_BINARY_URL": "%(en_us_binary_url)s",
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "IS_NIGHTLY": "yes",
@@ -34,50 +37,40 @@ config = {
     "make_dirs": ['config'],
     "vcs_share_base": HG_SHARE_BASE_DIR,
 
-    "upload_env": {
-        "UPLOAD_USER": STAGE_USER,
-        "UPLOAD_SSH_KEY": STAGE_SSH_KEY,
-        "UPLOAD_HOST": STAGE_SERVER,
-        "POST_UPLOAD_CMD": "post_upload.py -b mozilla-central-l10n -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
-        "UPLOAD_TO_TEMP": "1"
-    },
     # l10n
+    "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
     "l10n_stage_dir": "dist/firefox/l10n-stage",
-    "locales_file": "%s/browser/locales/all-locales" % MOZILLA_DIR,
+    "locales_file": "%(branch)s/browser/locales/all-locales",
+    "locales_dir": "browser/locales",
     "hg_l10n_base": "https://hg.mozilla.org/l10n-central",
     "hg_l10n_tag": "default",
     "merge_locales": True,
+    "clobber_file": 'CLOBBER',
 
     # MAR
+    "previous_mar_dir": "previous",
+    "current_mar_dir": "current",
+    "update_mar_dir": "dist/update",  # sure?
+    "previous_mar_filename": "previous.mar",
+    "current_work_mar_dir": "current.work",
     "package_base_dir": "dist/l10n-stage",
+    "application_ini": "application.ini",
+    "buildid_section": 'App',
+    "buildid_option": "BuildID",
+    "unpack_script": "tools/update-packaging/unwrap_full_update.pl",
     "incremental_update_script": "tools/update-packaging/make_incremental_update.sh",
+    "balrog_release_pusher_script": "scripts/updates/balrog-release-pusher.py",
     "update_packaging_dir": "tools/update-packaging",
     "local_mar_tool_dir": "dist/host/bin",
     "mar": "mar",
     "mbsdiff": "mbsdiff",
-    "candidates_base_url": CANDIDATES_URL,
     "partials_url": "%(base_url)s/latest-mozilla-central/",
     "current_mar_filename": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "complete_mar": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.partial.%(from_buildid)s-%(to_buildid)s.mar",
     "installer_file": "firefox-%(version)s.en-US.linux-x86_64.tar.bz2",
-
-    # BALROG
-    "balrog_api_root": "https://aus4-admin-dev.allizom.org",
-    "balrog_credentials_file": "oauth.txt",
-    "balrog_username": "stage-ffxbld",
-    'balrog_usernames': {
-        'firefox': 'stage-ffxbld',
-    },
-
-    # AUS
-    "aus_server": AUS_SERVER,
-    "aus_user": AUS_USER,
-    "aus_ssh_key": AUS_SSH_KEY,
-    "aus_upload_base_dir": AUS_UPLOAD_BASE_DIR,
-    "aus_base_dir": AUS_BASE_DIR,
 
     # Mock
     'mock_target': 'mozilla-centos6-x86_64',
@@ -101,5 +94,8 @@ config = {
     'mock_files': [
         ('/home/cltbld/.ssh', '/home/mock_mozilla/.ssh'),
         ('/home/cltbld/.hgrc', '/builds/.hgrc'),
+        ('/home/cltbld/.boto', '/builds/.boto'),
+        ('/builds/gapi.data', '/builds/gapi.data'),
+        ('/tools/tooltool.py', '/builds/tooltool.py'),
     ],
 }

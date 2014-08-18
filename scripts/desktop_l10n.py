@@ -197,7 +197,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         return self.repack_env
 
     def query_upload_env(self):
-        """returns the enviorment used for the upload step"""
+        """returns the environment used for the upload step"""
         if self.upload_env:
             return self.upload_env
         c = self.config
@@ -206,6 +206,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         upload_env = self.query_env(partial_env=c.get("upload_env"),
                                     replace_dict={'buildid': buildid,
                                                   'version': version})
+        # check if there are any extra option from the platform configuration
+        # and append them to the env
+        if 'upload_env_extra' in c:
+            for extra in c['upload_env_extra']:
+                upload_env[extra] = c['upload_env'][extra]
         if 'MOZ_SIGNING_SERVERS' in os.environ:
             upload_env['MOZ_SIGN_CMD'] = subprocess.list2cmdline(self.query_moz_sign_cmd())
         self.upload_env = upload_env
