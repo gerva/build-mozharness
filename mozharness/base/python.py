@@ -18,6 +18,7 @@ from mozharness.base.script import (
 )
 from mozharness.base.errors import VirtualenvErrorList
 from mozharness.base.log import WARNING, FATAL
+from mozharness.mozilla.proxxy import ProxxyMixin
 
 # Virtualenv {{{1
 virtualenv_config_options = [
@@ -56,7 +57,7 @@ virtualenv_config_options = [
 ]
 
 
-class VirtualenvMixin(object):
+class VirtualenvMixin(ProxxyMixin):
     '''BaseScript mixin, designed to create and use virtualenvs.
 
     Config items:
@@ -203,7 +204,9 @@ class VirtualenvMixin(object):
                 command = [pip, "install"]
             pypi_url = c.get("pypi_url")
             if pypi_url:
-                command += ["--pypi-url", pypi_url]
+                proxxy_urls = self.get_proxies_and_urls(pypi_url)
+                for url in proxxy_urls:
+                   command += ["--pypi-url", url]
             if no_deps:
                 command += ["--no-deps"]
             virtualenv_cache_dir = c.get("virtualenv_cache_dir", os.path.join(venv_path, "cache"))

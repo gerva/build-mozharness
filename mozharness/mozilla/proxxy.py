@@ -29,6 +29,8 @@ class ProxxyMixin:
             # tooltool
             ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.mozilla.org'),
             ('http://secure.pub.build.mozilla.org', 'secure.mozilla.org'),
+            # pypi
+            ('http://pypi.pub.build.mozilla.org', 'pypi.mozilla.org'),
         ],
         "instances": [
             'proxxy.srv.releng.use1.mozilla.com',
