@@ -246,7 +246,7 @@ class VirtualenvMixin(ProxxyMixin):
             self.fatal("install_module() doesn't understand an install_method of %s!" % install_method)
 
         # Add --find-links pages to look at
-        for link in c.get('find_links', []):
+        for link in self.get_proxies_and_urls(c.get('find_links', [])):
             command.extend(["--find-links", link])
 
         # module_url can be None if only specifying requirements files
