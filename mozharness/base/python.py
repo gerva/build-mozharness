@@ -17,8 +17,7 @@ from mozharness.base.script import (
     PreScriptAction,
 )
 from mozharness.base.errors import VirtualenvErrorList
-from mozharness.base.log import WARNING, FATAL
-from mozharness.mozilla.proxxy import ProxxyMixin
+from mozharness.base.log import WARNING, ERROR, FATAL
 
 # Virtualenv {{{1
 virtualenv_config_options = [
@@ -57,7 +56,7 @@ virtualenv_config_options = [
 ]
 
 
-class VirtualenvMixin(ProxxyMixin):
+class VirtualenvMixin(object):
     '''BaseScript mixin, designed to create and use virtualenvs.
 
     Config items:
@@ -204,14 +203,15 @@ class VirtualenvMixin(ProxxyMixin):
                 command = [pip, "install"]
             pypi_url = c.get("pypi_url")
             if pypi_url:
-                proxxy_urls = self.get_proxies_and_urls(pypi_url)
-                for url in proxxy_urls:
-                   command += ["--pypi-url", url]
+                command += ["--pypi-url", pypi_url]
             if no_deps:
                 command += ["--no-deps"]
             virtualenv_cache_dir = c.get("virtualenv_cache_dir", os.path.join(venv_path, "cache"))
             if virtualenv_cache_dir:
                 command += ["--download-cache", virtualenv_cache_dir]
+            # To avoid timeouts with our pypi server, increase default timeout:
+            # https://bugzilla.mozilla.org/show_bug.cgi?id=1007230#c802
+            command += ['--timeout', str(c.get('pip_timeout', 120))]
             for requirement in requirements:
                 command += ["-r", requirement]
             if c.get('find_links') and not c["pip_index"]:
@@ -264,10 +264,19 @@ class VirtualenvMixin(ProxxyMixin):
 
         # Allow for errors while building modules, but require a
         # return status of 0.
-        if self.run_command(command,
-                            error_list=VirtualenvErrorList,
-                            success_codes=success_codes,
-                            cwd=cwd) != 0:
+        if self.retry(
+            self.run_command,
+            # None will cause default value to be used
+            attempts=1 if optional else None,
+            good_statuses=(0,),
+            error_level=WARNING if optional else ERROR,
+            args=[command, ],
+            kwargs={
+                'error_list': VirtualenvErrorList,
+                'success_codes': success_codes,
+                'cwd': cwd,
+            }
+        ) != 0:
             if optional:
                 self.warning("Error running install of optional package, %s." %
                              ' '.join(command))
@@ -331,7 +340,7 @@ class VirtualenvMixin(ProxxyMixin):
 
         if not os.path.exists(virtualenv[0]) and not self.which(virtualenv[0]):
             self.add_summary("The executable '%s' is not found; not creating "
-                "virtualenv!" % virtualenv[0], level=FATAL)
+                             "virtualenv!" % virtualenv[0], level=FATAL)
             return -1
 
         # https://bugs.launchpad.net/virtualenv/+bug/352844/comments/3
