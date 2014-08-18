@@ -4,7 +4,7 @@ import socket
 from mozharness.base.log import ERROR
 
 
-class ProxxyMixin:
+class ProxxyMixin(object):
     """
     Support downloading files from HTTP caching proxies
 
