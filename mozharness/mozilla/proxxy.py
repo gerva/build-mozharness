@@ -26,11 +26,6 @@ class ProxxyMixin(object):
             ('https://ftp.mozilla.org', 'ftp.mozilla.org'),
             ('https://ftp-ssl.mozilla.org', 'ftp.mozilla.org'),
             ('http://pvtbuilds.pvt.build.mozilla.org', 'pvtbuilds.mozilla.org'),
-            # tooltool
-            ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.mozilla.org'),
-            ('http://secure.pub.build.mozilla.org', 'secure.mozilla.org'),
-            # pypi
-            ('http://pypi.pub.build.mozilla.org', 'pypi.mozilla.org'),
         ],
         "instances": [
             'proxxy.srv.releng.use1.mozilla.com',
