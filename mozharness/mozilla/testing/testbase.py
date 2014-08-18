@@ -25,40 +25,40 @@ INSTALLER_SUFFIXES = ('.tar.bz2', '.zip', '.dmg', '.exe', '.apk', '.tar.gz')
 testing_config_options = [
     [["--installer-url"],
      {"action": "store",
-     "dest": "installer_url",
-     "default": None,
-     "help": "URL to the installer to install",
+      "dest": "installer_url",
+      "default": None,
+      "help": "URL to the installer to install",
       }],
     [["--installer-path"],
      {"action": "store",
-     "dest": "installer_path",
-     "default": None,
-     "help": "Path to the installer to install.  This is set automatically if run with --download-and-extract.",
+      "dest": "installer_path",
+      "default": None,
+      "help": "Path to the installer to install.  This is set automatically if run with --download-and-extract.",
       }],
     [["--binary-path"],
      {"action": "store",
-     "dest": "binary_path",
-     "default": None,
-     "help": "Path to installed binary.  This is set automatically if run with --install.",
+      "dest": "binary_path",
+      "default": None,
+      "help": "Path to installed binary.  This is set automatically if run with --install.",
       }],
     [["--exe-suffix"],
      {"action": "store",
-     "dest": "exe_suffix",
-     "default": None,
-     "help": "Executable suffix for binaries on this platform",
+      "dest": "exe_suffix",
+      "default": None,
+      "help": "Executable suffix for binaries on this platform",
       }],
     [["--test-url"],
      {"action": "store",
-     "dest": "test_url",
-     "default": None,
-     "help": "URL to the zip file containing the actual tests",
+      "dest": "test_url",
+      "default": None,
+      "help": "URL to the zip file containing the actual tests",
       }],
     [["--download-symbols"],
      {"action": "store",
-     "dest": "download_symbols",
-     "type": "choice",
-     "choices": ['ondemand', 'true'],
-     "help": "Download and extract crash reporter symbols.",
+      "dest": "download_symbols",
+      "type": "choice",
+      "choices": ['ondemand', 'true'],
+      "help": "Download and extract crash reporter symbols.",
       }],
     [["--structured-output"],
      {"action": "store_true",
@@ -71,7 +71,7 @@ testing_config_options = [
 
 
 # TestingMixin {{{1
-class TestingMixin(ProxxyMixin, VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
+class TestingMixin(VirtualenvMixin, ProxxyMixin, BuildbotMixin, ResourceMonitoringMixin):
     """
     The steps to identify + download the proper bits for [browser] unit
     tests and Talos.
@@ -150,7 +150,7 @@ class TestingMixin(ProxxyMixin, VirtualenvMixin, BuildbotMixin, ResourceMonitori
                 if c.get("require_test_zip") and not self.test_url:
                     expected_length = [2, 3]
                 if buildbot_prop_branch.startswith('gaia-try'):
-                    expected_length = range(1,6)
+                    expected_length = range(1, 6)
                 actual_length = len(files)
                 if actual_length not in expected_length:
                     self.fatal("Unexpected number of files in buildbot config %s.\nExpected these number(s) of files: %s, but got: %d" %
@@ -220,8 +220,8 @@ You can set this by:
         if self.test_zip_path:
             file_name = self.test_zip_path
         source = self.download_proxied_file(self.test_url, file_name=file_name,
-                                    parent_dir=dirs['abs_work_dir'],
-                                    error_level=FATAL)
+                                            parent_dir=dirs['abs_work_dir'],
+                                            error_level=FATAL)
         self.test_zip_path = os.path.realpath(source)
 
     def _download_unzip(self, url, parent_dir):
@@ -229,8 +229,9 @@ You can set this by:
         This is hardcoded to halt on failure.
         We should probably change some other methods to call this."""
         dirs = self.query_abs_dirs()
-        zipfile = self.download_proxied_file(url, parent_dir=dirs['abs_work_dir'],
-                                     error_level=FATAL)
+        zipfile = self.download_proxied_file(url,
+                                             parent_dir=dirs['abs_work_dir'],
+                                             error_level=FATAL)
         command = self.query_exe('unzip', return_type='list')
         command.extend(['-q', '-o', zipfile])
         self.run_command(command, cwd=parent_dir, halt_on_failure=True,
@@ -286,8 +287,8 @@ You can set this by:
             file_name = self.installer_path
         dirs = self.query_abs_dirs()
         source = self.download_proxied_file(self.installer_url, file_name=file_name,
-                                    parent_dir=dirs['abs_work_dir'],
-                                    error_level=FATAL)
+                                            parent_dir=dirs['abs_work_dir'],
+                                            error_level=FATAL)
         self.installer_path = os.path.realpath(source)
         self.set_buildbot_property("build_url", self.installer_url, write_to_file=True)
 
@@ -301,8 +302,8 @@ You can set this by:
             self.symbols_path = os.path.join(dirs['abs_work_dir'], 'symbols')
         self.mkdir_p(self.symbols_path)
         source = self.download_proxied_file(self.symbols_url,
-                                    parent_dir=self.symbols_path,
-                                    error_level=FATAL)
+                                            parent_dir=self.symbols_path,
+                                            error_level=FATAL)
         self.set_buildbot_property("symbols_url", self.symbols_url,
                                    write_to_file=True)
         self.run_command(['unzip', '-q', source], cwd=self.symbols_path,
@@ -363,8 +364,7 @@ Did you run with --create-virtualenv? Is mozinstall in virtualenv_modules?""")
         # End remove
         dirs = self.query_abs_dirs()
         target_dir = dirs.get('abs_app_install_dir',
-                              os.path.join(dirs['abs_work_dir'],
-                              'application'))
+                              os.path.join(dirs['abs_work_dir'], 'application'))
         self.mkdir_p(target_dir)
         cmd.extend([self.installer_path,
                     '--destination', target_dir])
