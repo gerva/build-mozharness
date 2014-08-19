@@ -26,6 +26,9 @@ class ProxxyMixin(object):
             ('https://ftp.mozilla.org', 'ftp.mozilla.org'),
             ('https://ftp-ssl.mozilla.org', 'ftp.mozilla.org'),
             ('http://pvtbuilds.pvt.build.mozilla.org', 'pvtbuilds.mozilla.org'),
+            # tooltool
+            ('http://runtime-binaries.pvt.build.mozilla.org', 'runtime-binaries.pvt.mozilla.org'),
+            ('https://secure.pub.build.mozilla.org', 'secure.pub.mozilla.org'),
         ],
         "instances": [
             'proxxy.srv.releng.use1.mozilla.com',
@@ -75,7 +78,7 @@ class ProxxyMixin(object):
 
     def get_proxies_and_urls(self, urls):
         """Gets a list of urls and returns a list of proxied urls, the list
-           of input urls is appended at the return values"""
+           of input urls is appended at the end of the return values"""
         proxxy_list = []
         for url in urls:
             # get_proxies_for_url returns always a list...
