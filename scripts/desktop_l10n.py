@@ -58,7 +58,19 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         {"action": "store",
          "dest": "balrog_configuration_file",
          "type": "string",
-         "help": "Specify the platform configuration file"}
+         "help": "Specify the balrog configuration file"}
+    ], [
+        ['--branch-configuration', ],
+        {"action": "store",
+         "dest": "branch_configuration_file",
+         "type": "string",
+         "help": "Specify the branch configuration file"}
+    ], [
+        ['--environment-configuration', ],
+        {"action": "store",
+         "dest": "environment_configuration_file",
+         "type": "string",
+         "help": "Specify the environment (staging, production, ...) configuration file"}
     ], [
         ['--locale', ],
         {"action": "extend",
@@ -141,6 +153,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 "hashType": "sha512",
             },
         }
+        #
+
         LocalesMixin.__init__(self)
         BaseScript.__init__(
             self,
@@ -148,6 +162,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             require_config_file=require_config_file,
             **buildscript_kwargs
         )
+        print self.config
+
+        import sys
+        sys.exit()
         self.buildid = None
         self.make_ident_output = None
         self.repack_env = None
@@ -161,6 +179,18 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.partials = {}
         if 'mock_target' in self.config:
             self.enable_mock()
+
+    def _pre_config_lock(self, rw_config):
+        # let's check the configuration
+        message = []
+        for option in ('balrog_configuration_file',
+                       'environment_configuration_file',
+                       'branch_configuration_file'):
+            if option not in self.config:
+                msg = 'Must specify --%s!' % (option)
+                message.append(msg)
+        if message:
+            self.fatal('\n'.join(message))
 
     # Helper methods {{{2
     def query_repack_env(self):
