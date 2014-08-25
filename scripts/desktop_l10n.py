@@ -222,7 +222,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                     self.config[element] = new_value
 
     def __detokenise_element(self, config_option, token, value):
-        """read config_options and returns a version of the same config_option
+        """reads config_options and returns a version of the same config_option
            replacing token with value recursively"""
         # config_option is a string, let's replace token with value
         if isinstance(config_option, str):
