@@ -47,6 +47,14 @@ PyMakeIgnoreList = [
 ]
 
 
+# mandatory configuration options, without them, this script will not work
+# it's a list of values that are already known before starting a build
+configuration_tokens = ('branch', 'platform', 'en_us_binary_url')
+# some other values such as "%(version)s", "%(buildid)s", ...
+# are defined at run time and they cannot be enforced in the _pre_config_lock
+# phase
+
+
 # DesktopSingleLocale {{{1
 class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           MockMixin, PurgeMixin, BuildbotMixin, TransferMixin,
@@ -182,6 +190,61 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.partials = {}
         if 'mock_target' in self.config:
             self.enable_mock()
+
+    def _pre_config_lock(self, rw_config):
+        """replaces 'configuration_tokens' with their values, before the
+           configuration gets locked. If some of the configuration_tokens
+           are not present, stops the execution of the script"""
+        # since values as branch, platform are mandatory, can replace them in
+        # in the configuration before it is locked down
+        # mandatory tokens
+        for token in configuration_tokens:
+            if token not in self.config:
+                self.fatal('No %s in configuration!' % token)
+
+        # all the important tokens are present in our configuration
+        for token in configuration_tokens:
+            # token_string '%(branch)s'
+            token_string = ''.join(('%(', token, ')s'))
+            # token_value => ash
+            token_value = self.config[token]
+            for element in self.config:
+                # old_value =>  https://hg.mozilla.org/projects/%(branch)s
+                old_value = self.config[element]
+                # new_value => https://hg.mozilla.org/projects/ash
+                new_value = self.__detokenise_element(self.config[element],
+                                                      token_string, token_value)
+                if new_value != old_value and new_value:
+                    msg = "%s: replacing %s with %s" % (element,
+                                                        old_value,
+                                                        new_value)
+                    self.info(msg)
+                    self.config[element] = new_value
+
+    def __detokenise_element(self, config_option, token, value):
+        """read config_options and returns a version of the same config_option
+           replacing token with value recursively"""
+        # config_option is a string, let's replace token with value
+        if isinstance(config_option, str):
+            # if token does not appear in this string,
+            # nothing happens and the original value is returned
+            return config_option.replace(token, value)
+        # it's a dictionary
+        elif isinstance(config_option, dict):
+            # replace token for each element of this dictionary
+            for element in config_option:
+                config_option[element] = self.__detokenise_element(
+                    config_option[element], token, value)
+            return config_option
+        # it's a list
+        elif isinstance(config_option, list):
+            # create a new list and append the replaced elements
+            new_list = []
+            for element in config_option:
+                new_list.append(self.__detokenise_element(element, token, value))
+            return new_list
+        # everything else, bool, number, ...
+        return value
 
     # Helper methods {{{2
     def query_repack_env(self):
