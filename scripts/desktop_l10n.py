@@ -49,7 +49,7 @@ PyMakeIgnoreList = [
 
 # mandatory configuration options, without them, this script will not work
 # it's a list of values that are already known before starting a build
-configuration_tokens = ('branch', 'platform', 'en_us_binary_url')
+configuration_tokens = ('branch', 'platform', 'en_us_binary_url', 'branch_repo')
 # some other values such as "%(version)s", "%(buildid)s", ...
 # are defined at run time and they cannot be enforced in the _pre_config_lock
 # phase
@@ -221,6 +221,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                     self.info(msg)
                     self.config[element] = new_value
 
+            # now scan self.abs_dirs too. It has been populated before
+            # _pre_config_lock so it might have some %(...)s tokens in it
+            # let's remove them.
+            for key in self.abs_dirs:
+                new_value = self.__detokenise_element(self.abs_dirs[key],
+                                                      token_string, token_value)
+                self.abs_dirs[key] = new_value
+
     def __detokenise_element(self, config_option, token, value):
         """reads config_options and returns a version of the same config_option
            replacing token with value recursively"""
@@ -253,16 +261,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return self.repack_env
         config = self.config
         replace_dict = self.query_abs_dirs()
-        replace_dict['en_us_binary_url'] = config['en_us_binary_url']
-        replace_dict['platform'] = config['platform']
-        replace_dict['branch'] = config['branch']
         repack_env = self.query_env(partial_env=config.get("repack_env"),
                                     replace_dict=replace_dict)
-        repack_env['EN_US_BINARY_URL'] = config['en_us_binary_url'] % replace_dict
         if config.get('en_us_binary_url') and \
            config.get('release_config_file'):
-            binary_url = config['en_us_binary_url'] % replace_dict
-            repack_env['EN_US_BINARY_URL'] = binary_url
+            repack_env['EN_US_BINARY_URL'] = config['en_us_binary_url']
         if 'MOZ_SIGNING_SERVERS' in os.environ:
             sign_cmd = self.query_moz_sign_cmd(formats=None)
             sign_cmd = subprocess.list2cmdline(sign_cmd)
@@ -443,8 +446,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """clobber"""
         dirs = self.query_abs_dirs()
         config = self.config
-        replace_dict = {'branch': config['branch']}
-        objdir = os.path.join(dirs['abs_work_dir'], config['mozilla_dir'] % replace_dict,
+        objdir = os.path.join(dirs['abs_work_dir'], config['mozilla_dir'],
                               config['objdir'])
         PurgeMixin.clobber(self, always_clobber_dirs=[objdir])
 
@@ -458,9 +460,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # branch, branch_repo
         # and user_repo_override if exists
         replace_dict = {}
-        branch = config['branch']
-        replace_dict['branch'] = branch
-        replace_dict['branch_repo'] = config['branch_repo'] % {'branch': branch}
         if config.get("user_repo_override"):
             replace_dict['user_repo_override'] = config['user_repo_override']
 
@@ -521,8 +520,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         """
         config = self.config
         dirs = self.query_abs_dirs()
-        replace_dict = {'branch': config['branch']}
-        mozconfig = config['mozconfig'] % replace_dict
+        mozconfig = config['mozconfig']
         src = os.path.join(dirs['abs_work_dir'], mozconfig)
         dst = os.path.join(dirs['abs_mozilla_dir'], '.mozconfig')
         self.copyfile(src, dst)
@@ -778,15 +776,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def query_abs_dirs(self):
         if self.abs_dirs:
             return self.abs_dirs
-        config = self.config
         abs_dirs = super(DesktopSingleLocale, self).query_abs_dirs()
-        replace_dict = {'branch': config['branch']}
         for directory in abs_dirs:
-            value = abs_dirs[directory] % replace_dict
+            value = abs_dirs[directory]
             abs_dirs[directory] = value
         dirs = {}
         dirs['abs_tools_dir'] = os.path.join(abs_dirs['abs_work_dir'], 'tools')
-
         for key in dirs.keys():
             if key not in abs_dirs:
                 abs_dirs[key] = dirs[key]
