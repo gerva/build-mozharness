@@ -53,6 +53,7 @@ configuration_tokens = ('branch', 'platform', 'en_us_binary_url', 'branch_repo')
 # some other values such as "%(version)s", "%(buildid)s", ...
 # are defined at run time and they cannot be enforced in the _pre_config_lock
 # phase
+runtime_config_tokens = ('buildid', 'version')
 
 
 # DesktopSingleLocale {{{1
@@ -228,6 +229,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 new_value = self.__detokenise_element(self.abs_dirs[key],
                                                       token_string, token_value)
                 self.abs_dirs[key] = new_value
+
+        # now, only runtime_config_tokens should be present in config
+        # we should parse self.config and fail if any other  we spot any
+        # other token
 
     def __detokenise_element(self, config_option, token, value):
         """reads config_options and returns a version of the same config_option
