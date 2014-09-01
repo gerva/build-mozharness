@@ -123,10 +123,8 @@ class WebPlatformTest(TestingMixin, MercurialScript, BlobUploadMixin):
                      "--log-raw=%s" % os.path.join(dirs["abs_blob_upload_dir"],
                                                    "wpt_structured_full.log"),
                      "--binary=%s" % self.binary_path,
-                     "--symbols-path=%s" % self.query_symbols_url()]
-
-        if c.get('minidump_stackwalk_path'):
-            base_cmd.append('--stackwalk-binary=%s' % c['minidump_stackwalk_path'])
+                     "--symbols-path=%s" % self.query_symbols_url(),
+                     "--stackwalk-binary=%s" % self.query_minidump_stackwalk()]
 
         for test_type in c.get("test_type", []):
             base_cmd.append("--test-type=%s" % test_type)
@@ -141,12 +139,21 @@ class WebPlatformTest(TestingMixin, MercurialScript, BlobUploadMixin):
         str_format_values = {
             'binary_path': self.binary_path,
             'test_path': dirs["abs_wpttest_dir"],
-            'abs_app_dir': abs_app_dir
+            'abs_app_dir': abs_app_dir,
+            'abs_work_dir': dirs["abs_work_dir"]
             }
 
         opt_cmd = [item % str_format_values for item in options]
 
         return base_cmd + opt_cmd
+
+    def download_and_extract(self):
+        self.install_minidump_stackwalk()
+        super(WebPlatformTest, self).download_and_extract(
+            target_unzip_dirs=["config/*",
+                               "mozbase/*",
+                               "marionette/*",
+                               "web-platform/*"])
 
     def run_tests(self):
         dirs = self.query_abs_dirs()
@@ -155,8 +162,9 @@ class WebPlatformTest(TestingMixin, MercurialScript, BlobUploadMixin):
         parser = StructuredOutputParser(config=self.config,
                                         log_obj=self.log_obj)
 
-        env = {}
+        env = {'MINIDUMP_SAVE_PATH': dirs['abs_blob_upload_dir']}
         env = self.query_env(partial_env=env, log_level=INFO)
+
         return_code = self.run_command(cmd,
                                        cwd=dirs['abs_work_dir'],
                                        output_timeout=1000,
