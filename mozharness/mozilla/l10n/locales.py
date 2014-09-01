@@ -58,6 +58,8 @@ class LocalesMixin(ChunkingMixin):
         if locales is None:
             return
         if 'total_locale_chunks' and 'this_locale_chunk' in c:
+            self.info('total_locale_chunks: %s' % c['total_locale_chunks'])
+            self.info('this_locale_chunks: %s' % c['this_locale_chunk'])
             self.debug("Pre-chunking locale list: %s" % str(locales))
             locales = self.query_chunked_list(locales,
                                               c['this_locale_chunk'],
