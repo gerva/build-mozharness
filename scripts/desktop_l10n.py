@@ -203,6 +203,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if token not in self.config:
                 self.fatal('No %s in configuration!' % token)
 
+        before = {}
+        after = {}
+        for element in self.config:
+            before[element] = self.config[element]
+
         # all the important tokens are present in our configuration
         for token in configuration_tokens:
             # token_string '%(branch)s'
@@ -214,21 +219,40 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                 old_value = self.config[element]
                 # new_value => https://hg.mozilla.org/projects/ash
                 new_value = self.__detokenise_element(self.config[element],
-                                                      token_string, token_value)
-                if new_value != old_value and new_value:
+                                                      token_string,
+                                                      token_value)
+                if new_value and new_value != old_value:
                     msg = "%s: replacing %s with %s" % (element,
                                                         old_value,
                                                         new_value)
                     self.info(msg)
                     self.config[element] = new_value
 
+        for element in self.config:
+            after[element] = self.config[element]
+
+        removed_keys = set(before.keys()) - set(after.keys())
+        added_keys = set(after.keys()) - set(before.keys())
+        common_keys = set(before.keys()).union(set(after.keys()))
+        for key in removed_keys:
+            self.error("removed key: {0}".format(key))
+
+        for key in added_keys:
+            self.error("added key: {0}".format(key))
+
+        for key in common_keys:
+            old_ = before[key]
+            new_ = after[key]
+            if old_ != new_:
+                self.info("{0} => {1}".format(old_, new_))
             # now scan self.abs_dirs too. It has been populated before
             # _pre_config_lock so it might have some %(...)s tokens in it
             # let's remove them.
             for key in self.abs_dirs:
                 new_value = self.__detokenise_element(self.abs_dirs[key],
                                                       token_string, token_value)
-                self.abs_dirs[key] = new_value
+                if new_value:
+                    self.abs_dirs[key] = new_value
 
         # now, only runtime_config_tokens should be present in config
         # we should parse self.config and fail if any other  we spot any
@@ -250,14 +274,20 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                     config_option[element], token, value)
             return config_option
         # it's a list
-        elif isinstance(config_option, list):
+        elif isinstance(config_option, list, tuple):
             # create a new list and append the replaced elements
             new_list = []
             for element in config_option:
                 new_list.append(self.__detokenise_element(element, token, value))
             return new_list
+        elif isinstance(config_option, tuple):
+            # create a new list and append the replaced elements
+            new_list = []
+            for element in config_option:
+                new_list.append(self.__detokenise_element(element, token, value))
+            return tuple(new_list)
         # everything else, bool, number, ...
-        return value
+        return None
 
     # Helper methods {{{2
     def query_repack_env(self):
@@ -473,7 +503,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         for repository in config['repos']:
             current_repo = {}
             for key, value in repository.iteritems():
-                current_repo[key] = value % replace_dict
+                try:
+                    current_repo[key] = value % replace_dict
+                except KeyError:
+                    self.error('not all the values in "{0}" can be replaced. Check your configuration'.format(value))
+                    raise
             repos.append(current_repo)
         self.info("repositories: %s" % repos)
         self.vcs_checkout_repos(repos, parent_dir=dirs['abs_work_dir'],
