@@ -25,6 +25,7 @@ class ChunkingMixin(object):
             # Copy to prevent altering
             possible_list = possible_list[:]
         length = len(possible_list)
+        total_chunks = int(total_chunks)
         for c in range(1, total_chunks + 1):
             n = length / total_chunks
             # If the total number of items isn't evenly divisible by the
