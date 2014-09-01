@@ -460,6 +460,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         dirs = self.query_abs_dirs()
         repos = []
+        for option in config:
+            self.info('{0} {1}'.format(option, config[option]))
         # replace dictionary for repos
         # we need to interpolate some values:
         # branch, branch_repo
