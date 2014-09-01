@@ -228,6 +228,16 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                     self.info(msg)
                     self.config[element] = new_value
 
+            # now scan self.abs_dirs too. It has been populated before
+            # _pre_config_lock so it might have some %(...)s tokens in it
+            # let's remove them.
+            for key in self.abs_dirs:
+                new_value = self.__detokenise_element(self.abs_dirs[key],
+                                                      token_string, token_value)
+                if new_value:
+                    self.abs_dirs[key] = new_value
+
+        # log all!
         for element in self.config:
             after[element] = self.config[element]
 
@@ -245,14 +255,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             new_ = after[key]
             if old_ != new_:
                 self.info("{0} => {1}".format(old_, new_))
-            # now scan self.abs_dirs too. It has been populated before
-            # _pre_config_lock so it might have some %(...)s tokens in it
-            # let's remove them.
-            for key in self.abs_dirs:
-                new_value = self.__detokenise_element(self.abs_dirs[key],
-                                                      token_string, token_value)
-                if new_value:
-                    self.abs_dirs[key] = new_value
 
         # now, only runtime_config_tokens should be present in config
         # we should parse self.config and fail if any other  we spot any
