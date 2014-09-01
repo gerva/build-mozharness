@@ -49,7 +49,11 @@ PyMakeIgnoreList = [
 
 # mandatory configuration options, without them, this script will not work
 # it's a list of values that are already known before starting a build
-configuration_tokens = ('branch', 'platform', 'en_us_binary_url', 'branch_repo')
+configuration_tokens = ('branch',
+                        'platform',
+                        'en_us_binary_url',
+                        'branch_repo',
+                        'base_url')
 # some other values such as "%(version)s", "%(buildid)s", ...
 # are defined at run time and they cannot be enforced in the _pre_config_lock
 # phase
