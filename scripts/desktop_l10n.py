@@ -274,7 +274,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                     config_option[element], token, value)
             return config_option
         # it's a list
-        elif isinstance(config_option, list, tuple):
+        elif isinstance(config_option, list):
             # create a new list and append the replaced elements
             new_list = []
             for element in config_option:
