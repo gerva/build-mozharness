@@ -4,7 +4,7 @@ import socket
 from mozharness.base.log import ERROR
 
 
-class ProxxyMixin:
+class Proxxy(object):
     """
     Support downloading files from HTTP caching proxies
 
@@ -35,6 +35,10 @@ class ProxxyMixin:
         ],
         "regions": [".use1.", ".usw2."],
     }
+
+    def __init__(self, config, log_obj):
+        self.config = config
+        self.log_obj = log_obj
 
     def query_proxxy_config(self):
         """returns the 'proxxy' configuration from config. If 'proxxy' is not

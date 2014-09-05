@@ -18,8 +18,9 @@ from mozharness.base.python import (
     virtualenv_config_options,
 )
 from mozharness.mozilla.buildbot import BuildbotMixin
-from mozharness.mozilla.proxxy import ProxxyMixin
+from mozharness.mozilla.proxxy import Proxxy
 
+a = []
 INSTALLER_SUFFIXES = ('.tar.bz2', '.zip', '.dmg', '.exe', '.apk', '.tar.gz')
 
 testing_config_options = [
@@ -71,7 +72,7 @@ testing_config_options = [
 
 
 # TestingMixin {{{1
-class TestingMixin(ProxxyMixin, VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
+class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
     """
     The steps to identify + download the proper bits for [browser] unit
     tests and Talos.
@@ -219,9 +220,12 @@ You can set this by:
         file_name = None
         if self.test_zip_path:
             file_name = self.test_zip_path
-        source = self.download_proxied_file(self.test_url, file_name=file_name,
-                                    parent_dir=dirs['abs_work_dir'],
-                                    error_level=FATAL)
+        # try to use our proxxy servers
+        # create a proxxy object and get the binaries from it
+        proxxy = Proxxy(self.config, self.log_obj)
+        source = proxxy.download_proxied_file(self.test_url, file_name=file_name,
+                                              parent_dir=dirs['abs_work_dir'],
+                                              error_level=FATAL)
         self.test_zip_path = os.path.realpath(source)
 
     def _download_unzip(self, url, parent_dir):
