@@ -1,10 +1,11 @@
 """Proxxy module"""
 import urlparse
 import socket
-from mozharness.base.log import ERROR
+from mozharness.base.log import ERROR, LogMixin
+from mozharness.base.script import ScriptMixin
 
 
-class Proxxy(object):
+class Proxxy(ScriptMixin, LogMixin):
     """
     Support downloading files from HTTP caching proxies
 
