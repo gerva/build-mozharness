@@ -89,6 +89,25 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
     jsshell_url = None
     minidump_stackwalk_path = None
     default_tools_repo = 'https://hg.mozilla.org/build/tools'
+    proxxy = None
+
+    def query_proxxy(self):
+        """ """
+        if self.proxxy:
+            return self.proxxy
+        self.proxxy= Proxxy(self.config, self.log_obj)
+
+    def download_proxied_file(self, url, file_name=None, parent_dir=None,
+                              create_parent_dir=True, error_level=FATAL,
+                              exit_code=3):
+        self.query_proxxy()
+        proxxy = self.proxxy
+        return proxxy.download_proxied_file(url=url, file_name=file_name,
+                                            parent_dir=parent_dir,
+                                            create_parent_dir=create_parent_dir,
+                                            error_level=error_level,
+                                            exit_code=exit_code)
+
 
     def query_jsshell_url(self):
         """
@@ -222,10 +241,9 @@ You can set this by:
             file_name = self.test_zip_path
         # try to use our proxxy servers
         # create a proxxy object and get the binaries from it
-        proxxy = Proxxy(self.config, self.log_obj)
-        source = proxxy.download_proxied_file(self.test_url, file_name=file_name,
-                                              parent_dir=dirs['abs_work_dir'],
-                                              error_level=FATAL)
+        source = self.download_proxied_file(self.test_url, file_name=file_name,
+                                            parent_dir=dirs['abs_work_dir'],
+                                            error_level=FATAL)
         self.test_zip_path = os.path.realpath(source)
 
     def _download_unzip(self, url, parent_dir):
@@ -233,9 +251,8 @@ You can set this by:
         This is hardcoded to halt on failure.
         We should probably change some other methods to call this."""
         dirs = self.query_abs_dirs()
-        proxxy = Proxxy(self.config, self.log_obj)
-        zipfile = proxxy.download_proxied_file(url, parent_dir=dirs['abs_work_dir'],
-                                               error_level=FATAL)
+        zipfile = self.download_proxied_file(url, parent_dir=dirs['abs_work_dir'],
+                                             error_level=FATAL)
         command = self.query_exe('unzip', return_type='list')
         command.extend(['-q', '-o', zipfile])
         self.run_command(command, cwd=parent_dir, halt_on_failure=True,
@@ -290,11 +307,10 @@ You can set this by:
         if self.installer_path:
             file_name = self.installer_path
         dirs = self.query_abs_dirs()
-        proxxy = Proxxy(self.config, self.log_obj)
-        source = proxxy.download_proxied_file(self.installer_url,
-                                              file_name=file_name,
-                                              parent_dir=dirs['abs_work_dir'],
-                                              error_level=FATAL)
+        source = self.download_proxied_file(self.installer_url,
+                                            file_name=file_name,
+                                            parent_dir=dirs['abs_work_dir'],
+                                            error_level=FATAL)
         self.installer_path = os.path.realpath(source)
         self.set_buildbot_property("build_url", self.installer_url, write_to_file=True)
 
@@ -307,10 +323,9 @@ You can set this by:
         if not self.symbols_path:
             self.symbols_path = os.path.join(dirs['abs_work_dir'], 'symbols')
         self.mkdir_p(self.symbols_path)
-        proxxy = Proxxy(self.config, self.log_obj)
-        source = proxxy.download_proxied_file(self.symbols_url,
-                                              parent_dir=self.symbols_path,
-                                              error_level=FATAL)
+        source = self.download_proxied_file(self.symbols_url,
+                                            parent_dir=self.symbols_path,
+                                            error_level=FATAL)
         self.set_buildbot_property("symbols_url", self.symbols_url,
                                    write_to_file=True)
         self.run_command(['unzip', '-q', source], cwd=self.symbols_path,
