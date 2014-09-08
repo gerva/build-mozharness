@@ -233,8 +233,9 @@ You can set this by:
         This is hardcoded to halt on failure.
         We should probably change some other methods to call this."""
         dirs = self.query_abs_dirs()
-        zipfile = self.download_proxied_file(url, parent_dir=dirs['abs_work_dir'],
-                                     error_level=FATAL)
+        proxxy = Proxxy(self.config, self.log_obj)
+        zipfile = proxxy.download_proxied_file(url, parent_dir=dirs['abs_work_dir'],
+                                               error_level=FATAL)
         command = self.query_exe('unzip', return_type='list')
         command.extend(['-q', '-o', zipfile])
         self.run_command(command, cwd=parent_dir, halt_on_failure=True,
@@ -289,9 +290,11 @@ You can set this by:
         if self.installer_path:
             file_name = self.installer_path
         dirs = self.query_abs_dirs()
-        source = self.download_proxied_file(self.installer_url, file_name=file_name,
-                                    parent_dir=dirs['abs_work_dir'],
-                                    error_level=FATAL)
+        proxxy = Proxxy(self.config, self.log_obj)
+        source = proxxy.download_proxied_file(self.installer_url,
+                                              file_name=file_name,
+                                              parent_dir=dirs['abs_work_dir'],
+                                              error_level=FATAL)
         self.installer_path = os.path.realpath(source)
         self.set_buildbot_property("build_url", self.installer_url, write_to_file=True)
 
@@ -304,9 +307,10 @@ You can set this by:
         if not self.symbols_path:
             self.symbols_path = os.path.join(dirs['abs_work_dir'], 'symbols')
         self.mkdir_p(self.symbols_path)
-        source = self.download_proxied_file(self.symbols_url,
-                                    parent_dir=self.symbols_path,
-                                    error_level=FATAL)
+        proxxy = Proxxy(self.config, self.log_obj)
+        source = proxxy.download_proxied_file(self.symbols_url,
+                                              parent_dir=self.symbols_path,
+                                              error_level=FATAL)
         self.set_buildbot_property("symbols_url", self.symbols_url,
                                    write_to_file=True)
         self.run_command(['unzip', '-q', source], cwd=self.symbols_path,
