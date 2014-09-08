@@ -221,8 +221,8 @@ class GaiaTest(TestingMixin, TooltoolMixin, MercurialScript, TransferMixin,
                              fatal_exit_code=3)
 
     def query_proxxy_config(self):
-        # this is overriding ProxxyMixin's base impl
-        # gaia test by default does not use ProxxyMixin
+        # this is overriding Proxxy's base impl
+        # gaia test by default does not use Proxxy
         cfg = self.config.get('proxxy', {})
         self.debug("proxxy config: %s" % cfg)
         return cfg
