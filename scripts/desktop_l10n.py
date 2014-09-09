@@ -206,11 +206,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             if token not in self.config:
                 self.fatal('No %s in configuration!' % token)
 
-        before = {}
-        after = {}
-        for element in self.config:
-            before[element] = self.config[element]
-
         # all the important tokens are present in our configuration
         for token in configuration_tokens:
             # token_string '%(branch)s'
@@ -228,36 +223,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                     msg = "%s: replacing %s with %s" % (element,
                                                         old_value,
                                                         new_value)
-                    self.info(msg)
+                    self.debug(msg)
                     self.config[element] = new_value
-
-            # now scan self.abs_dirs too. It has been populated before
-            # _pre_config_lock so it might have some %(...)s tokens in it
-            # let's remove them.
-            for key in self.abs_dirs:
-                new_value = self.__detokenise_element(self.abs_dirs[key],
-                                                      token_string, token_value)
-                if new_value:
-                    self.abs_dirs[key] = new_value
-
-        # log all!
-        for element in self.config:
-            after[element] = self.config[element]
-
-        removed_keys = set(before.keys()) - set(after.keys())
-        added_keys = set(after.keys()) - set(before.keys())
-        common_keys = set(before.keys()).union(set(after.keys()))
-        for key in removed_keys:
-            self.error("removed key: {0}".format(key))
-
-        for key in added_keys:
-            self.error("added key: {0}".format(key))
-
-        for key in common_keys:
-            old_ = before[key]
-            new_ = after[key]
-            if old_ != new_:
-                self.info("{0} => {1}".format(old_, new_))
 
         # now, only runtime_config_tokens should be present in config
         # we should parse self.config and fail if any other  we spot any
@@ -536,8 +503,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         config = self.config
         dirs = self.query_abs_dirs()
         repos = []
-        for option in config:
-            self.info('{0} {1}'.format(option, config[option]))
         # replace dictionary for repos
         # we need to interpolate some values:
         # branch, branch_repo
@@ -897,7 +862,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # balrog submitter requires buildbot['properties']['product']
         # if it does not exist the submission will fail.
         try:
-            properties = self.query_buildbot_property("properties")
+            # properties = self.query_buildbot_property("properties")
+            properties = self.query_buildbot_config("properties")
         except AttributeError:
             # no properties set for buildbot, initialize to empty dict
             self.buildbot_properties = {}
@@ -971,11 +937,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
             return self.config["complete_mar_url"]
         if "completeMarUrl" in self.package_urls[locale]:
             return self.package_urls[locale]["completeMarUrl"]
-        # XXX: remove this after everything is uploading publicly
-        url = self.config.get("update", {}).get("mar_base_url")
-        if url:
-            url += os.path.basename(self.query_marfile_path())
-            return url.format(branch=self.query_branch())
+        # url = self.config.get("update", {}).get("mar_base_url")
+        # if url:
+        #    url += os.path.basename(self.query_marfile_path())
+        #    return url.format(branch=self.query_branch())
         self.fatal("Couldn't find complete mar url in config or package_urls")
 
     def _query_partial_mar_url(self, locale):
