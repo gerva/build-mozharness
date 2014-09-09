@@ -5,26 +5,8 @@ OBJDIR = "obj-l10n"
 MOZILLA_DIR = "%(branch)s"
 MOZ_UPDATE_CHANNEL = "nightly"
 config = {
-    "mozilla_dir": "%(branch)s",
     "mozconfig": "%(branch)s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig",
-    "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
-    "binary_url": "%(en_us_binary_url)s",
     "platform": PLATFORM,
-    "repos": [{
-        "vcs": "hg",
-        "repo": "%(branch_repo)s",
-        "revision": "default",
-        "dest": "%(branch)s",
-    }, {
-        "vcs": "hg",
-        "repo": "https://hg.mozilla.org/build/tools",
-        "revision": "default",
-        "dest": "tools",
-    }, {
-        "vcs": "hg",
-        "repo": "https://hg.mozilla.org/build/compare-locales",
-        "revision": "RELEASE_AUTOMATION"
-    }],
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
         "EN_US_BINARY_URL": "%(en_us_binary_url)s",
@@ -32,6 +14,7 @@ config = {
         "MOZ_UPDATE_CHANNEL": MOZ_UPDATE_CHANNEL,
         "IS_NIGHTLY": "yes",
     },
+    "log_name": "single_locale",
     "objdir": OBJDIR,
     "js_src_dir": "js/src",
     "make_dirs": ['config'],
@@ -65,7 +48,7 @@ config = {
     "local_mar_tool_dir": "dist/host/bin",
     "mar": "mar",
     "mbsdiff": "mbsdiff",
-    "partials_url": "%(base_url)s/latest-mozilla-central/",
+    # "partials_url": "%(base_url)s/latest-mozilla-central/",
     "current_mar_filename": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "complete_mar": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.complete.mar",

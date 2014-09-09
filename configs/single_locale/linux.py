@@ -8,23 +8,6 @@ config = {
     "mozilla_dir": "%(branch)s",
     "mozconfig": "%(branch)s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig",
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
-    "binary_url": "%(en_us_binary_url)s",
-    "platform": PLATFORM,
-    "repos": [{
-        "vcs": "hg",
-        "repo": "%(branch_repo)s",
-        "revision": "default",
-        "dest": "%(branch)s",
-    }, {
-        "vcs": "hg",
-        "repo": "https://hg.mozilla.org/build/tools",
-        "revision": "default",
-        "dest": "tools",
-    }, {
-        "vcs": "hg",
-        "repo": "https://hg.mozilla.org/build/compare-locales",
-        "revision": "RELEASE_AUTOMATION"
-    }],
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
         "EN_US_BINARY_URL": "%(en_us_binary_url)s",
