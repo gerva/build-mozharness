@@ -29,7 +29,6 @@ config = {
     "hg_l10n_base": "https://hg.mozilla.org/l10n-central",
     "hg_l10n_tag": "default",
     "merge_locales": True,
-    "clobber_file": 'CLOBBER',
 
     # MAR
     "previous_mar_dir": "previous",
