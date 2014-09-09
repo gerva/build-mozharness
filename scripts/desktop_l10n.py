@@ -55,7 +55,8 @@ configuration_tokens = ('branch',
 # some other values such as "%(version)s", "%(buildid)s", ...
 # are defined at run time and they cannot be enforced in the _pre_config_lock
 # phase
-runtime_config_tokens = ('buildid', 'version')
+runtime_config_tokens = ('buildid', 'version', 'locale', 'from_buildid',
+                         'abs_objdir', 'abs_merge_dir', 'version', 'to_buildid')
 
 
 # DesktopSingleLocale {{{1
@@ -261,6 +262,47 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         # now, only runtime_config_tokens should be present in config
         # we should parse self.config and fail if any other  we spot any
         # other token
+        tokens_left = set(self._get_configuration_tokens(self.config))
+        unknown_tokens = set(tokens_left) - set(runtime_config_tokens)
+        if unknown_tokens:
+            msg = ['unknown tokens in configuration:']
+            for t in unknown_tokens:
+                msg.append(t)
+            self.fatal(' '.join(msg))
+        self.info('configuration looks ok')
+
+    def _get_configuration_tokens(self, iterable):
+        """gets a list of tokens in iterable"""
+        regex = re.compile('%\(\w+\)s')
+        results = []
+        try:
+            for element in iterable:
+                if isinstance(iterable, str):
+                    # this is a string, look for tokens
+                    # self.debug("{0}".format(re.findall(regex, element)))
+                    tokens = re.findall(regex, iterable)
+                    for token in tokens:
+                        # clean %(branch)s => branch
+                        # remove %(
+                        token_name = token.partition('%(')[2]
+                        # remove )s
+                        token_name = token_name.partition(')s')[0]
+                        results.append(token_name)
+                    break
+
+                elif isinstance(iterable, (list, tuple)):
+                    results.extend(self._get_configuration_tokens(element))
+
+                elif isinstance(iterable, dict):
+                    results.extend(self._get_configuration_tokens(iterable[element]))
+
+        except TypeError:
+            # element is a int/float/..., nothing to do here
+            pass
+
+        # remove duplicates, and return results
+
+        return list(set(results))
 
     def __detokenise_element(self, config_option, token, value):
         """reads config_options and returns a version of the same config_option
