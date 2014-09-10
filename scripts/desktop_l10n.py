@@ -736,10 +736,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         if self.has_partials():
             if self.create_partial_updates(locale) != 0:
                 self.error("generate partials %s failed" % (locale))
-                return
         else:
             self.info("partial updates are not enabled, skipping")
-        return 0
 
     def has_partials(self):
         """returns True if partials are enabled, False elsewhere"""
@@ -881,9 +879,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
     def submit_repack_to_balrog(self, locale):
         """submit a single locale to balrog"""
         if not self.query_is_nightly():
-            self.info("Not a nightly build")
-            # extra safe
-            # return
+            # remove this check when we extend this script to non-nightly builds
+            self.fatal("Not a nightly build")
 
         # complete mar file
         c_marfile = self._query_complete_mar_filename(locale)
