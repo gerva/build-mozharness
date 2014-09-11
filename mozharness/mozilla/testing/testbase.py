@@ -20,7 +20,6 @@ from mozharness.base.python import (
 from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.proxxy import Proxxy
 
-a = []
 INSTALLER_SUFFIXES = ('.tar.bz2', '.zip', '.dmg', '.exe', '.apk', '.tar.gz')
 
 testing_config_options = [
@@ -91,23 +90,22 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
     default_tools_repo = 'https://hg.mozilla.org/build/tools'
     proxxy = None
 
-    def query_proxxy(self):
-        """ """
+    def _query_proxxy(self):
+        """manages the proxxy"""
         if self.proxxy:
             return self.proxxy
-        self.proxxy= Proxxy(self.config, self.log_obj)
+        self.proxxy = Proxxy(self.config, self.log_obj)
 
     def download_proxied_file(self, url, file_name=None, parent_dir=None,
                               create_parent_dir=True, error_level=FATAL,
                               exit_code=3):
-        self.query_proxxy()
+        self._query_proxxy()
         proxxy = self.proxxy
         return proxxy.download_proxied_file(url=url, file_name=file_name,
                                             parent_dir=parent_dir,
                                             create_parent_dir=create_parent_dir,
                                             error_level=error_level,
                                             exit_code=exit_code)
-
 
     def query_jsshell_url(self):
         """
@@ -170,7 +168,7 @@ class TestingMixin(VirtualenvMixin, BuildbotMixin, ResourceMonitoringMixin):
                 if c.get("require_test_zip") and not self.test_url:
                     expected_length = [2, 3]
                 if buildbot_prop_branch.startswith('gaia-try'):
-                    expected_length = range(1,6)
+                    expected_length = range(1, 6)
                 actual_length = len(files)
                 if actual_length not in expected_length:
                     self.fatal("Unexpected number of files in buildbot config %s.\nExpected these number(s) of files: %s, but got: %d" %
