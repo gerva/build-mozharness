@@ -8,6 +8,7 @@ from mozharness.base.log import ERROR, LogMixin
 from mozharness.base.script import ScriptMixin
 
 
+# Proxxy {{{1
 class Proxxy(ScriptMixin, LogMixin):
     """
     Support downloading files from HTTP caching proxies
@@ -160,5 +161,5 @@ class Proxxy(ScriptMixin, LogMixin):
                 return retval
 
         self.log("Failed to download from all available URLs, aborting",
-                  level=error_level, exit_code=exit_code)
+                 level=error_level, exit_code=exit_code)
         return retval
