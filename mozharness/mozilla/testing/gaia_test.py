@@ -305,6 +305,3 @@ class GaiaTest(TestingMixin, TooltoolMixin, MercurialScript, TransferMixin,
         self.log('Tests exited with return code %s: %s' % (code, status),
                  level=level)
         self.buildbot_status(tbpl_status)
-
-
-
