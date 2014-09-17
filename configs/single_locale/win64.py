@@ -17,6 +17,8 @@ AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
 AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
 config = {
+    "platform": "win64",
+    "update_platform": "WINNT_x86_64-msvc",
     'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
     'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
     "balrog_credentials_file": "oauth.txt",

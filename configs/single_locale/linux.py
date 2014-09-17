@@ -5,6 +5,8 @@ OBJDIR = "obj-l10n"
 MOZILLA_DIR = "%(branch)s"
 MOZ_UPDATE_CHANNEL = "nightly"
 config = {
+    "platform": "linux",
+    "update_platform": "Linux_x86-gcc3",
     "mozilla_dir": "%(branch)s",
     "mozconfig": "%(branch)s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig",
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",

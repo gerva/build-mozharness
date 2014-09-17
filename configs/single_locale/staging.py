@@ -4,7 +4,7 @@ UPLOAD_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_USER = "ffxbld"
 AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
-AUS_BASE_DIR = "%(branch)s/%(build_target)s/%(buildid)s/%(locale)s"
+AUS_BASE_DIR = "%(branch)s/%(update_platform)s/%(buildid)s/%(locale)s"
 AUS_SERVER = "blah"
 
 config = {

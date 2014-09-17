@@ -51,7 +51,8 @@ PyMakeIgnoreList = [
 # it's a list of values that are already known before starting a build
 configuration_tokens = ('branch',
                         'platform',
-                        'en_us_binary_url',)
+                        'en_us_binary_url',
+                        'update_platform',)
 # some other values such as "%(version)s", "%(buildid)s", ...
 # are defined at run time and they cannot be enforced in the _pre_config_lock
 # phase

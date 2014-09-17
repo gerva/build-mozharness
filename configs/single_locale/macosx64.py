@@ -1,13 +1,13 @@
-PLATFORM = 'macosx64'
 HG_SHARE_BASE_DIR = "/builds/hg-shared"
 OBJDIR = "obj-l10n"
 MOZILLA_DIR = "%(branch)s",
 MOZ_UPDATE_CHANNEL = "nightly"
 config = {
     # mozconfig file to use, it depends on branch and platform names
+    "platform": "macosx64",
+    "update_platform": "Darwin_x86_64-gcc3",
     "mozconfig": "%(branch)s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig",
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
-    "platform": PLATFORM,
     "repack_env": {
         "SHELL": '/bin/bash',
         "MOZ_OBJDIR": OBJDIR,

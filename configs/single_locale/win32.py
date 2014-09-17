@@ -15,7 +15,6 @@ AUS_SSH_KEY = "~/.ssh/ffxbld_dsa"
 AUS_UPLOAD_BASE_DIR = "/opt/aus2/incoming/2/Firefox"
 AUS_BASE_DIR = BRANCH + "/%(build_target)s/%(buildid)s/%(locale)s"
 CANDIDATES_URL = "http://ftp.mozilla.org/pub/mozilla.org/firefox/%s" % MOZ_UPDATE_CHANNEL
-PLATFORM = "win32"
 config = {
     'balrog_api_root': 'https://aus4-admin-dev.allizom.org',
     "balrog_credentials_file": "oauth.txt",
@@ -23,7 +22,8 @@ config = {
     "mozilla_dir": MOZILLA_DIR,
     "snippet_base_url": "http://example.com",  # fix it
     "mozconfig": "%s/browser/config/mozconfigs/win32/l10n-mozconfig" % MOZILLA_DIR,
-    "platform": PLATFORM,
+    "platform": "win32",
+    "update_platform": "WINNT_x86-msvc",
     "binary_url": EN_US_BINARY_URL,
     "repos": [{
         "vcs": "hg",

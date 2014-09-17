@@ -1,12 +1,12 @@
-PLATFORM = 'linux64'
 BRANCH = "mozilla-central"
 HG_SHARE_BASE_DIR = "/builds/hg-shared"
 OBJDIR = "obj-l10n"
 MOZILLA_DIR = "%(branch)s"
 MOZ_UPDATE_CHANNEL = "nightly"
 config = {
+    "platform": "linux64",
+    "update_platform": "Linux_x86_64-gcc3",
     "mozconfig": "%(branch)s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig",
-    "platform": PLATFORM,
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
         "EN_US_BINARY_URL": "%(en_us_binary_url)s",
