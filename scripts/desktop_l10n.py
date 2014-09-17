@@ -60,17 +60,6 @@ runtime_config_tokens = ('buildid', 'version', 'locale', 'from_buildid',
                          'abs_objdir', 'abs_merge_dir', 'version', 'to_buildid')
 
 
-# having fun with retries
-class Retry(object):
-    pass
-
-
-def retry():
-    def wrapper():
-        return
-    return wrapper
-
-
 # DesktopSingleLocale {{{1
 class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
                           MockMixin, PurgeMixin, BuildbotMixin, TransferMixin,
