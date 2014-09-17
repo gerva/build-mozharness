@@ -858,6 +858,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
         self.set_buildbot_property("hashType", hashType)
         self.set_buildbot_property("appVersion", self.query_version())
 
+        properties = None
         # balrog submitter requires buildbot['properties']['product']
         # if it does not exist the submission will fail.
         try:
