@@ -70,7 +70,7 @@ config = {
          'mpfr',  # required for system compiler
          'xorg-x11-font*',  # fonts required for PGO
          'imake',  # required for makedepend!?!
-         'gcc45_0moz3', 'gcc454_0moz1', 'gcc472_0moz1', 'gcc473_0moz1', 'yasm', 'ccache',  # <-- from releng repo
+         'gcc472_0moz1', 'gcc473_0moz1', 'yasm', 'ccache',  # <-- from releng repo
          'valgrind',
          'pulseaudio-libs-devel.i686',
          'gstreamer-devel.i686', 'gstreamer-plugins-base-devel.i686',
