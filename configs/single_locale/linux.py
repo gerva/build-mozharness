@@ -8,7 +8,7 @@ config = {
     "platform": "linux",
     "update_platform": "Linux_x86-gcc3",
     "mozilla_dir": "%(branch)s",
-    "mozconfig": "%(branch)s/browser/config/mozconfigs/macosx-universal/l10n-mozconfig",
+    "mozconfig": "%(branch)s/browser/config/mozconfigs/linux32/l10n-mozconfig",
     "src_xulrunner_mozconfig": "xulrunner/config/mozconfigs/macosx64/xulrunner",
     "repack_env": {
         "MOZ_OBJDIR": OBJDIR,
