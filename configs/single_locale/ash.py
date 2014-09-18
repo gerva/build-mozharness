@@ -1,4 +1,5 @@
 config = {
+    "nightly_build": True,
     "branch": "ash",
     "en_us_binary_url": "http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/ash-%(platform)s/latest/",
 
