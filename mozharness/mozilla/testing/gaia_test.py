@@ -238,7 +238,7 @@ class GaiaTest(TestingMixin, TooltoolMixin, MercurialScript, TransferMixin,
             return self.proxxy
         # gaia test by default does not use Proxxy
         # pass a configuration that will never use any proxxy
-        self.proxxy = Proxxy({'dummy_config': 0})
+        self.proxxy = Proxxy({'dummy_config': 0}, self.log_obj)
 
     def _retry_download_file(self, url, file_name, error_level=FATAL, retry_config=None):
         if self.config.get("bypass_download_cache"):
