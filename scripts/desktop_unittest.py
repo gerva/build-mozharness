@@ -148,7 +148,7 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
 
     # helper methods {{{2
     def _pre_config_lock(self, rw_config):
-        super(TestingMixin, self)._pre_config_lock(rw_config)
+        super(DesktopUnittest, self)._pre_config_lock(rw_config)
         c = self.config
         if not c.get('run_all_suites'):
             return  # configs are valid
@@ -410,7 +410,7 @@ class DesktopUnittest(TestingMixin, MercurialScript, BlobUploadMixin, MozbaseMix
         # check if separate test package required
         if suites and 'cppunittest' in suites:
             if not os.path.isdir(abs_cppunittest_dir):
-                self._download_unzip(self.test_url.replace('tests', 'cppunit.tests'), dirs['abs_test_install_dir'])
+                self._download_unzip(self.test_url.replace('tests', 'tests.cppunit'), dirs['abs_test_install_dir'])
 
         # move manifest and js fils to app dir, where tests expect them
         files = glob.glob(os.path.join(abs_cppunittest_dir, '*.js'))

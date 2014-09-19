@@ -230,7 +230,7 @@ class PandaTest(TestingMixin, MercurialScript, BlobUploadMixin, MozpoolMixin, Bu
                     should_install_app = False
                     # check if separate test package required
                     if not os.path.isdir(dirs['abs_cppunittest_dir']):
-                        self._download_unzip(self.test_url.replace('tests', 'cppunit.tests'), dirs['abs_test_install_dir'])
+                        self._download_unzip(self.test_url.replace('tests', 'tests.cppunit'), dirs['abs_test_install_dir'])
 
                 if 'robocop' in suite:
                     self._download_robocop_apk()
@@ -471,7 +471,7 @@ class PandaTest(TestingMixin, MercurialScript, BlobUploadMixin, MozpoolMixin, Bu
 
     ###### helper methods
     def _pre_config_lock(self, rw_config):
-        super(TestingMixin, self)._pre_config_lock(rw_config)
+        super(PandaTest, self)._pre_config_lock(rw_config)
         c = self.config
         if not c.get('run_all_suites'):
             return  # configs are valid
