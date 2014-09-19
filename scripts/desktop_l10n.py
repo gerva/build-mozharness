@@ -29,7 +29,7 @@ from mozharness.mozilla.mar import MarMixin
 from mozharness.mozilla.mock import MockMixin
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.release import ReleaseMixin
-from mozharness.mozilla.signing import MobileSigningMixin, SigningMixin
+from mozharness.mozilla.signing import SigningMixin
 from mozharness.mozilla.updates.balrog import BalrogMixin
 
 try:
@@ -61,10 +61,9 @@ runtime_config_tokens = ('buildid', 'version', 'locale', 'from_buildid',
 
 
 # DesktopSingleLocale {{{1
-class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MobileSigningMixin,
-                          MockMixin, PurgeMixin, BuildbotMixin, TransferMixin,
-                          VCSMixin, SigningMixin, BaseScript, BalrogMixin,
-                          MarMixin):
+class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
+                          BuildbotMixin, TransferMixin, VCSMixin, SigningMixin,
+                          BaseScript, BalrogMixin, MarMixin):
     """Manages desktop repacks"""
     config_options = [[
         ['--balrog-config', ],
