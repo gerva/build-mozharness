@@ -20,7 +20,6 @@ sys.path.insert(1, os.path.dirname(sys.path[0]))
 
 from mozharness.base.errors import BaseErrorList, MakefileErrorList
 from mozharness.base.script import BaseScript
-from mozharness.base.transfer import TransferMixin
 from mozharness.base.vcs.vcsbase import VCSMixin
 from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.building.buildbase import MakeUploadOutputParser
@@ -62,8 +61,8 @@ runtime_config_tokens = ('buildid', 'version', 'locale', 'from_buildid',
 
 # DesktopSingleLocale {{{1
 class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
-                          BuildbotMixin, TransferMixin, VCSMixin, SigningMixin,
-                          BaseScript, BalrogMixin, MarMixin):
+                          BuildbotMixin, VCSMixin, SigningMixin, BaseScript,
+                          BalrogMixin, MarMixin):
     """Manages desktop repacks"""
     config_options = [[
         ['--balrog-config', ],
