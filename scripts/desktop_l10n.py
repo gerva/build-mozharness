@@ -24,8 +24,8 @@ from mozharness.base.vcs.vcsbase import VCSMixin
 from mozharness.mozilla.buildbot import BuildbotMixin
 from mozharness.mozilla.building.buildbase import MakeUploadOutputParser
 from mozharness.mozilla.l10n.locales import LocalesMixin
+from mozharness.mozilla.mar import MarMixin
 from mozharness.mozilla.mock import MockMixin
-from mozharness.mozilla.mar import Mar
 from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.release import ReleaseMixin
 from mozharness.mozilla.signing import SigningMixin
@@ -62,7 +62,7 @@ runtime_config_tokens = ('buildid', 'version', 'locale', 'from_buildid',
 # DesktopSingleLocale {{{1
 class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                           BuildbotMixin, VCSMixin, SigningMixin, BaseScript,
-                          BalrogMixin):
+                          BalrogMixin, MarMixin):
     """Manages desktop repacks"""
     config_options = [[
         ['--balrog-config', ],
@@ -193,7 +193,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         self.partials = {}
         if 'mock_target' in self.config:
             self.enable_mock()
-        self.mar = None
 
     def _pre_config_lock(self, rw_config):
         """replaces 'configuration_tokens' with their values, before the
@@ -307,7 +306,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         """returns the env for repacks"""
         if self.repack_env:
             return self.repack_env
-        self._query_mar()
         config = self.config
         replace_dict = self.query_abs_dirs()
         repack_env = self.query_env(partial_env=config.get("repack_env"),
@@ -320,11 +318,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
             sign_cmd = subprocess.list2cmdline(sign_cmd)
             # windows fix
             repack_env['MOZ_SIGN_CMD'] = sign_cmd.replace('\\', '\\\\\\\\')
-        for binary in self.mar._mar_binaries():
+        for binary in self._mar_binaries():
             # "mar -> MAR" and 'mar.exe -> MAR' (windows)
             name = binary.replace('.exe', '')
             name = name.upper()
-            binary_path = os.path.join(self.mar._mar_tool_dir(), binary)
+            binary_path = os.path.join(self._mar_tool_dir(), binary)
             # windows fix...
             binary_path.replace("\\", "/")
             repack_env[name] = binary_path
@@ -346,7 +344,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         # and append them to the env
         if 'upload_env_extra' in c:
             for extra in c['upload_env_extra']:
-                upload_env[extra] = c['upload_env_extra'][extra]
+                upload_env[extra] = c['upload_env_extra']
         if 'MOZ_SIGNING_SERVERS' in os.environ:
             upload_env['MOZ_SIGN_CMD'] = subprocess.list2cmdline(self.query_moz_sign_cmd())
         self.upload_env = upload_env
@@ -671,7 +669,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         dirs = self.query_abs_dirs()
         buildid = self._query_buildid()
         try:
-            env['POST_UPLOAD_CMD'] = config['base_post_upload_cmd'] % {'buildid': buildid}
+            env['POST_UPLOAD_CMD'] = config['base_post_upload_cmd'] % {'buildid': buildid,
+                                                                       'branch': config['branch']}
         except KeyError:
             # no base_post_upload_cmd in configuration, just skip it
             pass
@@ -704,20 +703,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         return self._make(target=cmd, cwd=cwd,
                           env=env, halt_on_failure=False)
 
-    def _query_mar(self):
-        if not self.mar:
-            self.mar = Mar(config=self.config,
-                           log_obj=self.log_obj,
-                           abs_dirs=self.query_abs_dirs())
-
     def generate_complete_mar(self, locale):
         """creates a complete mar file"""
-        self._query_mar()
-        self.mar.version = self.query_version()
         config = self.config
         dirs = self.query_abs_dirs()
-        self.mar._create_mar_dirs()
-        self.mar.download_mar_tools()
+        self._create_mar_dirs()
+        self.download_mar_tools()
         package_basedir = os.path.join(dirs['abs_objdir'],
                                        config['package_base_dir'])
         env = self.query_repack_env()
@@ -756,30 +747,38 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         """creates the repacks and udpates"""
         self.summarize(self.repack_locale, self.query_locales())
 
+    def localized_marfile(self, locale):
+        """returns the localized mar file name"""
+        config = self.config
+        version = self.query_version()
+        localized_mar = config['localized_mar'] % {'version': version,
+                                                   'locale': locale}
+        localized_mar = os.path.join(self._mar_dir('update_mar_dir'),
+                                     localized_mar)
+        return localized_mar
+
     def create_partial_updates(self, locale):
         """create partial updates for locale"""
         # clean up any left overs from previous locales
         # remove current/ current.work/ previous/ directories
-        self.mar._delete_mar_dirs()
+        self._delete_mar_dirs()
         # and recreate current/ previous/
-        self.mar._create_mar_dirs()
+        self._create_mar_dirs()
         # download mar and mbsdiff executables
-        self.mar.download_mar_tools()
+        self.download_mar_tools()
         # get the previous mar file
-        previous_marfile = self.mar._get_previous_mar(locale)
+        previous_marfile = self._get_previous_mar(locale)
         # and unpack it
-        previous_mar_dir = self.mar._previous_mar_dir()
-        env = self.query_repack_env()
-        result = self.mar._unpack_mar(previous_marfile, previous_mar_dir,
-                                      env=env)
+        previous_mar_dir = self._previous_mar_dir()
+        result = self._unpack_mar(previous_marfile, previous_mar_dir)
         if result != 0:
             self.error('failed to unpack %s to %s' % (previous_marfile,
                                                       previous_mar_dir))
             return result
 
-        current_marfile = self.mar._get_current_mar()
-        current_mar_dir = self.mar._current_mar_dir()
-        result = self.mar._unpack_mar(current_marfile, current_mar_dir, env)
+        current_marfile = self._get_current_mar()
+        current_mar_dir = self._current_mar_dir()
+        result = self._unpack_mar(current_marfile, current_mar_dir)
         if result != 0:
             self.error('failed to unpack %s to %s' % (current_marfile,
                                                       current_mar_dir))
@@ -787,26 +786,24 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         # partial filename
         config = self.config
         version = self.query_version()
-        previous_mar_buildid = self.mar.get_buildid_from_mar_dir(previous_mar_dir)
+        previous_mar_buildid = self.get_buildid_from_mar_dir(previous_mar_dir)
         current_mar_buildid = self._query_buildid()
         partial_filename = config['partial_mar'] % {'version': version,
                                                     'locale': locale,
                                                     'from_buildid': current_mar_buildid,
                                                     'to_buildid': previous_mar_buildid}
-        if locale not in self.mar.package_urls:
-            self.mar.package_urls[locale] = {}
-        self.mar.package_urls[locale]['partial_filename'] = partial_filename
-        self.mar.package_urls[locale]['previous_buildid'] = previous_mar_buildid
+        if locale not in self.package_urls:
+            self.package_urls[locale] = {}
+        self.package_urls[locale]['partial_filename'] = partial_filename
+        self.package_urls[locale]['previous_buildid'] = previous_mar_buildid
         self._delete_pgc_files()
-        result = self.mar.do_incremental_update(previous_mar_dir,
-                                                current_mar_dir,
-                                                partial_filename,
-                                                env=env)
+        result = self.do_incremental_update(previous_mar_dir, current_mar_dir,
+                                            partial_filename)
         if result == 0:
             # incremental updates succeded
             # prepare partialInfo for balrog submission
             partialInfo = {}
-            p_marfile = self.mar._query_partial_mar_filename(locale, )
+            p_marfile = self._query_partial_mar_filename(locale)
             partialInfo['from_buildid'] = previous_mar_buildid
             partialInfo['size'] = self.query_filesize(p_marfile)
             partialInfo['hash'] = self.query_sha512sum(p_marfile)
@@ -886,9 +883,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
             self.fatal("Not a nightly build")
 
         # complete mar file
-        version = self.query_version
-        c_marfile = self.mar._query_complete_mar_filename(locale, version)
-        c_mar_url = self.mar._query_complete_mar_url(locale)
+        c_marfile = self._query_complete_mar_filename(locale)
+        c_mar_url = self._query_complete_mar_url(locale)
 
         # Set other necessary properties for Balrog submission. None need to
         # be passed back to buildbot, so we won't write them to the properties
@@ -923,18 +919,165 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         self.partials[locale][0]["url"] = partial_url
         return self.partials[locale]
 
+    def _query_complete_mar_filename(self, locale):
+        """returns the full path to a localized complete mar file"""
+        config = self.config
+        version = self.query_version()
+        complete_mar_name = config['localized_mar'] % {'version': version,
+                                                       'locale': locale}
+        return os.path.join(self._update_mar_dir(), complete_mar_name)
+
+    def _query_complete_mar_url(self, locale):
+        """returns the complete mar url taken from self.package_urls[locale]
+           this value is available only after make_upload"""
+        if "complete_mar_url" in self.config:
+            return self.config["complete_mar_url"]
+        if "completeMarUrl" in self.package_urls[locale]:
+            return self.package_urls[locale]["completeMarUrl"]
+        # url = self.config.get("update", {}).get("mar_base_url")
+        # if url:
+        #    url += os.path.basename(self.query_marfile_path())
+        #    return url.format(branch=self.query_branch())
+        self.fatal("Couldn't find complete mar url in config or package_urls")
+
+    def _query_partial_mar_url(self, locale):
+        """returns partial mar url"""
+        try:
+            return self.package_urls[locale]["partialMarUrl"]
+        except KeyError:
+            msg = "Couldn't find package_urls: %s %s" % (locale, self.package_urls)
+            self.error("package_urls: %s" % (self.package_urls))
+            self.fatal(msg)
+
+    def _query_partial_mar_filename(self, locale):
+        """returns the full path to a partial, it returns a valid path only
+           after make upload"""
+        partial_mar_name = self.package_urls[locale]['partial_filename']
+        return os.path.join(self._update_mar_dir(), partial_mar_name)
+
+    def _query_previous_mar_buildid(self, locale):
+        """return the partial mar buildid,
+        this method returns a valid buildid only after generate partials,
+        it raises an exception when buildid is not available
+        """
+        try:
+            return self.package_urls[locale]["previous_buildid"]
+        except KeyError:
+            self.error("no previous mar buildid")
+            raise
+
     def _delete_pgc_files(self):
         """deletes pgc files"""
-        for directory in (self.mar._previous_mar_dir(),
-                          self.mar._current_mar_dir()):
+        for directory in (self._previous_mar_dir(),
+                          self._current_mar_dir()):
             for pcg_file in self._pgc_files(directory):
                 self.info("removing %s" % pcg_file)
                 self.rmtree(pcg_file)
+
+    def _current_mar_url(self):
+        """returns current mar url"""
+        config = self.config
+        base_url = config['current_mar_url']
+        return "/".join((base_url, self._current_mar_name()))
+
+    def _previous_mar_url(self, locale):
+        """returns the url for previous mar"""
+        config = self.config
+        base_url = config['previous_mar_url']
+        return "/".join((base_url, self._localized_mar_name(locale)))
+
+    def _get_current_mar(self):
+        """downloads the current mar file"""
+        self.mkdir_p(self._previous_mar_dir())
+        if not os.path.exists(self._current_mar_filename()):
+            self.download_file(self._current_mar_url(),
+                               self._current_mar_filename())
+        else:
+            self.info('%s already exists, skipping download' % (self._current_mar_filename()))
+        return self._current_mar_filename()
+
+    def _get_previous_mar(self, locale):
+        """downloads the previous mar file"""
+        self.mkdir_p(self._previous_mar_dir())
+        self.download_file(self._previous_mar_url(locale),
+                           self._previous_mar_filename())
+        return self._previous_mar_filename()
+
+    def _current_mar_name(self):
+        """returns current mar file name"""
+        config = self.config
+        version = self.query_version()
+        return config["current_mar_filename"] % {'version': version}
+
+    def _localized_mar_name(self, locale):
+        """returns localized mar name"""
+        config = self.config
+        version = self.query_version()
+        return config["localized_mar"] % {'version': version, 'locale': locale}
+
+    def _previous_mar_filename(self):
+        """returns the complete path to previous.mar"""
+        config = self.config
+        return os.path.join(self._previous_mar_dir(),
+                            config['previous_mar_filename'])
+
+    def _current_mar_filename(self):
+        """returns the complete path to current.mar"""
+        return os.path.join(self._current_mar_dir(), self._current_mar_name())
+
+    def _create_mar_dirs(self):
+        """creates mar directories: previous/ current/"""
+        for directory in (self._previous_mar_dir(),
+                          self._current_mar_dir()):
+            self.info("creating: %s" % directory)
+            self.mkdir_p(directory)
+
+    def _delete_mar_dirs(self):
+        """delete mar directories: previous, current"""
+        for directory in (self._previous_mar_dir(),
+                          self._current_mar_dir(),
+                          self._current_work_mar_dir()):
+            self.info("deleting: %s" % directory)
+            if os.path.exists(directory):
+                self.rmtree(directory)
+
+    def _unpack_script(self):
+        """unpack script full path"""
+        config = self.config
+        dirs = self.query_abs_dirs()
+        return os.path.join(dirs['abs_mozilla_dir'], config['unpack_script'])
+
+    def _previous_mar_dir(self):
+        """returns the full path of the previous/ directory"""
+        return self._mar_dir('previous_mar_dir')
 
     def _abs_dist_dir(self):
         """returns the full path to abs_objdir/dst"""
         dirs = self.query_abs_dirs()
         return os.path.join(dirs['abs_objdir'], 'dist')
+
+    def _update_mar_dir(self):
+        """returns the full path of the update/ directory"""
+        return self._mar_dir('update_mar_dir')
+
+    def _current_mar_dir(self):
+        """returns the full path of the current/ directory"""
+        return self._mar_dir('current_mar_dir')
+
+    def _current_work_mar_dir(self):
+        """returns the full path to current.work"""
+        return self._mar_dir('current_work_mar_dir')
+
+    def _mar_binaries(self):
+        """returns a tuple with mar and mbsdiff paths"""
+        config = self.config
+        return (config['mar'], config['mbsdiff'])
+
+    def _mar_dir(self, dirname):
+        """returns the full path of dirname;
+            dirname is an entry in configuration"""
+        config = self.config
+        return os.path.join(self._get_objdir(), config.get(dirname))
 
     def _get_objdir(self):
         """returns full path to objdir"""
