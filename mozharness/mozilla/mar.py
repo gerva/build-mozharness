@@ -9,7 +9,8 @@
 import os
 import sys
 import ConfigParser
-from mozharness.base.script import BaseScript
+from mozharness.base.script import ScriptMixin
+from mozharness.base.log import LogMixin
 from mozharness.mozilla.mock import MockMixin
 
 # load modules from parent dir
@@ -36,8 +37,9 @@ def buildid_from_ini(ini_file):
 
 
 # MarMixin {{{1
-class Mar(BaseScript, MockMixin):
+class Mar(ScriptMixin, LogMixin, MockMixin):
     def __init__(self, config, log_obj, abs_dirs):
+        super(Mar, self).__init__()
         self.config = config
         self.log_obj = log_obj
         self.abs_dirs = abs_dirs
