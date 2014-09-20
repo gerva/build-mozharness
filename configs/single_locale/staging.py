@@ -12,7 +12,7 @@ config = {
         "UPLOAD_USER": UPLOAD_USER,
         "UPLOAD_SSH_KEY": UPLOAD_SSH_KEY,
         "UPLOAD_HOST": UPLOAD_SERVER,
-        "POST_UPLOAD_CMD": "post_upload.py -b %(branch)s -p firefox -i %(buildid)s  --release-to-latest --release-to-dated",
+        "POST_UPLOAD_CMD": "post_upload.py -b %(branch)s-l10n -p firefox -i %(buildid)s --release-to-latest --release-to-dated",
         "UPLOAD_TO_TEMP": "1"
     },
     # AUS
