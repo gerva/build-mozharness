@@ -38,13 +38,21 @@ def buildid_from_ini(ini_file):
 
 # MarMixin {{{1
 class Mar(ScriptMixin, LogMixin, MockMixin):
+    log_obj = None
+    config = {}
+
     def __init__(self, config, log_obj, abs_dirs):
-        super(Mar, self).__init__()
-        self.config = config
+        for key, value in config.iteritems():
+            self.config[key] = value
+        if 'volatile_config' in self.config:
+            self.config['volatile_config'] = {}
+        for key, value in self.config.iteritems():
+            self.info("key: {0}, value {1}".format(key, value))
         self.log_obj = log_obj
         self.abs_dirs = abs_dirs
         self.version = None
         self.package_urls = {}
+        super(Mar, self).__init__()
         if 'mock_target' in self.config:
             self.enable_mock()
 
