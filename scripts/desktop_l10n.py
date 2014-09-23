@@ -344,7 +344,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         # and append them to the env
         if 'upload_env_extra' in c:
             for extra in c['upload_env_extra']:
-                upload_env[extra] = c['upload_env_extra']
+                upload_env[extra] = c['upload_env_extra'][extra]
         if 'MOZ_SIGNING_SERVERS' in os.environ:
             upload_env['MOZ_SIGN_CMD'] = subprocess.list2cmdline(self.query_moz_sign_cmd())
         self.upload_env = upload_env
