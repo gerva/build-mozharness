@@ -57,22 +57,22 @@ config = {
     # Mock
     'mock_target': 'mozilla-centos6-x86_64',
     'mock_packages':
-    ['autoconf213', 'python', 'zip', 'mozilla-python27-mercurial', 'git', 'ccache',
-     'glibc-static', 'libstdc++-static', 'perl-Test-Simple', 'perl-Config-General',
-     'gtk2-devel', 'libnotify-devel', 'yasm',
-     'alsa-lib-devel', 'libcurl-devel',
-     'wireless-tools-devel', 'libX11-devel',
-     'libXt-devel', 'mesa-libGL-devel',
-     'gnome-vfs2-devel', 'GConf2-devel', 'wget',
-     'mpfr',  # required for system compiler
-     'xorg-x11-font*',  # fonts required for PGO
-     'imake',  # required for makedepend!?!
-     'gcc472_0moz1', 'yasm', 'ccache',  # <-- from releng repo
-     'gcc473_0moz1', 'valgrind',
-     'pulseaudio-libs-devel',
-     'gstreamer-devel', 'gstreamer-plugins-base-devel',
-     'freetype-2.3.11-6.el6_1.8.x86_64',
-     'freetype-devel-2.3.11-6.el6_1.8.x86_64', ],
+        ['autoconf213', 'python', 'zip', 'mozilla-python27-mercurial', 'git', 'ccache',
+         'glibc-static', 'libstdc++-static', 'perl-Test-Simple', 'perl-Config-General',
+         'gtk2-devel', 'libnotify-devel', 'yasm',
+         'alsa-lib-devel', 'libcurl-devel',
+         'wireless-tools-devel', 'libX11-devel',
+         'libXt-devel', 'mesa-libGL-devel',
+         'gnome-vfs2-devel', 'GConf2-devel', 'wget',
+         'mpfr',  # required for system compiler
+         'xorg-x11-font*',  # fonts required for PGO
+         'imake',  # required for makedepend!?!
+         'gcc45_0moz3', 'gcc454_0moz1', 'gcc472_0moz1', 'yasm', 'ccache',  # <-- from releng repo
+         'gcc473_0moz1', 'valgrind',
+         'pulseaudio-libs-devel',
+         'gstreamer-devel', 'gstreamer-plugins-base-devel',
+         'freetype-2.3.11-6.el6_1.8.x86_64',
+         'freetype-devel-2.3.11-6.el6_1.8.x86_64', ],
     'mock_files': [
         ('/home/cltbld/.ssh', '/home/mock_mozilla/.ssh'),
         ('/home/cltbld/.hgrc', '/builds/.hgrc'),
