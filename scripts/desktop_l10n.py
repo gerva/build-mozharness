@@ -851,28 +851,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         hashType = config['hashType']
         appName = config['appName']
         branch = config['branch']
+        # values from configuration
         self.set_buildbot_property("branch", branch)
         self.set_buildbot_property("appName", appName)
-        self.set_buildbot_property("buildid", self._query_buildid())
+        # it's hardcoded to sha512 in balrog.py
         self.set_buildbot_property("hashType", hashType)
         self.set_buildbot_property("platform", platform)
+        # values common to the current repacks
+        self.set_buildbot_property("buildid", self._query_buildid())
         self.set_buildbot_property("appVersion", self.query_version())
-
-        properties = None
-        # balrog submitter requires buildbot['properties']['product']
-        # if it does not exist the submission will fail.
-        try:
-            # properties = self.query_buildbot_property("properties")
-            properties = self.query_buildbot_config("properties")
-        except AttributeError:
-            # no properties set for buildbot, initialize to empty dict
-            self.buildbot_properties = {}
-
-        # set it to "Firefox" if does not exist
-        if not properties or ('product' not in properties):
-            # do not hard code it, read from configuration
-            properties = {"product": "Firefox"}
-            self.set_buildbot_property('properties', properties)
 
         # submit complete mar to balrog
         # clean up buildbot_properties
