@@ -848,12 +848,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         # common values across different locales
         config = self.config
         platform = config["platform"]
-        appName = config['appName']
         hashType = config['hashType']
-        self.set_buildbot_property("platform", platform)
+        appName = config['appName']
+        branch = config['branch']
+        self.set_buildbot_property("branch", branch)
         self.set_buildbot_property("appName", appName)
         self.set_buildbot_property("buildid", self._query_buildid())
         self.set_buildbot_property("hashType", hashType)
+        self.set_buildbot_property("platform", platform)
         self.set_buildbot_property("appVersion", self.query_version())
 
         properties = None
