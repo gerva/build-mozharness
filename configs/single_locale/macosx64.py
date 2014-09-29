@@ -29,6 +29,9 @@ config = {
         "MOZ_PKG_PLATFORM": "mac",
     },
 
+    # balrog credential file:
+    'balrog_credentials_file': 'oauth.txt',
+
     # l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",

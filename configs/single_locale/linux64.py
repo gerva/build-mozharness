@@ -20,6 +20,9 @@ config = {
     "make_dirs": ['config'],
     "vcs_share_base": HG_SHARE_BASE_DIR,
 
+    # balrog credential file:
+    'balrog_credentials_file': 'oauth.txt',
+
     # l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
