@@ -1598,3 +1598,17 @@ or run without that action (ie: --no-{action})"
                 if return_code == self.return_code:
                     self.buildbot_status(status, TBPL_STATUS_DICT[status])
         self.summary()
+
+    def sdk(self):
+        """creates the xulrunner package"""
+        c = self.config
+        objdir = self._query_objdir()
+        # get make executable
+        make_sdk = self.query_exe('make', return_type='list')
+        # append the sdk target
+        make.append('sdk')
+        self.run_command(make_sdk, cwd=self.objdir)
+        self.return_code = self.worst_level(
+            EXIT_STATUS_DICT[TBPL_WARNING], self.return_code,
+            AUTOMATION_EXIT_CODES[::-1]
+        )
