@@ -532,7 +532,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
     def _setup_configure(self, buildid=None):
         """configuration setup"""
         # no need to catch failures as _make() halts on failure by default
-        self._make_configure()
+        self._mach_configure()
         self._make_dirs()
         self.make_export(buildid)  # not sure we need it
 
@@ -601,20 +601,25 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
             for line in mozconfig:
                 self.info(line.strip())
 
-    def _pymake_exe(self):
-        """Returns the full path to the pymake command"""
+    def _mach(self, target, env, halt_on_failure=True, output_parser=None):
         dirs = self.query_abs_dirs()
-        pymake = os.path.join(dirs['abs_mozilla_dir'], 'pymake', 'make.py')
-        log.info('pymake location: %s' % (pymake) )
-        return pymake
+        mach = [os.path.join(dirs["abs_mozilla_dir"], 'mach')]
+        return self.run_command(mach + target,
+                                halt_on_failure=True,
+                                env=env,
+                                cwd=dirs['abs_mozilla_dir'],
+                                output_parser=None)
+
+    def _mach_configure(self):
+        """calls mach configure"""
+        env = self.query_repack_env()
+        target = ["configure"]
+        return self._mach(target=target, env=env)
 
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True, output_parser=None):
         """Runs make. Returns the exit code"""
-        dirs = self.query_abs_dirs()
         make = self.query_exe("make", return_type="list")
-        if config.get('use_pymake'):
-           make = self._pymake_exe()
         return self.run_command(make + target,
                                 cwd=cwd,
                                 env=env,
