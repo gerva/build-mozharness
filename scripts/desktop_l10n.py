@@ -603,7 +603,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
 
     def _mach(self, target, env, halt_on_failure=True, output_parser=None):
         dirs = self.query_abs_dirs()
-        mach = [os.path.join(dirs["abs_mozilla_dir"], 'mach')]
+        python = self.query_exe('python2.7')
+        mach = [python, 'mach']
         return self.run_command(mach + target,
                                 halt_on_failure=True,
                                 env=env,
