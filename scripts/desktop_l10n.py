@@ -604,7 +604,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True, output_parser=None):
         """Runs make. Returns the exit code"""
+        dirs = self.query_abs_dirs()
         make = self.query_exe("make", return_type="list")
+        if make.endswith(".py"):
+            # pymake
+            # find a better solution, here
+            make = os.path.join(dirs['abs_work_dir'], make)
         return self.run_command(make + target,
                                 cwd=cwd,
                                 env=env,
