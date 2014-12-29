@@ -75,7 +75,7 @@ config = {
         ('/home/cltbld/.ssh', '/home/mock_mozilla/.ssh'),
         ('/home/cltbld/.hgrc', '/builds/.hgrc'),
         ('/home/cltbld/.boto', '/builds/.boto'),
-        ('/builds/gapi.data', '/builds/gapi.data'),
+#        ('/builds/gapi.data', '/builds/gapi.data'),
         ('/tools/tooltool.py', '/builds/tooltool.py'),
     ],
 }
