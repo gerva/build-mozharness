@@ -601,15 +601,20 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
             for line in mozconfig:
                 self.info(line.strip())
 
+    def _pymake_exe(self):
+        """Returns the full path to the pymake command"""
+        dirs = self.query_abs_dirs()
+        pymake = os.path.join(dirs['abs_mozilla_dir'], 'pymake', 'make.py')
+        log.info('pymake location: %s' % (pymake) )
+        return pymake
+
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True, output_parser=None):
         """Runs make. Returns the exit code"""
         dirs = self.query_abs_dirs()
         make = self.query_exe("make", return_type="list")
-        if make.endswith(".py"):
-            # pymake
-            # find a better solution, here
-            make = os.path.join(dirs['abs_work_dir'], make)
+        if config.get('use_pymake'):
+           make = self._pymake_exe()
         return self.run_command(make + target,
                                 cwd=cwd,
                                 env=env,

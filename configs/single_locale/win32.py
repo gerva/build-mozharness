@@ -51,11 +51,6 @@ config = {
     "localized_mar": "firefox-%(version)s.%(locale)s.win32.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.win32.installer.exe",
-
-    # EXEs
-    "exes": {
-        # make is relative to the absolute work dir, desktop_l10n.py takes care
-        # of setting the complete full path
-        "make": ["build\\pymake\\make.py"],
+    "use_pymake": True,
     },
 }
