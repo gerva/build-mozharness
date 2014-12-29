@@ -60,4 +60,7 @@ config = {
     "localized_mar": "firefox-%(version)s.%(locale)s.mac.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.mac.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.mac.dmg",
+
+    # just a test
+    "use_pymake": True,
 }
