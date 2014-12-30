@@ -504,6 +504,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
 
     def pull(self):
         """pulls source code"""
+        self.log('speeding up builds, no pull - remove me when done!')
+        return True
         config = self.config
         dirs = self.query_abs_dirs()
         repos = []
