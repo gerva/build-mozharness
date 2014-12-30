@@ -624,6 +624,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         if config.get('enable_pymake'):  # e.g. windows
             pymake_path = os.path.join(dirs['abs_mozilla_dir'], 'build',
                                        'pymake', 'make.py')
+            # mysterious subprocess errors, let's try to fix this path...
+            pymake_path = pymake_path.replace('\\', '/')
             make = ['python', pymake_path]
         else:
             make = ['make']
