@@ -622,7 +622,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         config = self.config
         dirs = self.query_abs_dirs()
         if config.get('enable_pymake'):  # e.g. windows
-            pymake_path = os.path.join(dirs['abs_src_dir'], 'build',
+            pymake_path = os.path.join(dirs['abs_mozilla_dir'], 'build',
                                        'pymake', 'make.py')
             make = ['python', pymake_path]
         else:
