@@ -51,4 +51,7 @@ config = {
     "localized_mar": "firefox-%(version)s.%(locale)s.win64.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",
     'installer_file': "firefox-%(version)s.en-US.win64.installer.exe",
+
+    # use pymake instead of make?
+    "enable_pymake": True,
 }

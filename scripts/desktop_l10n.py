@@ -532,7 +532,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
     def _setup_configure(self, buildid=None):
         """configuration setup"""
         # no need to catch failures as _make() halts on failure by default
-        self._mach_configure()
+        self._make_configure()
         self._make_dirs()
         self.make_export(buildid)  # not sure we need it
 
@@ -619,7 +619,14 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
     def _make(self, target, cwd, env, error_list=MakefileErrorList,
               halt_on_failure=True, output_parser=None):
         """Runs make. Returns the exit code"""
-        make = self.query_exe("make", return_type="list")
+        config = self.config
+        dirs = self.query_abs_dirs()
+        if config.get('enable_pymake'):  # e.g. windows
+            pymake_path = os.path.join(dirs['abs_src_dir'], 'build',
+                                       'pymake', 'make.py')
+            make = ['python', pymake_path]
+        else:
+            make = ['make']
         return self.run_command(make + target,
                                 cwd=cwd,
                                 env=env,
