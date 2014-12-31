@@ -620,9 +620,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         target = ["configure"]
         return self._mach(target=target, env=env)
 
-    def _make(self, target, cwd, env, error_list=MakefileErrorList,
-              halt_on_failure=True, output_parser=None):
-        """Runs make. Returns the exit code"""
+    def _get_make_executable(self):
         config = self.config
         dirs = self.query_abs_dirs()
         if config.get('enable_pymake'):  # e.g. windows
@@ -633,6 +631,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
             make = ['python', pymake_path]
         else:
             make = ['make']
+        return make
+
+    def _make(self, target, cwd, env, error_list=MakefileErrorList,
+              halt_on_failure=True, output_parser=None):
+        """Runs make. Returns the exit code"""
+        make = self._get_make_executable()
         return self.run_command(make + target,
                                 cwd=cwd,
                                 env=env,
@@ -642,7 +646,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
 
     def _get_output_from_make(self, target, cwd, env, halt_on_failure=True):
         """runs make and returns the output of the command"""
-        make = self.query_exe("make", return_type="list")
+        make = self._get_make_executable()
         return self.get_output_from_command(make + target,
                                             cwd=cwd,
                                             env=env,
