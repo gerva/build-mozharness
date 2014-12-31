@@ -30,6 +30,7 @@ from mozharness.mozilla.purge import PurgeMixin
 from mozharness.mozilla.release import ReleaseMixin
 from mozharness.mozilla.signing import SigningMixin
 from mozharness.mozilla.updates.balrog import BalrogMixin
+from mozharness.mozilla.mock import ERROR_MSGS
 
 try:
     import simplejson as json
@@ -534,6 +535,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
     def _setup_configure(self, buildid=None):
         """configuration setup"""
         # no need to catch failures as _make() halts on failure by default
+        self._run_tooltool()
         self._make_configure()
         self._make_dirs()
         self.make_export(buildid)  # not sure we need it
@@ -1124,6 +1126,25 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                     pgc_files.append(os.path.join(dirpath, pgc))
         return pgc_files
 
+    def _run_tooltool(self):
+        config = self.config
+        dirs = self.query_abs_dirs()
+        if not config.get('tooltool_manifest_src'):
+            return self.warning(ERROR_MSGS['tooltool_manifest_undetermined'])
+        fetch_script_path = os.path.join(dirs['abs_tools_dir'],
+                                         'scripts/tooltool/tooltool_wrapper.sh')
+        tooltool_manifest_path = os.path.join(dirs['abs_mozilla_dir'],
+                                              config['tooltool_manifest_src'])
+        cmd = [
+            'sh',
+            fetch_script_path,
+            tooltool_manifest_path,
+            config['tooltool_url'],
+            config['tooltool_bootstrap'],
+        ]
+        cmd.extend(config['tooltool_script'])
+        self.info(str(cmd))
+        self.run_command(cmd, cwd=dirs['abs_mozilla_dir'], halt_on_failure=True)
 
 # main {{{
 if __name__ == '__main__':

@@ -18,6 +18,11 @@ config = {
     "make_dirs": ['config'],
     "vcs_share_base": "/builds/hg-shared",
 
+    # tooltool
+    'tooltool_url': 'http://tooltool.pvt.build.mozilla.org/build/',
+    'tooltool_script': ["/builds/tooltool.py"],
+    'tooltool_bootstrap': "setup.sh",
+    'tooltool_manifest_src': 'browser/config/tooltool-manifests/linux32/releng.manifest',
     # balrog credential file:
     'balrog_credentials_file': 'oauth.txt',
 

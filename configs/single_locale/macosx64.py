@@ -25,6 +25,12 @@ config = {
         "MOZ_PKG_PLATFORM": "mac",
     },
 
+    # tooltool
+    'tooltool_url': 'http://tooltool.pvt.build.mozilla.org/build/',
+    'tooltool_script': ["/builds/tooltool.py"],
+    'tooltool_bootstrap': "setup.sh",
+    'tooltool_manifest_src': 'browser/config/tooltool-manifests/macosx64/releng.manifest',
+
     # balrog credential file:
     'balrog_credentials_file': 'oauth.txt',
 
