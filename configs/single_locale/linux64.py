@@ -1,3 +1,5 @@
+import sys
+
 config = {
     "platform": "linux64",
     "update_platform": "Linux_x86_64-gcc3",
@@ -17,7 +19,8 @@ config = {
 
     # tooltool
     'tooltool_url': 'http://tooltool.pvt.build.mozilla.org/build/',
-    'tooltool_script': ["/builds/tooltool.py"],
+    'tooltool_script': [sys.executable,
+                        'C:/mozilla-build/tooltool.py'],
     'tooltool_bootstrap': "setup.sh",
     'tooltool_manifest_src': 'browser/config/tooltool-manifests/linux64/releng.manifest',
     # balrog credential file:
