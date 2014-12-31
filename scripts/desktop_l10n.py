@@ -809,6 +809,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         """create partial updates for locale"""
         # clean up any left overs from previous locales
         # remove current/ current.work/ previous/ directories
+        self.info('creating partial update for locale: %s' % (locale))
         self._delete_mar_dirs()
         # and recreate current/ previous/
         self._create_mar_dirs()
