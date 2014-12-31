@@ -53,7 +53,6 @@ config = {
     "local_mar_tool_dir": "dist/host/bin",
     "mar": "mar",
     "mbsdiff": "mbsdiff",
-    # "partials_url": "%(base_url)s/latest-mozilla-central/",
     "current_mar_filename": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "complete_mar": "firefox-%(version)s.en-US.linux-x86_64.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.linux-x86_64.complete.mar",
@@ -83,7 +82,7 @@ config = {
         ('/home/cltbld/.ssh', '/home/mock_mozilla/.ssh'),
         ('/home/cltbld/.hgrc', '/builds/.hgrc'),
         ('/home/cltbld/.boto', '/builds/.boto'),
-#        ('/builds/gapi.data', '/builds/gapi.data'),
+        # ('/builds/gapi.data', '/builds/gapi.data'),
         ('/tools/tooltool.py', '/builds/tooltool.py'),
     ],
 }

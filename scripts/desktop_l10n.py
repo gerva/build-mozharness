@@ -715,6 +715,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                             halt_on_failure=False, output_parser=parser)
         if locale not in self.package_urls:
             self.package_urls[locale] = {}
+        self.info("parser.match: ")
+        self.info("{0}".format(parser.matches))
+        self.info("========")
         self.package_urls[locale].update(parser.matches)
         self.info("parser: %s" % parser)
         self.info("parser matches: %s" % parser.matches)
