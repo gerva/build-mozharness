@@ -946,7 +946,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         """we can have 0, 1 or many partials, this method returns the partialInfo
            needed by balrog submitter"""
 
-        if locale not in self.partials:
+        if locale not in self.partials or not self.has_partials():
             return []
 
         # we have only a single partial for now
