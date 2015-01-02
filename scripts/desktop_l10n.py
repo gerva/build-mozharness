@@ -500,8 +500,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
     # Actions {{{2
     def clobber(self):
         """clobber"""
-        self.log('speeding up builds, no pull - remove me when done!')
-        return True
         dirs = self.query_abs_dirs()
         config = self.config
         objdir = os.path.join(dirs['abs_work_dir'], config['mozilla_dir'],
