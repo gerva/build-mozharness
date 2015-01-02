@@ -424,7 +424,10 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                     continue
             if not discard:
                 output.append(line.strip())
-        return " ".join(output).strip()
+
+        output = " ".join(output).strip()
+        self.info('echo-variable-%s: %s' % (variable, " ".join(output)))
+        return output
 
     def query_base_package_name(self, locale):
         """Gets the package name from the objdir.
@@ -747,6 +750,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
 
     def generate_complete_mar(self, locale):
         """creates a complete mar file"""
+        self.info('generating complete mar for locale %s' % (locale))
         config = self.config
         dirs = self.query_abs_dirs()
         self._create_mar_dirs()
@@ -778,7 +782,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
 
         # do we need to generate partials?
         if self.has_partials():
-            if self.create_partial_updates(locale) != 0:
+            if self.generate_partial_updates(locale) != 0:
                 self.error("generate partials %s failed" % (locale))
                 return FAILURE
         else:
@@ -805,7 +809,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                                      localized_mar)
         return localized_mar
 
-    def create_partial_updates(self, locale):
+    def generate_partial_updates(self, locale, version='last'):
         """create partial updates for locale"""
         # clean up any left overs from previous locales
         # remove current/ current.work/ previous/ directories
