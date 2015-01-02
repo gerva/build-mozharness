@@ -426,7 +426,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                 output.append(line.strip())
 
         output = " ".join(output).strip()
-        self.info('echo-variable-%s: %s' % (variable, " ".join(output)))
+        self.info('echo-variable-%s: %s' % (variable, output))
         return output
 
     def query_base_package_name(self, locale):
