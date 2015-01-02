@@ -12,6 +12,7 @@ config = {
         "MOZ_UPDATE_CHANNEL": "%(update_channel)s",
         "DIST": "%(abs_objdir)s",
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
+        "L10NBASEDIR": "../../l10n",
     },
     "log_name": "single_locale",
     "objdir": "obj-l10n",
