@@ -13,6 +13,7 @@ config = {
         "DIST": "%(abs_objdir)s",
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "L10NBASEDIR": "../../l10n",
+        "MAKE_COMPLETE_MAR": "1",
     },
     "log_name": "single_locale",
     "objdir": "obj-l10n",
