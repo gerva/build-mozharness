@@ -760,7 +760,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         cmd = os.path.join(dirs['abs_objdir'], config['update_packaging_dir'])
         cmd = ['-C', cmd, 'full-update', 'AB_CD=%s' % locale,
                'PACKAGE_BASE_DIR=%s' % package_basedir,
-               'DIST=%s' % dist_dir]
+               'DIST=%s' % dist_dir,
+               'MOZ_PKG_PRETTYNAMES=']
         return self._make(target=cmd, cwd=dirs['abs_mozilla_dir'], env=env)
 
     def repack_locale(self, locale):
