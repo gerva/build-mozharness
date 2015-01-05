@@ -61,7 +61,7 @@ config = {
     "local_mar_tool_dir": "dist/host/bin",
     "mar": "mar",
     "mbsdiff": "mbsdiff",
-    "current_mar_filename": "firefox-%(version)s.en-US.mac.complete.mar",
+    "current_mar_filename": "firefox-%(version)s.%(locale)s.mac.complete.mar",
     "complete_mar": "firefox-%(version)s.en-US.mac.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.mac.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.mac.partial.%(from_buildid)s-%(to_buildid)s.mar",

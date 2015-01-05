@@ -57,7 +57,7 @@ config = {
     "local_mar_tool_dir": "dist\\host\\bin",
     "mar": "mar.exe",
     "mbsdiff": "mbsdiff.exe",
-    "current_mar_filename": "firefox-%(version)s.en-US.win32.complete.mar",
+    "current_mar_filename": "firefox-%(version)s.%(locale)s.win32.complete.mar",
     "complete_mar": "firefox-%(version)s.en-US.win32.complete.mar",
     "localized_mar": "firefox-%(version)s.%(locale)s.win32.complete.mar",
     "partial_mar": "firefox-%(version)s.%(locale)s.partial.%(from_buildid)s-%(to_buildid)s.mar",

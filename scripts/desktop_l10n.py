@@ -830,7 +830,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                                                       previous_mar_dir))
             return result
 
-        current_marfile = self._get_current_mar()
+        current_marfile = self._get_current_mar(locale)
         current_mar_dir = self._current_mar_dir()
         result = self._unpack_mar(current_marfile, current_mar_dir)
         if result != 0:
@@ -1020,11 +1020,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                 self.info("removing %s" % pcg_file)
                 self.rmtree(pcg_file)
 
-    def _current_mar_url(self):
+    def _current_mar_url(self, locale):
         """returns current mar url"""
         config = self.config
         base_url = config['current_mar_url']
-        return "/".join((base_url, self._current_mar_name()))
+        return "/".join((base_url, self._current_mar_name(locale)))
 
     def _previous_mar_url(self, locale):
         """returns the url for previous mar"""
@@ -1032,15 +1032,15 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         base_url = config['previous_mar_url']
         return "/".join((base_url, self._localized_mar_name(locale)))
 
-    def _get_current_mar(self):
+    def _get_current_mar(self, locale):
         """downloads the current mar file"""
         self.mkdir_p(self._previous_mar_dir())
-        if not os.path.exists(self._current_mar_filename()):
-            self.download_file(self._current_mar_url(),
-                               self._current_mar_filename())
+        if not os.path.exists(self._current_mar_filename(locale)):
+            self.download_file(self._current_mar_url(locale),
+                               self._current_mar_filename(locale))
         else:
-            self.info('%s already exists, skipping download' % (self._current_mar_filename()))
-        return self._current_mar_filename()
+            self.info('%s already exists, skipping download' % (self._current_mar_filename(locale)))
+        return self._current_mar_filename(locale)
 
     def _get_previous_mar(self, locale):
         """downloads the previous mar file"""
@@ -1049,11 +1049,12 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                            self._previous_mar_filename())
         return self._previous_mar_filename()
 
-    def _current_mar_name(self):
+    def _current_mar_name(self, locale):
         """returns current mar file name"""
         config = self.config
         version = self.query_version()
-        return config["current_mar_filename"] % {'version': version}
+        return config["current_mar_filename"] % {'version': version,
+                                                 'locale': locale, }
 
     def _localized_mar_name(self, locale):
         """returns localized mar name"""
@@ -1067,9 +1068,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         return os.path.join(self._previous_mar_dir(),
                             config['previous_mar_filename'])
 
-    def _current_mar_filename(self):
+    def _current_mar_filename(self, locale):
         """returns the complete path to current.mar"""
-        return os.path.join(self._current_mar_dir(), self._current_mar_name())
+        return os.path.join(self._current_mar_dir(), self._current_mar_name(locale))
 
     def _create_mar_dirs(self):
         """creates mar directories: previous/ current/"""
