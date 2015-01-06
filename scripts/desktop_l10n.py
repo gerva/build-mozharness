@@ -790,6 +790,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
     def repack_locale(self, locale):
         """wraps the logic for comapare locale, make installers and generate
            partials"""
+        self.download_mar_tools()
         if self.run_compare_locales(locale) != 0:
             self.error("compare locale %s failed" % (locale))
             return FAILURE
