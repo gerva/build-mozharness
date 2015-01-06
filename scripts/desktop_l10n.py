@@ -1062,15 +1062,11 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         return "/".join((base_url, self._localized_mar_name(locale)))
 
     def _get_current_mar(self, locale):
-        """downloads the current mar file"""
-        self.mkdir_p(self._previous_mar_dir())
+        """returns the path of current mar file"""
         # current completed mar is generated, not downloaded
         if not os.path.exists(self._current_mar_filename(locale)):
             self.fatal('current mar is missing, locale %s' % (locale))
-            self.download_file(self._current_mar_url(locale),
-                               self._current_mar_filename(locale))
-        else:
-            self.info('%s already exists, skipping download' % (self._current_mar_filename(locale)))
+            self.fatal('did you execute generate_complete_mar() ?')
         return self._current_mar_filename(locale)
 
     def _get_previous_mar(self, locale):
