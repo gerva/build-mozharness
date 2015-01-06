@@ -839,7 +839,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                                      localized_mar)
         return localized_mar
 
-    def generate_partial_updates(self, locale, version='last'):
+    def generate_partial_updates(self, locale):
         """create partial updates for locale"""
         # clean up any left overs from previous locales
         # remove current/ current.work/ previous/ directories
