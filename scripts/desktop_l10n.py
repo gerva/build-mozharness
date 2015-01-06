@@ -720,13 +720,8 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                             halt_on_failure=False, output_parser=parser)
         if locale not in self.package_urls:
             self.package_urls[locale] = {}
-        self.info("parser.match: ")
-        self.info("{0}".format(parser.matches))
-        self.info("========")
         self.package_urls[locale].update(parser.matches)
-        self.info("parser: %s" % parser)
-        self.info("parser matches: %s" % parser.matches)
-        if retval == 0:
+        if retval == SUCCESS:
             self.info('Upload successful (%s)' % (locale))
             ret = SUCCESS
         else:
@@ -765,7 +760,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         return_code = self._make(target=cmd,
                                  cwd=dirs['abs_mozilla_dir'],
                                  env=env)
-        if return_code == 0:
+        if return_code == SUCCESS:
             return_code == self._copy_complete_mar(locale)
         return return_code
 
@@ -782,15 +777,25 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
             os.remove(dst_file)
         # copyfile returns None on success but we need 0 if the operation was
         # successful
-        return_code = self.copyfile(src_file, dst_file)
-        if return_code is None:
-            return_code = 0
-        return return_code
+        if self.copyfile(src_file, dst_file) is None:
+            # success
+            return SUCCESS
+        return FAILURE
 
     def repack_locale(self, locale):
         """wraps the logic for comapare locale, make installers and generate
            partials"""
+        config = self.config
+        dirs = self.query_abs_dirs()
         self.download_mar_tools()
+        package_basedir = os.path.join(dirs['abs_objdir'],
+                                       config['package_base_dir'])
+        # remove the package basedir directory, it might contain files
+        # from a previous locale
+        self.rmtree(package_basedir)
+        # the directory is gone, recreate it
+        self.mkdir_p(package_basedir)
+        # the directory is gone, recreate it
         if self.run_compare_locales(locale) != 0:
             self.error("compare locale %s failed" % (locale))
             return FAILURE
