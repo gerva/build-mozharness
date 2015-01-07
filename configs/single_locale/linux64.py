@@ -29,7 +29,6 @@ config = {
     # l10n
     "ignore_locales": ["en-US"],
     "l10n_dir": "l10n",
-    "l10n_stage_dir": "dist/firefox/l10n-stage",
     "locales_file": "%(branch)s/browser/locales/all-locales",
     "locales_dir": "browser/locales",
     "hg_l10n_base": "https://hg.mozilla.org/l10n-central",
