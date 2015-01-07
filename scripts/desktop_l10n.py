@@ -424,7 +424,6 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
                     continue
             if not discard:
                 output.append(line.strip())
-
         output = " ".join(output).strip()
         self.info('echo-variable-%s: %s' % (variable, output))
         return output
