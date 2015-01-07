@@ -9,7 +9,8 @@ config = {
         "EN_US_BINARY_URL": "%(en_us_binary_url)s",
         "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
         "MOZ_UPDATE_CHANNEL": "%(update_channel)s",
-        "IS_NIGHTLY": "yes",
+        "DIST": "%(abs_objdir)s",
+        "LOCALE_MERGEDIR": "%(abs_merge_dir)s/",
     },
     "log_name": "single_locale",
     "objdir": "obj-l10n",
@@ -19,8 +20,7 @@ config = {
 
     # tooltool
     'tooltool_url': 'http://tooltool.pvt.build.mozilla.org/build/',
-    'tooltool_script': [sys.executable,
-                        'C:/mozilla-build/tooltool.py'],
+    'tooltool_script': ["/builds/tooltool.py"],
     'tooltool_bootstrap': "setup.sh",
     'tooltool_manifest_src': 'browser/config/tooltool-manifests/linux64/releng.manifest',
     # balrog credential file:
