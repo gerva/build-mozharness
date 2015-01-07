@@ -536,7 +536,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, PurgeMixin,
         """configuration setup"""
         # no need to catch failures as _make() halts on failure by default
         self._run_tooltool()
-        self._make_configure()
+        self._mach_configure()
         self._make_dirs()
         self.make_export(buildid)  # not sure we need it
 
