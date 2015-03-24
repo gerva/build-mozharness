@@ -575,6 +575,7 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, BuildbotMixin,
         # if checkout updates CLOBBER file with a newer timestamp,
         # next make -f client.mk configure  will delete archives
         # downloaded with make wget_en_US, so just touch CLOBBER file
+        #  self._mach_configure()
         _clobber_file = self._clobber_file()
         if os.path.exists(_clobber_file):
             self._touch_file(_clobber_file)
@@ -706,8 +707,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, BuildbotMixin,
         if binary_file.endswith(('tar.bz2', 'dmg', 'zip')):
             # specified EN_US_BINARY url is an installer file...
             dst_filename = binary_file.split('/')[-1].strip()
+            # self.bootstrap_env['EN_US_BINARY_URL'] = self.bootstrap_env['EN_US_BINARY_URL'].replace(dst_filename, '')
             dst_filename = os.path.join(dirs['abs_objdir'], 'dist', dst_filename)
-            self.info('Specified binary url, %s, appears to be an installer file' % (binary_file))
+            self.bootstrap_env['ZIP_IN'] = dst_filename
             return self._retry_download_file(binary_file, dst_filename, error_level=FATAL)
 
         # binary url is not an installer, use make wget-en-US to download it
@@ -747,6 +749,9 @@ class DesktopSingleLocale(LocalesMixin, ReleaseMixin, MockMixin, BuildbotMixin,
         env = self.query_l10n_env()
         self._copy_mozconfig()
         env['L10NBASEDIR'] = self.l10n_dir
+        # if 'ZIP_IN' in env:
+        #     self.info('removed ZIP_IN from env')
+        #     del env['ZIP_IN']
         dirs = self.query_abs_dirs()
         cwd = os.path.join(dirs['abs_locales_dir'])
         target = ["installers-%s" % locale,
