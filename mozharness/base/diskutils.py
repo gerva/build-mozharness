@@ -154,3 +154,42 @@ class DiskSize(object):
         lvl = numeric_log_level(log_level)
         log.log(lvl, msg="%s" % disk_info)
         return disk_info
+
+
+def sub_dirs_mtime(base_dir):
+    """
+        returns a list of sub directories of base_dir older_than
+        Args:
+            base_dir (str):
+            older_than (time):
+        returns:
+            list: sub_directories older than older_than
+
+    """
+    if not os.path.isdir(base_dir):
+        yield {'path': None, 'mtime': None}
+    # get all the subdirs in base_dir
+    for sub_path in os.listdir(base_dir):
+        path = os.path.join(base_dir, sub_path)
+        if not os.path.isdir(path):
+            continue
+        mtime = os.path.getmtime(path)
+        yield {'path': path, 'mtime': mtime}
+
+
+def get_subdirs_older_than(base_dir, n_days):
+    n_days_timestamp = n_days_ago_timestamp(n_days)
+    for d in sub_dirs_mtime:
+        if d['mtime'] > n_days_timestamp:
+            yield d
+
+
+def n_days_ago_timestamp(n_days):
+    """
+
+    """
+    import time
+    import datetime
+    now = datetime.datetime.now()
+    then = now - datetime.timedelta(days=n_days)
+    return time.mktime(then.timetuple())
