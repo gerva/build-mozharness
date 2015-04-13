@@ -32,7 +32,7 @@ import sys
 import time
 from fnmatch import fnmatch
 from mozharness.base.log import INFO, numeric_log_level
-from mozharness.base.log import rmtree
+from mozharness.base.script import rmtree
 
 # use mozharness log
 log = logging.getLogger(__name__)
