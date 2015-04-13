@@ -29,6 +29,11 @@ import urllib2
 import httplib
 import urlparse
 import hashlib
+import logging
+
+# use mozharness log
+log = logging.getLogger(__name__)
+
 if os.name == 'nt':
     try:
         import win32file
@@ -46,7 +51,192 @@ except ImportError:
 from mozprocess import ProcessHandler
 from mozharness.base.config import BaseConfig
 from mozharness.base.log import SimpleFileLogger, MultiFileLogger, \
-    LogMixin, OutputParser, DEBUG, INFO, ERROR, FATAL
+    LogMixin, OutputParser, DEBUG, INFO, ERROR, FATAL, numeric_log_level
+
+
+def is_windows():
+    system = platform.system()
+    if system in ("Windows", "Microsoft"):
+        return True
+    if system.startswith("CYGWIN"):
+        return True
+    if os.name == 'nt':
+        return True
+    return False
+
+
+def is_darwin():
+    if platform.system() in ("Darwin"):
+        return True
+    if sys.platform.startswith("darwin"):
+        return True
+    return False
+
+
+def is_linux():
+    if platform.system() in ("Linux"):
+        return True
+    if sys.platform.startswith("linux"):
+        return True
+    return False
+
+
+def is_64_bit():
+    if is_darwin():
+        # osx is a special snowflake and to ensure the arch, it is better to use the following
+        return sys.maxsize > 2**32  # context: https://docs.python.org/2/library/platform.html
+    else:
+        return '64' in platform.architecture()[0]  # architecture() returns (bits, linkage)
+
+
+def retry(action, attempts=5, sleeptime=60, max_sleeptime=5 * 60,
+          retry_exceptions=(Exception, ), good_statuses=None, cleanup=None,
+          error_level=ERROR, error_message="%(action)s failed after %(attempts)d tries!",
+          failure_status=-1, log_level=INFO, args=(), kwargs={}):
+    """ Generic retry command.
+        Ported from tools util.retry.
+
+        Call `action' a maximum of `attempts' times until it succeeds,
+        defaulting to self.config.get('global_retries', 5).
+
+        `sleeptime' is the number of seconds to wait between attempts,
+        defaulting to 60 and doubling each retry attempt, to a maximum of
+        `max_sleeptime'.
+
+        `retry_exceptions' is a tuple of Exceptions that should be caught.
+        If exceptions other than those listed in `retry_exceptions' are
+        raised from `action', they will be raised immediately.
+
+        `good_statuses' is a tuple of return values which, if specified,
+        will result in retrying if the return value isn't listed.
+
+        If `cleanup' is provided and callable it will be called immediately
+        after an Exception is caught.  No arguments will be passed to it.
+        If your cleanup function requires arguments it is recommended that
+        you wrap it in an argumentless function.
+
+        `args' and `kwargs' are a tuple and dict of arguments to pass onto
+        to `callable'.
+        """
+    if not callable(action):
+        log.fatal("retry() called with an uncallable method %s!" % action)
+        raise SystemExit
+    if cleanup and not callable(cleanup):
+        log.fatal("retry() called with an uncallable cleanup method %s!" % cleanup)
+        raise SystemExit
+    if not attempts:
+        log.fatal("attempts is not Defined")
+        raise SystemExit
+    if max_sleeptime < sleeptime:
+        log.debug("max_sleeptime %d less than sleeptime %d" % (max_sleeptime,
+                                                               sleeptime))
+    n = 0
+    while n <= attempts:
+        retry = False
+        n += 1
+        try:
+            msg = "retry: Calling %s with args: %s, kwargs: %s, attempt #%d" % (
+                  action.__name__, str(args), str(kwargs), n)
+            log.log(numeric_log_level(log_level), msg)
+            status = action(*args, **kwargs)
+            if good_statuses and status not in good_statuses:
+                retry = True
+        except retry_exceptions, e:
+            retry = True
+            error_message = "%s\nCaught exception: %s" % (error_message, str(e))
+            log.info('retry: attempt #%d caught exception: %s' % (n, str(e)),)
+
+        if not retry:
+            return status
+        else:
+            if cleanup:
+                cleanup()
+            if n == attempts:
+                msg = error_message % {'action': action, 'attempts': n}
+                log.log(numeric_log_level(error_level), msg)
+                if error_level == FATAL:
+                    raise SystemExit
+                return failure_status
+            if sleeptime > 0:
+                msg = "retry: Failed, sleeping %d seconds before retrying" % sleeptime
+                log.log(numeric_log_level(log_level), msg)
+                time.sleep(sleeptime)
+                sleeptime = sleeptime * 2
+                if sleeptime > max_sleeptime:
+                    sleeptime = max_sleeptime
+
+
+def rmtree(path, log_level=INFO, error_level=ERROR,
+           exit_code=-1):
+    """
+    Returns None for success, not None for failure
+    """
+    log.log(numeric_log_level(log_level), "rmtree: %s" % path)
+    error_message = "Unable to remove %s!" % path
+    if is_windows():
+        # Call _rmtree_windows() directly, since even checking
+        # os.path.exists(path) will hang if path is longer than MAX_PATH.
+        log.info("Using _rmtree_windows ...")
+        return retry(_rmtree_windows, error_level=error_level,
+                     error_message=error_message,
+                     args=(path, ),
+                     log_level=log_level,)
+    if os.path.exists(path):
+        if os.path.isdir(path):
+            return retry(shutil.rmtree, error_level=error_level,
+                         error_message=error_message,
+                         retry_exceptions=(OSError, ),
+                         args=(path, ),
+                         log_level=log_level,)
+        else:
+            return retry(os.remove, error_level=error_level,
+                         error_message=error_message,
+                         retry_exceptions=(OSError, ),
+                         args=(path, ),
+                         log_level=log_level,)
+    else:
+        log.debug("%s doesn't exist." % path)
+
+
+def _rmtree_windows(path):
+    """ Windows-specific rmtree that handles path lengths longer than MAX_PATH.
+        Ported from clobberer.py.
+    """
+    assert is_windows()
+    path = os.path.realpath(path)
+    full_path = '\\\\?\\' + path
+    if not os.path.exists(full_path):
+        return
+    if not PYWIN32:
+        if not os.path.isdir(path):
+            proc = subprocess.Popen(['del', '/F', '/Q', path])
+            proc.wait()
+            return proc.returncode
+            # return self.run_command('del /F /Q "%s"' % path)
+        else:
+            proc = subprocess.Popen(['rmdir', '/S', '/Q', path])
+            proc.wait()
+            return proc.returncode
+            # return self.run_command('rmdir /S /Q "%s"' % path)
+    # Make sure directory is writable
+    win32file.SetFileAttributesW('\\\\?\\' + path, win32file.FILE_ATTRIBUTE_NORMAL)
+    # Since we call rmtree() with a file, sometimes
+    if not os.path.isdir('\\\\?\\' + path):
+        return win32file.DeleteFile('\\\\?\\' + path)
+
+    for ffrec in win32api.FindFiles('\\\\?\\' + path + '\\*.*'):
+        file_attr = ffrec[0]
+        name = ffrec[8]
+        if name == '.' or name == '..':
+            continue
+        full_name = os.path.join(path, name)
+
+        if file_attr & win32file.FILE_ATTRIBUTE_DIRECTORY:
+            _rmtree_windows(full_name)
+        else:
+            win32file.SetFileAttributesW('\\\\?\\' + full_name, win32file.FILE_ATTRIBUTE_NORMAL)
+            win32file.DeleteFile('\\\\?\\' + full_name)
+    win32file.RemoveDirectory('\\\\?\\' + path)
 
 
 # ScriptMixin {{{1
@@ -84,68 +274,20 @@ class ScriptMixin(object):
         """
         Returns None for success, not None for failure
         """
-        self.log("rmtree: %s" % path, level=log_level)
-        error_message = "Unable to remove %s!" % path
-        if self._is_windows():
-            # Call _rmtree_windows() directly, since even checking
-            # os.path.exists(path) will hang if path is longer than MAX_PATH.
-            self.info("Using _rmtree_windows ...")
-            return self.retry(
-                self._rmtree_windows,
-                error_level=error_level,
-                error_message=error_message,
-                args=(path, ),
-                log_level=log_level,
-            )
-        if os.path.exists(path):
-            if os.path.isdir(path):
-                return self.retry(
-                    shutil.rmtree,
-                    error_level=error_level,
-                    error_message=error_message,
-                    retry_exceptions=(OSError, ),
-                    args=(path, ),
-                    log_level=log_level,
-                )
-            else:
-                return self.retry(
-                    os.remove,
-                    error_level=error_level,
-                    error_message=error_message,
-                    retry_exceptions=(OSError, ),
-                    args=(path, ),
-                    log_level=log_level,
-                )
-        else:
-            self.debug("%s doesn't exist." % path)
+        return rmtree(path=path, log_level=log_level,
+                      error_level=error_level, exit_code=exit_code)
 
     def _is_windows(self):
-        system = platform.system()
-        if system in ("Windows", "Microsoft"):
-            return True
-        if system.startswith("CYGWIN"):
-            return True
-        if os.name == 'nt':
-            return True
+        return is_windows()
 
     def _is_darwin(self):
-        if platform.system() in ("Darwin"):
-            return True
-        if sys.platform.startswith("darwin"):
-            return True
+        return is_darwin()
 
     def _is_linux(self):
-        if platform.system() in ("Linux"):
-            return True
-        if sys.platform.startswith("linux"):
-            return True
+        return is_linux()
 
     def _is_64_bit(self):
-        if self._is_darwin():
-            # osx is a special snowflake and to ensure the arch, it is better to use the following
-            return sys.maxsize > 2**32  # context: https://docs.python.org/2/library/platform.html
-        else:
-            return '64' in platform.architecture()[0]  # architecture() returns (bits, linkage)
+        return is_64_bit()
 
     def query_msys_path(self, path):
         if not isinstance(path, basestring):
@@ -161,35 +303,7 @@ class ScriptMixin(object):
         """ Windows-specific rmtree that handles path lengths longer than MAX_PATH.
             Ported from clobberer.py.
         """
-        assert self._is_windows()
-        path = os.path.realpath(path)
-        full_path = '\\\\?\\' + path
-        if not os.path.exists(full_path):
-            return
-        if not PYWIN32:
-            if not os.path.isdir(path):
-                return self.run_command('del /F /Q "%s"' % path)
-            else:
-                return self.run_command('rmdir /S /Q "%s"' % path)
-        # Make sure directory is writable
-        win32file.SetFileAttributesW('\\\\?\\' + path, win32file.FILE_ATTRIBUTE_NORMAL)
-        # Since we call rmtree() with a file, sometimes
-        if not os.path.isdir('\\\\?\\' + path):
-            return win32file.DeleteFile('\\\\?\\' + path)
-
-        for ffrec in win32api.FindFiles('\\\\?\\' + path + '\\*.*'):
-            file_attr = ffrec[0]
-            name = ffrec[8]
-            if name == '.' or name == '..':
-                continue
-            full_name = os.path.join(path, name)
-
-            if file_attr & win32file.FILE_ATTRIBUTE_DIRECTORY:
-                self._rmtree_windows(full_name)
-            else:
-                win32file.SetFileAttributesW('\\\\?\\' + full_name, win32file.FILE_ATTRIBUTE_NORMAL)
-                win32file.DeleteFile('\\\\?\\' + full_name)
-        win32file.RemoveDirectory('\\\\?\\' + path)
+        return _rmtree_windows(path)
 
     def get_filename_from_url(self, url):
         parsed = urlparse.urlsplit(url.rstrip('/'))
@@ -544,45 +658,14 @@ class ScriptMixin(object):
             `args' and `kwargs' are a tuple and dict of arguments to pass onto
             to `callable'.
             """
-        if not callable(action):
-            self.fatal("retry() called with an uncallable method %s!" % action)
-        if cleanup and not callable(cleanup):
-            self.fatal("retry() called with an uncallable cleanup method %s!" % cleanup)
-        if not attempts:
+        if attempts is None:
             attempts = self.config.get("global_retries", 5)
-        if max_sleeptime < sleeptime:
-            self.debug("max_sleeptime %d less than sleeptime %d" % (
-                       max_sleeptime, sleeptime))
-        n = 0
-        while n <= attempts:
-            retry = False
-            n += 1
-            try:
-                self.log("retry: Calling %s with args: %s, kwargs: %s, attempt #%d" %
-                         (action.__name__, str(args), str(kwargs), n), level=log_level)
-                status = action(*args, **kwargs)
-                if good_statuses and status not in good_statuses:
-                    retry = True
-            except retry_exceptions, e:
-                retry = True
-                error_message = "%s\nCaught exception: %s" % (error_message, str(e))
-                self.log('retry: attempt #%d caught exception: %s' % (n, str(e)), level=INFO)
-
-            if not retry:
-                return status
-            else:
-                if cleanup:
-                    cleanup()
-                if n == attempts:
-                    self.log(error_message % {'action': action, 'attempts': n}, level=error_level)
-                    return failure_status
-                if sleeptime > 0:
-                    self.log("retry: Failed, sleeping %d seconds before retrying" %
-                             sleeptime, level=log_level)
-                    time.sleep(sleeptime)
-                    sleeptime = sleeptime * 2
-                    if sleeptime > max_sleeptime:
-                        sleeptime = max_sleeptime
+        return retry(action=action, attempts=attempts, sleeptime=sleeptime,
+                     max_sleeptime=max_sleeptime, retry_exceptions=retry_exceptions,
+                     good_statuses=good_statuses, cleanup=cleanup,
+                     error_level=error_level, error_message=error_message,
+                     failure_status=failure_status, log_level=log_level,
+                     args=args, kwargs=kwargs)
 
     def query_env(self, partial_env=None, replace_dict=None,
                   purge_env=(),
@@ -1218,7 +1301,7 @@ class BaseScript(ScriptMixin, LogMixin, object):
                     except Exception:
                         self.error("An additional exception occurred during "
                                    "post-action for %s: %s" % (action,
-                                   traceback.format_exc()))
+                                                               traceback.format_exc()))
 
                 self.fatal("Aborting due to exception in pre-action listener.")
 
