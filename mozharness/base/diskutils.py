@@ -25,10 +25,14 @@
 
 """
 import ctypes
+import datetime
+import logging
 import os
 import sys
-import logging
+import time
+from fnmatch import fnmatch
 from mozharness.base.log import INFO, numeric_log_level
+from mozharness.base.log import rmtree
 
 # use mozharness log
 log = logging.getLogger(__name__)
@@ -140,6 +144,9 @@ class DiskSize(object):
         try:
             # let's try to get the disk size using os module
             disk_info = DiskSize()._posix_size(path)
+        except OSError as e:
+            # No such file or directory
+            raise DiskutilsError(e.message)
         except AttributeError:
             try:
                 # os module failed. let's try to get the size using
@@ -149,11 +156,20 @@ class DiskSize(object):
                 # No luck! This is not a posix nor window platform
                 # raise an exception
                 raise DiskutilsError('Unsupported platform')
-
         disk_info._to(unit)
         lvl = numeric_log_level(log_level)
         log.log(lvl, msg="%s" % disk_info)
         return disk_info
+
+
+def get_subdirs(base_dir):
+    if not os.path.isdir(base_dir):
+        yield {'path': None}
+    for sub_path in os.listdir(base_dir):
+        path = os.path.join(base_dir, sub_path)
+        if not os.path.isdir(path):
+            continue
+        yield {'path': path}
 
 
 def sub_dirs_mtime(base_dir):
@@ -166,30 +182,81 @@ def sub_dirs_mtime(base_dir):
             list: sub_directories older than older_than
 
     """
-    if not os.path.isdir(base_dir):
-        yield {'path': None, 'mtime': None}
-    # get all the subdirs in base_dir
-    for sub_path in os.listdir(base_dir):
-        path = os.path.join(base_dir, sub_path)
-        if not os.path.isdir(path):
-            continue
-        mtime = os.path.getmtime(path)
-        yield {'path': path, 'mtime': mtime}
+    for sub_dir in get_subdirs(base_dir):
+        mtime = None
+        path = sub_dir['path']
+        if path:
+            mtime = os.path.getmtime(path)
+            yield {'path': path, 'mtime': mtime}
+
+
+def _ignore_dir(dirname, ignore_dirs):
+    for ignore_d in ignore_dirs:
+        if fnmatch(dirname, ignore_d):
+            return True
+    return False
+
+
+def remove_subdirs(base_dir, ignore_dirs, requested_free_space=12, unit='GB',
+                   older_than=14, dry_run=False):
+    # removing older directories
+    free_space = DiskSize().get_size(path=base_dir, unit=unit).free
+    if free_space > requested_free_space:
+        print('Requested space: %s, available space: %s [%s]' % (requested_free_space, free_space, unit))
+        return
+
+    # step 1: remove old directories
+    for d in get_subdirs_older_than(base_dir, older_than):
+        if not _ignore_dir(d, ignore_dirs):
+            print('removing %s' % d)
+            print("Deleting %s because it's older than %s days" % (d, older_than))
+            # rmtree() calls here
+        else:
+            print('Ignoring %s' % d)
+
+    # step 2: remove other directories
+    if free_space > requested_free_space:
+        print('Requested space: %s, available space: %s [%s]' % (requested_free_space, free_space, unit))
+        return
 
 
 def get_subdirs_older_than(base_dir, n_days):
     n_days_timestamp = n_days_ago_timestamp(n_days)
-    for d in sub_dirs_mtime:
-        if d['mtime'] > n_days_timestamp:
-            yield d
+    for d in sub_dirs_mtime(base_dir):
+        if d['mtime'] < n_days_timestamp:
+            yield d['path']
 
 
 def n_days_ago_timestamp(n_days):
     """
 
     """
-    import time
-    import datetime
     now = datetime.datetime.now()
     then = now - datetime.timedelta(days=n_days)
     return time.mktime(then.timetuple())
+
+
+def purge_hg_share(share_dir, requested_free_space, max_age, dry_run=False):
+    # Find hg directories
+    hg_dirs = []
+    for root, dirs, files in os.walk(share_dir):
+        for d in dirs[:]:
+            path = os.path.join(root, d, '.hg')
+            if os.path.exists(path) or os.path.exists(path + clobber_suffix):
+                hg_dirs.append(os.path.join(root, d))
+                # Remove d from the list so we don't go traversing down into it
+                dirs.remove(d)
+
+    # Now we have a list of hg directories, call purge on them
+    for hg_dir in hg_dirs:
+        remove_subdirs(hg_dir, ignore_dirs=[],
+                       requested_free_space=requested_free_space,
+                       older_than=max_age, dry_run=dry_run)
+
+    # Clean up empty directories
+    for d in hg_dirs:
+        if not os.path.exists(os.path.join(d, '.hg')):
+            print "Cleaning up", d
+            if not dry_run:
+                rmtree(d)
+
