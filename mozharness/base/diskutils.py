@@ -5,7 +5,7 @@
     from mozharness.base.diskutils import DiskInfo, DiskutilsError
     ...
     try:
-        DiskSize().get_size(path='/', unit='Mb')
+        DiskSize().get_size(path='/', unit='MB')
     except DiskutilsError as e:
         # manage the exception e.g: log.error(e)
         pass
@@ -22,6 +22,10 @@
     except DiskutilsError as e:
         # manage the exception e.g: log.error(e)
         pass
+
+    This module provide a purge/purge_hg_share mechanism that does not rely on
+    Mixin or external scripts.
+    This modules includes also some basic functions on directories
 
 """
 import ctypes
@@ -168,7 +172,7 @@ def get_subdirs(base_dir):
     """generates the list of the subdirectories in base_dir
     """
     if not os.path.isdir(base_dir):
-        yield {'path': None}
+        yield
     for sub_path in os.listdir(base_dir):
         path = os.path.join(base_dir, sub_path)
         if not os.path.isdir(path):
@@ -179,7 +183,9 @@ def get_subdirs(base_dir):
 def get_hg_subdirs(base_dir):
     for directory in find_dirs(base_dir):
         if directory and directory.endswith('.hg'):
-            yield directory
+            if directory != base_dir:
+                # parent directory
+                yield os.path.abspath(os.path.join(directory, os.pardir))
 
 
 def _ignore_dir(dirname, ignore_dirs):
@@ -192,50 +198,51 @@ def _ignore_dir(dirname, ignore_dirs):
 
 def enough_space(base_dir, requested_free_space, unit):
     free_space = DiskSize().get_size(path=base_dir, unit=unit).free
-    print('Requested space: %s, available space: %s [%s]' % (requested_free_space, free_space, unit))
     return free_space > requested_free_space
 
 
-def remove_subdirs(base_dir, ignore_dirs, requested_free_space=12, unit='GB',
-                   older_than=14, dry_run=False):
+def purge(base_dir, ignore_dirs, requested_free_space=12, unit='GB',
+          older_than=14, dry_run=False):
     """removed older subdirectories until there are at least requested_free_space"""
     # removing older directories
     if enough_space(base_dir, requested_free_space, unit):
+        log.info('Enough disk space (> %s %s): not clobbering %s' % (
+                 requested_free_space, unit, base_dir))
         return
 
     # remove old directories
     for d in get_subdirs_older_than(base_dir, older_than):
         if not _ignore_dir(d, ignore_dirs):
-            print("Deleting %s because it's older than %s days" % (d, older_than))
+            log.info("Deleting %s because it's older than %s days" % (d, older_than))
             rmtree(d)
             # rmtree() calls here
             if enough_space(base_dir, requested_free_space, unit):
                 return
         else:
-            print('Ignoring %s' % d)
+            log.info('Ignoring %s' % d)
 
 
 def _dir_is_older_than(dirname, n_days):
+    """checks if dirname has been modified recently (>n_days ago)"""
+    if dirname is None:
+        raise DiskutilsError('dirname is None!')
+    if not os.path.isdir(dirname):
+        raise DiskutilsError('%s is not a directory' % dirname)
+
     return os.path.getmtime(dirname) < n_days_ago_timestamp(n_days)
 
 
 def get_subdirs_older_than(base_dir, n_days):
+    """genarator that returns the list of subdirectories of base_dir that are
+       older than n_days"""
     for d in get_subdirs(base_dir):
         if _dir_is_older_than(d, n_days):
             yield d
 
 
-def get_hg_subdirs_older_than(base_dir, n_days):
-    n_days_timestamp = n_days_ago_timestamp(n_days)
-    for d in (base_dir):
-        if d['mtime'] < n_days_timestamp:
-            yield d['path']
-
-
 def n_days_ago_timestamp(n_days):
-    """
-
-    """
+    """returns a timestamp that can be compared to os.getmtime(). The return
+       value is calculated as now - n_days"""
     now = datetime.datetime.now()
     then = now - datetime.timedelta(days=n_days)
     return time.mktime(then.timetuple())
@@ -243,7 +250,10 @@ def n_days_ago_timestamp(n_days):
 
 def find_dirs(base_dir, depth=4):
     """finds all the subdirs up to depth"""
+    # os.walk takes forever and it's not needed, just find all the subdirectory
+    # using a recursive function
     if depth <= 0:
+        # depth limit, giving up
         yield
     else:
         # yield current directory
@@ -255,17 +265,21 @@ def find_dirs(base_dir, depth=4):
             # we have reached our limit
             break
         for d in find_dirs(directory, depth=next_depth):
-            yield d
+            yield os.path.join(base_dir, d)
 
 
-def purge_hg_share(share_dir, requested_free_space, unit, older_than, dry_run=True):
-    # Find hg directories
+def purge_hg_share(share_dir, requested_free_space, unit, older_than, dry_run=False):
+    """purge hg share directories: removes directories hg directories in share_dir
+       until it reaches the requested_free_space (unit). Only directories older than
+       "older_than" are taken in account.
+    """
     if enough_space(share_dir, requested_free_space, unit):
         return
 
+    # Find hg directories
     for directory in get_hg_subdirs(share_dir):
-        # ensure it's a hg directory
+        # ensure it's a old directory
         if _dir_is_older_than(directory, older_than):
-            print("hg-shared directory %s is older than %s days" % (directory, older_than))
+            log.info("hg-shared directory %s is older than %s days" % (directory, older_than))
             if not dry_run:
                 rmtree(directory)
